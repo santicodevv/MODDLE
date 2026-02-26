@@ -1,0 +1,18 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MoodleIntegrationModule } from '../moodle-integration/moodle-integration.module';
+import { GradeEditSession } from './entities/grade-edit-session.entity';
+import { GradeEdit } from './entities/grade-edit.entity';
+import { GradesController } from './grades.controller';
+import { GradesService } from './grades.service';
+
+@Module({
+  imports: [
+    MoodleIntegrationModule,
+    TypeOrmModule.forFeature([GradeEditSession, GradeEdit]),
+  ],
+  controllers: [GradesController],
+  providers: [GradesService],
+  exports: [GradesService],
+})
+export class GradesModule {}

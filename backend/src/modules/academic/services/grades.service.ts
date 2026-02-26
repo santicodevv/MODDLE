@@ -3,38 +3,56 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LocalGrade } from '../entities/local-grade.entity';
 import { AcademicPeriod, AcademicPeriodStatus } from '../entities/academic-period.entity';
+import { GradeEditSession } from '../entities/grade-edit-session.entity';
+import { GradeEdit } from '../entities/grade-edit.entity';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { MoodleGradeItem } from '../../moodle-integration/entities/moodle-grade-item.entity';
+import { MoodleGrade } from '../../moodle-integration/entities/moodle-grade.entity';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
+import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
 import { User } from '../../users/entities/user.entity';
 import { OutboxService } from '../../sync/services/outbox.service';
 import { AuditService } from '../../sync/services/audit.service';
 import { OutboxEventType } from '../../sync/entities/outbox-event.entity';
+import { MoodleSyncService } from '../../moodle-integration/moodle-sync.service';
 import { CreateGradeDto } from '../dto/create-grade.dto';
 import { UpdateGradeDto } from '../dto/update-grade.dto';
 
 @Injectable()
 export class GradesService {
+  private readonly logger = new Logger(GradesService.name);
+
   constructor(
     @InjectRepository(LocalGrade)
     private readonly gradeRepository: Repository<LocalGrade>,
     @InjectRepository(AcademicPeriod)
     private readonly periodRepository: Repository<AcademicPeriod>,
+    @InjectRepository(GradeEditSession)
+    private readonly gradeEditSessionRepository: Repository<GradeEditSession>,
+    @InjectRepository(GradeEdit)
+    private readonly gradeEditRepository: Repository<GradeEdit>,
     @InjectRepository(MoodleCourse)
     private readonly courseRepository: Repository<MoodleCourse>,
     @InjectRepository(MoodleGradeItem)
     private readonly gradeItemRepository: Repository<MoodleGradeItem>,
+    @InjectRepository(MoodleGrade)
+    private readonly moodleGradeRepository: Repository<MoodleGrade>,
     @InjectRepository(MoodleEnrolment)
     private readonly enrolmentRepository: Repository<MoodleEnrolment>,
+    @InjectRepository(MoodleUser)
+    private readonly moodleUserRepository: Repository<MoodleUser>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly outboxService: OutboxService,
     private readonly auditService: AuditService,
+    private readonly moodleSyncService: MoodleSyncService,
   ) {}
 
   /**
@@ -426,5 +444,330 @@ export class GradesService {
         `La calificación debe estar entre ${min} y ${max}`,
       );
     }
+  }
+
+  // ==================== EDIT SESSION METHODS ====================
+
+  /**
+   * Get all courses for dropdown
+   */
+  async getCourses() {
+    return this.courseRepository.find({
+      order: { fullname: 'ASC' },
+    });
+  }
+
+  /**
+   * Toggle grade edit session (admin)
+   */
+  async toggleEditSession(adminUserId: number) {
+    const activeSession = await this.getActiveSession();
+
+    if (activeSession) {
+      // Deactivate the current session
+      activeSession.isActive = false;
+      activeSession.deactivatedAt = new Date();
+      await this.gradeEditSessionRepository.save(activeSession);
+
+      return {
+        action: 'deactivated',
+        session: activeSession,
+        message: 'Edicion de notas deshabilitada',
+      };
+    } else {
+      // Create a new active session
+      const newSession = this.gradeEditSessionRepository.create({
+        isActive: true,
+        activatedBy: adminUserId,
+        activatedAt: new Date(),
+      });
+      const saved = await this.gradeEditSessionRepository.save(newSession);
+
+      return {
+        action: 'activated',
+        session: saved,
+        message: 'Edicion de notas habilitada',
+      };
+    }
+  }
+
+  /**
+   * Get the current active edit session
+   */
+  async getActiveSession(): Promise<GradeEditSession | null> {
+    return this.gradeEditSessionRepository.findOne({
+      where: { isActive: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get edit session status
+   */
+  async getEditSessionStatus() {
+    const session = await this.getActiveSession();
+    return {
+      isActive: session?.isActive || false,
+      session: session || null,
+    };
+  }
+
+  /**
+   * Sync and return all participants with their grades for a course
+   */
+  async getGradesByCourse(courseMoodleId: number) {
+    // Sync grades and grade items from Moodle
+    try {
+      await this.moodleSyncService.syncGradeItems(courseMoodleId);
+      await this.moodleSyncService.syncGrades(courseMoodleId);
+      await this.moodleSyncService.syncEnrolments(courseMoodleId);
+    } catch (error) {
+      this.logger.warn(`Sync failed for course ${courseMoodleId}, using cached data: ${error.message}`);
+    }
+
+    // Get course info
+    const course = await this.courseRepository.findOne({
+      where: { moodleId: courseMoodleId },
+    });
+
+    // Get grade items for this course
+    const gradeItems = await this.gradeItemRepository.find({
+      where: { courseMoodleId },
+      order: { itemMoodleId: 'ASC' },
+    });
+
+    // Get enrolled students (role 'student')
+    const enrolments = await this.enrolmentRepository.find({
+      where: { courseMoodleId, roleCode: 'student' },
+    });
+
+    const studentMoodleIds = enrolments.map((e) => Number(e.userMoodleId));
+
+    // Get student info
+    const students = await this.moodleUserRepository
+      .createQueryBuilder('u')
+      .where('u.moodleId IN (:...ids)', { ids: studentMoodleIds.length > 0 ? studentMoodleIds : [0] })
+      .getMany();
+
+    // Get all grades for this course
+    const grades = await this.moodleGradeRepository.find({
+      where: { courseMoodleId },
+    });
+
+    // Get active edit session
+    const activeSession = await this.getActiveSession();
+
+    // Get grade edits for the active session (if any)
+    let gradeEdits: GradeEdit[] = [];
+    if (activeSession) {
+      gradeEdits = await this.gradeEditRepository.find({
+        where: { sessionId: activeSession.id, courseMoodleId },
+      });
+    }
+
+    // Build the response: participants with their grades
+    const participants = students.map((student) => {
+      const studentGrades = gradeItems.map((item) => {
+        const moodleGrade = grades.find(
+          (g) =>
+            Number(g.itemMoodleId) === Number(item.itemMoodleId) &&
+            Number(g.userMoodleId) === Number(student.moodleId),
+        );
+
+        // Check if there's an edit for this grade in the active session
+        const edit = gradeEdits.find(
+          (e) =>
+            Number(e.itemMoodleId) === Number(item.itemMoodleId) &&
+            Number(e.studentMoodleId) === Number(student.moodleId),
+        );
+
+        return {
+          itemMoodleId: Number(item.itemMoodleId),
+          itemName: item.itemname,
+          gradeMax: Number(item.grademax),
+          gradeMin: Number(item.grademin),
+          moodleGrade: moodleGrade ? Number(moodleGrade.grade) : null,
+          editedGrade: edit ? Number(edit.newGrade) : null,
+          feedback: edit?.feedback || moodleGrade?.feedback || null,
+          wasEdited: !!edit,
+        };
+      });
+
+      return {
+        studentMoodleId: Number(student.moodleId),
+        studentName: `${student.firstname || ''} ${student.lastname || ''}`.trim(),
+        studentEmail: student.email,
+        grades: studentGrades,
+      };
+    });
+
+    return {
+      course: course
+        ? {
+            moodleId: Number(course.moodleId),
+            fullname: course.fullname,
+            shortname: course.shortname,
+          }
+        : null,
+      gradeItems: gradeItems.map((item) => ({
+        itemMoodleId: Number(item.itemMoodleId),
+        itemName: item.itemname,
+        itemType: item.itemtype,
+        gradeMax: Number(item.grademax),
+        gradeMin: Number(item.grademin),
+        weight: item.weight ? Number(item.weight) : null,
+      })),
+      participants,
+      editSession: activeSession
+        ? {
+            id: activeSession.id,
+            isActive: activeSession.isActive,
+            activatedAt: activeSession.activatedAt,
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Save a grade edit (teacher)
+   */
+  async saveGradeEdit(
+    teacherUserId: number,
+    data: {
+      courseMoodleId: number;
+      itemMoodleId: number;
+      studentMoodleId: number;
+      newGrade: number;
+      feedback?: string;
+    },
+  ) {
+    // Check if edit session is active
+    const activeSession = await this.getActiveSession();
+    if (!activeSession) {
+      throw new ForbiddenException(
+        'La edicion de notas no esta habilitada. Contacte al administrador.',
+      );
+    }
+
+    // Check if this grade was already edited in this session (by ANY teacher)
+    const existingEdit = await this.gradeEditRepository.findOne({
+      where: {
+        sessionId: activeSession.id,
+        courseMoodleId: data.courseMoodleId,
+        itemMoodleId: data.itemMoodleId,
+        studentMoodleId: data.studentMoodleId,
+      },
+    });
+
+    if (existingEdit) {
+      throw new ConflictException(
+        'Esta nota ya fue editada en la sesion actual. No se puede modificar hasta que el administrador habilite una nueva sesion.',
+      );
+    }
+
+    // Get the current Moodle grade
+    const currentMoodleGrade = await this.moodleGradeRepository.findOne({
+      where: {
+        courseMoodleId: data.courseMoodleId,
+        itemMoodleId: data.itemMoodleId,
+        userMoodleId: data.studentMoodleId,
+      },
+    });
+
+    // Save the edit locally
+    const gradeEdit = new GradeEdit();
+    gradeEdit.sessionId = activeSession.id;
+    gradeEdit.teacherUserId = teacherUserId;
+    gradeEdit.courseMoodleId = data.courseMoodleId;
+    gradeEdit.itemMoodleId = data.itemMoodleId;
+    gradeEdit.studentMoodleId = data.studentMoodleId;
+    gradeEdit.previousGrade = currentMoodleGrade ? Number(currentMoodleGrade.grade) : null;
+    gradeEdit.newGrade = data.newGrade;
+    gradeEdit.feedback = data.feedback || null;
+
+    const saved = await this.gradeEditRepository.save(gradeEdit);
+
+    // Create outbox event to sync to Moodle immediately
+    try {
+      await this.outboxService.createEvent(
+        OutboxEventType.GRADE_UPDATED,
+        {
+          courseMoodleId: data.courseMoodleId,
+          itemMoodleId: data.itemMoodleId,
+          userMoodleId: data.studentMoodleId,
+          grade: data.newGrade,
+          feedback: data.feedback || '',
+        },
+      );
+      this.logger.log(`Grade edit queued for Moodle sync: course=${data.courseMoodleId}, student=${data.studentMoodleId}, grade=${data.newGrade}`);
+    } catch (error) {
+      this.logger.error(`Failed to queue grade sync to Moodle: ${error.message}`);
+      // Don't throw - the local edit was saved successfully
+    }
+
+    // Audit log
+    await this.auditService.log({
+      entity: 'GradeEdit',
+      entityKey: saved.id.toString(),
+      action: 'CREATE',
+      actorUserId: teacherUserId,
+      afterData: {
+        courseMoodleId: data.courseMoodleId,
+        itemMoodleId: data.itemMoodleId,
+        studentMoodleId: data.studentMoodleId,
+        previousGrade: saved.previousGrade,
+        newGrade: data.newGrade,
+      },
+    });
+
+    return {
+      success: true,
+      gradeEdit: saved,
+      message: 'Nota guardada y enviada a Moodle',
+    };
+  }
+
+  /**
+   * Get editable grades for a course (teacher view)
+   * A grade is NOT editable if it was already edited by ANY teacher in the current session
+   */
+  async getEditableGrades(courseMoodleId: number, teacherUserId: number) {
+    const result = await this.getGradesByCourse(courseMoodleId);
+    const activeSession = await this.getActiveSession();
+
+    // If no active session, nothing is editable
+    if (!activeSession) {
+      result.participants = result.participants.map((p) => ({
+        ...p,
+        grades: p.grades.map((g) => ({ ...g, editable: false })),
+      }));
+      return result;
+    }
+
+    // Get ALL edits for this course in this session (by ANY teacher)
+    const allEditsInSession = await this.gradeEditRepository.find({
+      where: {
+        sessionId: activeSession.id,
+        courseMoodleId,
+      },
+    });
+
+    // Mark each grade as editable or not
+    result.participants = result.participants.map((p) => ({
+      ...p,
+      grades: p.grades.map((g) => {
+        const wasEditedByAnyTeacher = allEditsInSession.some(
+          (e) =>
+            Number(e.itemMoodleId) === g.itemMoodleId &&
+            Number(e.studentMoodleId) === p.studentMoodleId,
+        );
+        return {
+          ...g,
+          editable: !wasEditedByAnyTeacher,
+        };
+      }),
+    }));
+
+    return result;
   }
 }

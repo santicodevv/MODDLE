@@ -9,6 +9,8 @@ import { AcademicPeriod } from './entities/academic-period.entity';
 import { ReEnrolmentRequest } from './entities/re-enrolment-request.entity';
 import { ReEnrolmentLine } from './entities/re-enrolment-line.entity';
 import { LocalGrade } from './entities/local-grade.entity';
+import { GradeEditSession } from './entities/grade-edit-session.entity';
+import { GradeEdit } from './entities/grade-edit.entity';
 
 // Services
 import { PeriodsService } from './services/periods.service';
@@ -29,6 +31,8 @@ import { CoursesController } from './controllers/courses.controller';
       ReEnrolmentRequest,
       ReEnrolmentLine,
       LocalGrade,
+      GradeEditSession,
+      GradeEdit,
     ]),
     SyncModule, // Para OutboxService y AuditService
     MoodleIntegrationModule, // Para MoodleCourse, MoodleGradeItem, MoodleEnrolment
