@@ -25,6 +25,12 @@ export class MoodleCourse {
   @Column({ type: 'bigint', nullable: true, name: 'category_id' })
   categoryId: number;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  idnumber: string;
+
+  @Column({ type: 'text', nullable: true })
+  summary: string;
+
   @Column({ type: 'boolean', default: true })
   visible: boolean;
 

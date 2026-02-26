@@ -8,6 +8,7 @@ import { MoodleCourse } from './entities/moodle-course.entity';
 import { MoodleEnrolment } from './entities/moodle-enrolment.entity';
 import { MoodleGradeItem } from './entities/moodle-grade-item.entity';
 import { MoodleGrade } from './entities/moodle-grade.entity';
+import { MoodleCategory } from './entities/moodle-category.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../users/entities/role.entity';
 
@@ -19,6 +20,7 @@ import { Role } from '../users/entities/role.entity';
       MoodleEnrolment,
       MoodleGradeItem,
       MoodleGrade,
+      MoodleCategory,
       User,
       Role,
     ]),

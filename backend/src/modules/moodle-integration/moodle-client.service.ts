@@ -132,4 +132,47 @@ export class MoodleClientService {
       ],
     });
   }
+
+  // Obtener categorías de cursos
+  async getCategories(): Promise<any[]> {
+    this.logger.log('Fetching categories from Moodle...');
+    const result = await this.callFunction('core_course_get_categories');
+    this.logger.log(`Moodle categories response: ${JSON.stringify(result)}`);
+
+    // core_course_get_categories devuelve un array directamente
+    if (Array.isArray(result)) {
+      return result;
+    }
+
+    // Si no es un array, retornar array vacío
+    this.logger.warn('Unexpected response format from Moodle categories API');
+    return [];
+  }
+
+  // Crear un curso en Moodle
+  async createCourse(courseData: {
+    fullname: string;
+    shortname: string;
+    categoryid: number;
+    idnumber?: string;
+    summary?: string;
+    visible?: number;
+    startdate?: number;
+    enddate?: number;
+  }): Promise<any[]> {
+    return this.callFunction('core_course_create_courses', {
+      courses: [
+        {
+          fullname: courseData.fullname,
+          shortname: courseData.shortname,
+          categoryid: courseData.categoryid,
+          idnumber: courseData.idnumber || '',
+          summary: courseData.summary || '',
+          visible: courseData.visible ?? 1,
+          startdate: courseData.startdate,
+          enddate: courseData.enddate,
+        },
+      ],
+    });
+  }
 }

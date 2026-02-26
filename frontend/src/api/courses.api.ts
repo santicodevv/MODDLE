@@ -7,6 +7,9 @@ import type {
   MoodleEnrolment,
   CoursesQueryParams,
   PaginatedResponse,
+  MoodleCategory,
+  CreateCourseDto,
+  EnrolledUserWithDetails,
 } from '@/types';
 
 export const coursesApi = {
@@ -65,6 +68,38 @@ export const coursesApi = {
     const response = await api.get<MoodleCourse[]>('/courses/available', {
       params: { periodId },
     });
+    return response.data;
+  },
+
+  /**
+   * Get all categories
+   */
+  async getCategories(): Promise<MoodleCategory[]> {
+    const response = await api.get<MoodleCategory[]>('/courses/categories');
+    return response.data;
+  },
+
+  /**
+   * Sync categories from Moodle
+   */
+  async syncCategories(): Promise<{ synced: number }> {
+    const response = await api.post<{ synced: number }>('/courses/categories/sync');
+    return response.data;
+  },
+
+  /**
+   * Create a new course
+   */
+  async createCourse(data: CreateCourseDto): Promise<CourseWithStats> {
+    const response = await api.post<CourseWithStats>('/courses', data);
+    return response.data;
+  },
+
+  /**
+   * Get enrolled users with details for a course
+   */
+  async getEnrolledUsersWithDetails(courseId: number): Promise<EnrolledUserWithDetails[]> {
+    const response = await api.get<EnrolledUserWithDetails[]>(`/courses/${courseId}/enrolled-users`);
     return response.data;
   },
 };

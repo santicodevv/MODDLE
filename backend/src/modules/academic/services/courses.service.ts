@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
+import { MoodleCategory } from '../../moodle-integration/entities/moodle-category.entity';
+import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
+import { MoodleClientService } from '../../moodle-integration/moodle-client.service';
+import { CreateCourseDto } from '../dto/create-course.dto';
 
 export interface CoursesQueryParams {
   page?: number;
@@ -15,13 +19,32 @@ export interface CourseWithCounts extends MoodleCourse {
   teacherCount?: number;
 }
 
+export interface EnrolledUserWithDetails {
+  id: number;
+  moodleId: number;
+  username: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  roleCode: string;
+  enrolStatus: string;
+  lastCourseAccess: Date | null;
+}
+
 @Injectable()
 export class CoursesService {
+  private readonly logger = new Logger(CoursesService.name);
+
   constructor(
     @InjectRepository(MoodleCourse)
     private readonly courseRepository: Repository<MoodleCourse>,
     @InjectRepository(MoodleEnrolment)
     private readonly enrolmentRepository: Repository<MoodleEnrolment>,
+    @InjectRepository(MoodleCategory)
+    private readonly categoryRepository: Repository<MoodleCategory>,
+    @InjectRepository(MoodleUser)
+    private readonly moodleUserRepository: Repository<MoodleUser>,
+    private readonly moodleClient: MoodleClientService,
   ) {}
 
   /**
@@ -40,7 +63,7 @@ export class CoursesService {
 
     const [courses, total] = await this.courseRepository.findAndCount({
       where: whereClause,
-      order: { fullname: 'ASC' },
+      order: { visible: 'DESC', fullname: 'ASC' },
       skip,
       take: limit,
     });
@@ -144,5 +167,216 @@ export class CoursesService {
       students,
       teachers,
     };
+  }
+
+  /**
+   * Get all categories
+   */
+  async getCategories() {
+    return this.categoryRepository.find({
+      order: { name: 'ASC' },
+    });
+  }
+
+  /**
+   * Sync categories from Moodle
+   */
+  async syncCategories() {
+    this.logger.log('Starting categories sync from Moodle...');
+
+    const moodleCategories = await this.moodleClient.getCategories();
+
+    this.logger.log(`Received ${moodleCategories?.length || 0} categories from Moodle`);
+    this.logger.debug(`Categories data: ${JSON.stringify(moodleCategories)}`);
+
+    if (!moodleCategories || !Array.isArray(moodleCategories) || moodleCategories.length === 0) {
+      this.logger.warn('No categories received from Moodle');
+      return { synced: 0 };
+    }
+
+    for (const mCat of moodleCategories) {
+      let category = await this.categoryRepository.findOne({
+        where: { moodleId: mCat.id },
+      });
+
+      if (category) {
+        category.name = mCat.name;
+        category.parent = mCat.parent;
+        category.description = mCat.description || '';
+        category.depth = mCat.depth;
+        category.path = mCat.path;
+        category.coursecount = mCat.coursecount;
+        category.visible = mCat.visible === 1;
+        category.timemodified = mCat.timemodified
+          ? new Date(mCat.timemodified * 1000)
+          : null;
+        category.lastSyncedAt = new Date();
+      } else {
+        category = this.categoryRepository.create({
+          moodleId: mCat.id,
+          name: mCat.name,
+          parent: mCat.parent,
+          description: mCat.description || '',
+          depth: mCat.depth,
+          path: mCat.path,
+          coursecount: mCat.coursecount,
+          visible: mCat.visible === 1,
+          lastSyncedAt: new Date(),
+        });
+        if (mCat.timemodified) {
+          category.timemodified = new Date(mCat.timemodified * 1000);
+        }
+      }
+
+      await this.categoryRepository.save(category);
+      this.logger.log(`Saved category: ${mCat.name} (Moodle ID: ${mCat.id})`);
+    }
+
+    this.logger.log(`Categories sync completed. Total synced: ${moodleCategories.length}`);
+    return { synced: moodleCategories.length };
+  }
+
+  /**
+   * Create a new course in Moodle and save locally
+   */
+  async createCourse(data: CreateCourseDto) {
+    this.logger.log(`Creating course: ${JSON.stringify(data)}`);
+
+    // Ensure categoryid is a number
+    const categoryId = Number(data.categoryid);
+    if (isNaN(categoryId) || categoryId <= 0) {
+      throw new BadRequestException('Invalid category ID');
+    }
+
+    // Verify category exists
+    const category = await this.categoryRepository.findOne({
+      where: { moodleId: categoryId },
+    });
+
+    this.logger.log(`Category lookup for moodleId ${data.categoryid}: ${category ? 'found' : 'not found'}`);
+
+    if (!category) {
+      throw new BadRequestException(
+        `Category with Moodle ID ${categoryId} not found. Please sync categories first.`,
+      );
+    }
+
+    // Create course in Moodle
+    const moodlePayload = {
+      fullname: data.fullname,
+      shortname: data.shortname,
+      categoryid: categoryId,
+      idnumber: data.idnumber,
+      summary: data.summary,
+      visible: data.visible === false ? 0 : 1,
+      startdate: data.startdate
+        ? Math.floor(new Date(data.startdate).getTime() / 1000)
+        : undefined,
+      enddate: data.enddate
+        ? Math.floor(new Date(data.enddate).getTime() / 1000)
+        : undefined,
+    };
+
+    this.logger.log(`Sending to Moodle: ${JSON.stringify(moodlePayload)}`);
+
+    let moodleResult;
+    try {
+      moodleResult = await this.moodleClient.createCourse(moodlePayload);
+      this.logger.log(`Moodle response: ${JSON.stringify(moodleResult)}`);
+
+      if (!moodleResult || moodleResult.length === 0) {
+        throw new BadRequestException('Failed to create course in Moodle - empty response');
+      }
+    } catch (error) {
+      this.logger.error(`Moodle create course error: ${error.message}`);
+      throw new BadRequestException(`Error creating course in Moodle: ${error.message}`);
+    }
+
+    const createdMoodleCourse = moodleResult[0];
+
+    // Save course locally
+    const course = this.courseRepository.create({
+      moodleId: createdMoodleCourse.id,
+      shortname: data.shortname,
+      fullname: data.fullname,
+      categoryId: categoryId,
+      visible: data.visible !== false,
+      lastSyncedAt: new Date(),
+    });
+
+    if (data.idnumber) {
+      course.idnumber = data.idnumber;
+    }
+    if (data.summary) {
+      course.summary = data.summary;
+    }
+    if (data.startdate) {
+      course.startdate = new Date(data.startdate);
+    }
+    if (data.enddate) {
+      course.enddate = new Date(data.enddate);
+    }
+
+    await this.courseRepository.save(course);
+
+    return {
+      ...course,
+      studentCount: 0,
+      teacherCount: 0,
+    };
+  }
+
+  /**
+   * Get enrolled users with their details
+   */
+  async getEnrolledUsersWithDetails(
+    courseId: number,
+  ): Promise<EnrolledUserWithDetails[]> {
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      return [];
+    }
+
+    const enrolments = await this.enrolmentRepository.find({
+      where: {
+        courseMoodleId: course.moodleId,
+        enrolStatus: 'active',
+      },
+    });
+
+    const userMoodleIds = enrolments.map((e) => e.userMoodleId);
+
+    if (userMoodleIds.length === 0) {
+      return [];
+    }
+
+    const users = await this.moodleUserRepository
+      .createQueryBuilder('user')
+      .where('user.moodleId IN (:...ids)', { ids: userMoodleIds })
+      .getMany();
+
+    const userMap = new Map(users.map((u) => [u.moodleId, u]));
+
+    return enrolments
+      .map((enrolment) => {
+        const user = userMap.get(enrolment.userMoodleId);
+        if (!user) return null;
+
+        return {
+          id: user.id,
+          moodleId: user.moodleId,
+          username: user.username,
+          email: user.email,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          roleCode: enrolment.roleCode,
+          enrolStatus: enrolment.enrolStatus,
+          lastCourseAccess: enrolment.lastCourseAccess,
+        };
+      })
+      .filter((u): u is EnrolledUserWithDetails => u !== null);
   }
 }

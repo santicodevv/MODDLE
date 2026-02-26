@@ -8,6 +8,7 @@ import { MoodleCourse } from '../modules/moodle-integration/entities/moodle-cour
 import { MoodleEnrolment } from '../modules/moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleGradeItem } from '../modules/moodle-integration/entities/moodle-grade-item.entity';
 import { MoodleGrade } from '../modules/moodle-integration/entities/moodle-grade.entity';
+import { MoodleCategory } from '../modules/moodle-integration/entities/moodle-category.entity';
 
 // Entidades de sincronización
 import { OutboxEvent } from '../modules/sync/entities/outbox-event.entity';
@@ -33,6 +34,7 @@ export const entities = [
   MoodleEnrolment,
   MoodleGradeItem,
   MoodleGrade,
+  MoodleCategory,
   // Sync
   OutboxEvent,
   SyncState,

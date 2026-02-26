@@ -1,18 +1,48 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Param,
   Query,
   ParseIntPipe,
   NotFoundException,
 } from '@nestjs/common';
 import { CoursesService } from '../services/courses.service';
+import { CreateCourseDto } from '../dto/create-course.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
 
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
+
+  /**
+   * Get all categories
+   */
+  @Roles(RoleCode.ADMIN)
+  @Get('categories')
+  async getCategories() {
+    return this.coursesService.getCategories();
+  }
+
+  /**
+   * Sync categories from Moodle
+   */
+  @Roles(RoleCode.ADMIN)
+  @Post('categories/sync')
+  async syncCategories() {
+    return this.coursesService.syncCategories();
+  }
+
+  /**
+   * Create a new course
+   */
+  @Roles(RoleCode.ADMIN)
+  @Post()
+  async createCourse(@Body() createCourseDto: CreateCourseDto) {
+    return this.coursesService.createCourse(createCourseDto);
+  }
 
   /**
    * Get all courses with pagination
@@ -56,5 +86,14 @@ export class CoursesController {
       throw new NotFoundException(`Course with ID ${id} not found`);
     }
     return details;
+  }
+
+  /**
+   * Get enrolled users with details for a course
+   */
+  @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
+  @Get(':id/enrolled-users')
+  async getEnrolledUsers(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.getEnrolledUsersWithDetails(id);
   }
 }

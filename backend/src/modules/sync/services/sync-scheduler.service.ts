@@ -21,8 +21,8 @@ export class SyncSchedulerService {
       this.configService.get<string>('NODE_ENV') !== 'test';
   }
 
-  // Polling incremental cada minuto
-  @Cron(CronExpression.EVERY_MINUTE)
+  // Polling incremental cada hora
+  @Cron(CronExpression.EVERY_HOUR)
   async incrementalSync() {
     if (!this.isSchedulingEnabled) return;
 

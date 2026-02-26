@@ -1,5 +1,6 @@
 // Admin Courses Page - View synchronized courses
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib';
 import {
@@ -19,7 +20,10 @@ import {
   ChevronRight,
   Eye,
   GraduationCap,
+  Plus,
+  ExternalLink,
 } from 'lucide-react';
+import { CreateCourseModal } from '@/components/admin';
 
 interface Course {
   id: number;
@@ -43,9 +47,11 @@ interface CoursesResponse {
 }
 
 export default function AdminCourses() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const limit = 20;
 
   const { data, isLoading } = useQuery({
@@ -72,11 +78,17 @@ export default function AdminCourses() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Cursos</h1>
-        <p className="mt-1 text-gray-600">
-          Cursos sincronizados desde Moodle
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Cursos</h1>
+          <p className="mt-1 text-gray-600">
+            Cursos sincronizados desde Moodle
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Crear Curso
+        </Button>
       </div>
 
       {/* Search */}
@@ -142,8 +154,8 @@ export default function AdminCourses() {
                           >
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                  <BookOpen className="h-4 w-4 text-green-600" />
+                                <div className={`p-2 rounded-lg ${course.visible ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                  <BookOpen className={`h-4 w-4 ${course.visible ? 'text-green-600' : 'text-gray-400'}`} />
                                 </div>
                                 <div>
                                   <p className="font-medium text-gray-900 text-sm">
@@ -170,20 +182,34 @@ export default function AdminCourses() {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <Badge variant={course.visible ? 'success' : 'secondary'}>
-                                {course.visible ? 'Visible' : 'Oculto'}
+                                {course.visible ? 'Activo' : 'Inactivo'}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedCourse(course);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCourse(course);
+                                  }}
+                                  title="Vista r&aacute;pida"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/admin/courses/${course.id}`);
+                                  }}
+                                  title="Ver detalle completo"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -307,6 +333,14 @@ export default function AdminCourses() {
                           : 'No sincronizado'}
                       </p>
                     </div>
+
+                    <Button
+                      className="w-full mt-4"
+                      onClick={() => navigate(`/admin/courses/${selectedCourse.id}`)}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Ver Detalle Completo
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -319,6 +353,12 @@ export default function AdminCourses() {
           </Card>
         </div>
       </div>
+
+      {/* Create Course Modal */}
+      <CreateCourseModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 }

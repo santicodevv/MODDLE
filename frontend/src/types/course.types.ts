@@ -6,6 +6,8 @@ export interface MoodleCourse {
   shortname: string;
   fullname: string;
   categoryId?: number;
+  idnumber?: string;
+  summary?: string;
   visible: boolean;
   startdate?: string;
   enddate?: string;
@@ -49,4 +51,43 @@ export interface CoursesQueryParams {
   limit?: number;
   search?: string;
   visible?: boolean;
+}
+
+// Category from Moodle
+export interface MoodleCategory {
+  id: number;
+  moodleId: number;
+  name: string;
+  parent?: number;
+  description?: string;
+  depth: number;
+  path?: string;
+  coursecount: number;
+  visible: boolean;
+  lastSyncedAt?: string;
+}
+
+// DTO for creating a course
+export interface CreateCourseDto {
+  fullname: string;
+  shortname: string;
+  categoryid: number;
+  idnumber?: string;
+  summary?: string;
+  visible?: boolean;
+  startdate?: string;
+  enddate?: string;
+}
+
+// Enrolled user with details
+export interface EnrolledUserWithDetails {
+  id: number;
+  moodleId: number;
+  username: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  roleCode: string;
+  enrolStatus: string;
+  lastCourseAccess: string | null;
 }

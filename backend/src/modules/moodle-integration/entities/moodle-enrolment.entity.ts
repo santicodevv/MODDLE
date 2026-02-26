@@ -36,6 +36,9 @@ export class MoodleEnrolment {
   @Column({ type: 'timestamptz', nullable: true })
   timemodified: Date;
 
+  @Column({ type: 'timestamptz', nullable: true, name: 'last_course_access' })
+  lastCourseAccess: Date | null;
+
   @Column({ type: 'timestamptz', nullable: true, name: 'last_synced_at' })
   lastSyncedAt: Date;
 

@@ -234,6 +234,9 @@ export class MoodleSyncService {
             userMoodleId: enrollment.id,
             roleCode: role.shortname,
             enrolStatus: 'active',
+            lastCourseAccess: enrollment.lastcourseaccess
+              ? new Date(enrollment.lastcourseaccess * 1000)
+              : null,
             lastSyncedAt: new Date(),
           };
 
