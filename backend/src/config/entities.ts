@@ -1,0 +1,47 @@
+// Entidades de usuarios
+import { User } from '../modules/users/entities/user.entity';
+import { Role } from '../modules/users/entities/role.entity';
+
+// Entidades de Moodle
+import { MoodleUser } from '../modules/moodle-integration/entities/moodle-user.entity';
+import { MoodleCourse } from '../modules/moodle-integration/entities/moodle-course.entity';
+import { MoodleEnrolment } from '../modules/moodle-integration/entities/moodle-enrolment.entity';
+import { MoodleGradeItem } from '../modules/moodle-integration/entities/moodle-grade-item.entity';
+import { MoodleGrade } from '../modules/moodle-integration/entities/moodle-grade.entity';
+
+// Entidades de sincronización
+import { OutboxEvent } from '../modules/sync/entities/outbox-event.entity';
+import { SyncState } from '../modules/sync/entities/sync-state.entity';
+import { AuditLog } from '../modules/sync/entities/audit-log.entity';
+
+// Entidades académicas
+import { AcademicPeriod } from '../modules/academic/entities/academic-period.entity';
+import { ReEnrolmentRequest } from '../modules/academic/entities/re-enrolment-request.entity';
+import { ReEnrolmentLine } from '../modules/academic/entities/re-enrolment-line.entity';
+import { LocalGrade } from '../modules/academic/entities/local-grade.entity';
+
+// Entidades de certificados
+import { Transcript } from '../modules/transcripts/entities/transcript.entity';
+
+export const entities = [
+  // Users
+  User,
+  Role,
+  // Moodle
+  MoodleUser,
+  MoodleCourse,
+  MoodleEnrolment,
+  MoodleGradeItem,
+  MoodleGrade,
+  // Sync
+  OutboxEvent,
+  SyncState,
+  AuditLog,
+  // Academic
+  AcademicPeriod,
+  ReEnrolmentRequest,
+  ReEnrolmentLine,
+  LocalGrade,
+  // Transcripts
+  Transcript,
+];

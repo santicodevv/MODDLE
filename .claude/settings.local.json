@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx @nestjs/cli new:*)",
+      "Bash(npm install:*)",
+      "Bash(tree:*)",
+      "Bash(npm run build:*)",
+      "Bash(\"C:\\\\dev\\\\[ MODDLE ]\\\\README.md\")",
+      "Bash(\"C:\\\\dev\\\\[ MODDLE ]\\\\.env.example\")",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker compose:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5Ac2VidGkuZWR1LmRvIiwicm9sZXMiOlsiQURNSU4iXSwiaWF0IjoxNzcxODY0Nzc1LCJleHAiOjE3NzE4NjgzNzV9.PFNpCdEYm2_gVsDlbukxLS-v_IA4uNoFimglAzx1inw\":*)",
+      "Bash(__NEW_LINE_04693e72beaabbce__ echo \"=== GET /api/periods ===\")",
+      "Bash(__NEW_LINE_04693e72beaabbce__ echo -e \"\\\\n\\\\n=== POST /api/periods \\(crear período\\) ===\")",
+      "Bash(__NEW_LINE_04693e72beaabbce__ echo -e \"\\\\n\\\\n=== GET /api/periods/active ===\")",
+      "Bash(__NEW_LINE_c156c4a326fb24ae__ echo \"=== POST /api/periods \\(crear período con code\\) ===\")",
+      "Bash(__NEW_LINE_3ad55ef5533e9f61__ echo \"=== POST /api/periods/1/open \\(abrir período\\) ===\")",
+      "Bash(__NEW_LINE_3ad55ef5533e9f61__ echo -e \"\\\\n\\\\n=== GET /api/periods/active ===\")",
+      "Bash(__NEW_LINE_fbfb2dbdfe02ba21__ echo \"=== GET /api/grades/my-grades ===\")",
+      "Bash(__NEW_LINE_fbfb2dbdfe02ba21__ echo -e \"\\\\n\\\\n=== GET /api/re-enrolments ===\")",
+      "Bash(__NEW_LINE_fbfb2dbdfe02ba21__ echo -e \"\\\\n\\\\n=== GET /api/transcripts ===\")",
+      "Bash(__NEW_LINE_fbfb2dbdfe02ba21__ echo -e \"\\\\n\\\\n=== GET /api/reports/global/summary ===\")",
+      "Bash(docker logs:*)",
+      "Bash(npm create:*)",
+      "Bash(npm run start:dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run seed:roles:*)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill /F /PID 10564)",
+      "Bash(taskkill //F //PID 10564)"
+    ]
+  }
+}
