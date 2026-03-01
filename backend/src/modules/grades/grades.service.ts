@@ -289,7 +289,7 @@ export class GradesService {
    * Same as getGradesByCourse but includes editable status per grade
    * A grade is NOT editable if it was already edited by ANY teacher in the current session
    */
-  async getEditableGrades(courseMoodleId: number, teacherUserId: number) {
+  async getEditableGrades(courseMoodleId: number, teacherUserId: number, isAdmin: boolean = false) {
     const result = await this.getGradesByCourse(courseMoodleId);
     const activeSession = await this.getActiveSession();
 
@@ -298,6 +298,15 @@ export class GradesService {
       result.participants = result.participants.map((p) => ({
         ...p,
         grades: p.grades.map((g) => ({ ...g, editable: false })),
+      }));
+      return result;
+    }
+
+    // Admins can always edit all grades
+    if (isAdmin) {
+      result.participants = result.participants.map((p) => ({
+        ...p,
+        grades: p.grades.map((g) => ({ ...g, editable: true })),
       }));
       return result;
     }

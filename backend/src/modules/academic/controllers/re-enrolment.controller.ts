@@ -2,12 +2,15 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ReEnrolmentService } from '../services/re-enrolment.service';
-import { CreateReEnrolmentDto } from '../dto/create-re-enrolment.dto';
+import { CreateReEnrolmentDto, ReEnrolmentCourseDto } from '../dto/create-re-enrolment.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -84,5 +87,85 @@ export class ReEnrolmentController {
     @CurrentUser() user: User,
   ) {
     return this.reEnrolmentService.applyToMoodle(id, user.id);
+  }
+
+  // =====================
+  // ENDPOINTS ADICIONALES PARA ESTUDIANTES
+  // =====================
+
+  @Roles(RoleCode.STUDENT)
+  @Get('mine/draft/:periodId')
+  async getMyDraft(
+    @Param('periodId', ParseIntPipe) periodId: number,
+    @CurrentUser() user: User,
+  ) {
+    return this.reEnrolmentService.findDraft(user.id, periodId);
+  }
+
+  @Roles(RoleCode.STUDENT)
+  @Patch(':id')
+  async updateDraft(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { courses: ReEnrolmentCourseDto[]; notes?: string },
+    @CurrentUser() user: User,
+  ) {
+    return this.reEnrolmentService.updateDraft(
+      id,
+      user.id,
+      body.courses,
+      body.notes,
+    );
+  }
+
+  @Roles(RoleCode.STUDENT)
+  @Post(':id/add-courses')
+  async addCourses(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { courses: ReEnrolmentCourseDto[] },
+    @CurrentUser() user: User,
+  ) {
+    return this.reEnrolmentService.addCoursesToDraft(id, user.id, body.courses);
+  }
+
+  @Roles(RoleCode.STUDENT)
+  @Post(':id/remove-courses')
+  async removeCourses(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { courseMoodleIds: number[] },
+    @CurrentUser() user: User,
+  ) {
+    return this.reEnrolmentService.removeCoursesFromDraft(
+      id,
+      user.id,
+      body.courseMoodleIds,
+    );
+  }
+
+  @Roles(RoleCode.STUDENT)
+  @Delete(':id')
+  async deleteDraft(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: User,
+  ) {
+    await this.reEnrolmentService.deleteDraft(id, user.id);
+    return { success: true };
+  }
+
+  // =====================
+  // ESTADÍSTICAS (ADMIN)
+  // =====================
+
+  @Roles(RoleCode.ADMIN)
+  @Get('stats')
+  async getStats(@Query('periodId') periodId?: string) {
+    return this.reEnrolmentService.countByStatus(
+      periodId ? parseInt(periodId) : undefined,
+    );
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Get('by-period/:periodId')
+  async getByPeriod(@Param('periodId', ParseIntPipe) periodId: number) {
+    return this.reEnrolmentService.findByPeriod(periodId);
   }
 }

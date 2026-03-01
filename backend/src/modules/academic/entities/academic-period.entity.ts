@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { ReEnrolmentRequest } from './re-enrolment-request.entity';
+import { PeriodAvailableCourse } from './period-available-course.entity';
 
 export enum AcademicPeriodStatus {
   PLANNED = 'planned',
@@ -47,6 +48,19 @@ export class AcademicPeriod {
   @Column({ type: 'jsonb', nullable: true })
   metadata: any; // Información adicional
 
+  // Campos para reinscripción
+  @Column({ type: 'date', nullable: true, name: 'reenrolment_start_date' })
+  reenrolmentStartDate: Date | null;
+
+  @Column({ type: 'date', nullable: true, name: 'reenrolment_end_date' })
+  reenrolmentEndDate: Date | null;
+
+  @Column({ type: 'boolean', default: false, name: 'reenrolment_open' })
+  reenrolmentOpen: boolean;
+
+  @Column({ type: 'bigint', nullable: true, name: 'moodle_category_id' })
+  moodleCategoryId: number | null; // Categoría de Moodle asociada al período
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -58,4 +72,10 @@ export class AcademicPeriod {
     (request) => request.period,
   )
   reEnrolmentRequests: ReEnrolmentRequest[];
+
+  @OneToMany(
+    () => PeriodAvailableCourse,
+    (course) => course.period,
+  )
+  availableCourses: PeriodAvailableCourse[];
 }

@@ -5,12 +5,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import {
   AcademicPeriod,
   AcademicPeriodStatus,
 } from '../entities/academic-period.entity';
+import { PeriodAvailableCourse } from '../entities/period-available-course.entity';
 import { CreatePeriodDto } from '../dto/create-period.dto';
+import {
+  ReenrolmentConfigDto,
+  AddAvailableCoursesDto,
+  UpdateAvailableCourseDto,
+} from '../dto/reenrolment-config.dto';
 import { AuditService } from '../../sync/services/audit.service';
 
 @Injectable()
@@ -18,6 +24,8 @@ export class PeriodsService {
   constructor(
     @InjectRepository(AcademicPeriod)
     private readonly periodRepository: Repository<AcademicPeriod>,
+    @InjectRepository(PeriodAvailableCourse)
+    private readonly availableCourseRepository: Repository<PeriodAvailableCourse>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -194,5 +202,290 @@ export class PeriodsService {
     });
 
     return updated;
+  }
+
+  // =====================
+  // MÉTODOS DE REINSCRIPCIÓN
+  // =====================
+
+  async configureReenrolment(
+    id: number,
+    config: ReenrolmentConfigDto,
+    actorUserId?: number,
+  ): Promise<AcademicPeriod> {
+    const period = await this.findOne(id);
+
+    if (period.status === AcademicPeriodStatus.CLOSED) {
+      throw new ConflictException('Cannot configure reenrolment for a closed period');
+    }
+
+    const beforeData = { ...period };
+
+    if (config.reenrolmentStartDate) {
+      period.reenrolmentStartDate = new Date(config.reenrolmentStartDate);
+    }
+    if (config.reenrolmentEndDate) {
+      period.reenrolmentEndDate = new Date(config.reenrolmentEndDate);
+    }
+    if (config.moodleCategoryId !== undefined) {
+      period.moodleCategoryId = config.moodleCategoryId;
+    }
+
+    // Validar fechas de reinscripción
+    if (period.reenrolmentStartDate && period.reenrolmentEndDate) {
+      if (period.reenrolmentEndDate <= period.reenrolmentStartDate) {
+        throw new BadRequestException(
+          'Reenrolment end date must be after start date',
+        );
+      }
+    }
+
+    const updated = await this.periodRepository.save(period);
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.reenrolment_configured',
+      entity: 'academic_periods',
+      entityKey: id.toString(),
+      beforeData,
+      afterData: updated,
+      source: 'app',
+    });
+
+    return updated;
+  }
+
+  async openReenrolment(id: number, actorUserId?: number): Promise<AcademicPeriod> {
+    const period = await this.findOne(id);
+
+    if (period.status === AcademicPeriodStatus.CLOSED) {
+      throw new ConflictException('Cannot open reenrolment for a closed period');
+    }
+
+    if (period.reenrolmentOpen) {
+      throw new ConflictException('Reenrolment is already open');
+    }
+
+    // Verificar que hay fechas configuradas
+    if (!period.reenrolmentStartDate || !period.reenrolmentEndDate) {
+      throw new BadRequestException(
+        'Reenrolment dates must be configured before opening',
+      );
+    }
+
+    const beforeData = { ...period };
+    period.reenrolmentOpen = true;
+    const updated = await this.periodRepository.save(period);
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.reenrolment_opened',
+      entity: 'academic_periods',
+      entityKey: id.toString(),
+      beforeData,
+      afterData: updated,
+      source: 'app',
+    });
+
+    return updated;
+  }
+
+  async closeReenrolment(id: number, actorUserId?: number): Promise<AcademicPeriod> {
+    const period = await this.findOne(id);
+
+    if (!period.reenrolmentOpen) {
+      throw new ConflictException('Reenrolment is already closed');
+    }
+
+    const beforeData = { ...period };
+    period.reenrolmentOpen = false;
+    const updated = await this.periodRepository.save(period);
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.reenrolment_closed',
+      entity: 'academic_periods',
+      entityKey: id.toString(),
+      beforeData,
+      afterData: updated,
+      source: 'app',
+    });
+
+    return updated;
+  }
+
+  async findOpenForReenrolment(): Promise<AcademicPeriod[]> {
+    const now = new Date();
+
+    return this.periodRepository
+      .createQueryBuilder('period')
+      .where('period.reenrolmentOpen = :open', { open: true })
+      .andWhere('period.reenrolmentStartDate <= :now', { now })
+      .andWhere('period.reenrolmentEndDate >= :now', { now })
+      .andWhere('period.status != :closed', { closed: AcademicPeriodStatus.CLOSED })
+      .orderBy('period.startDate', 'DESC')
+      .getMany();
+  }
+
+  // =====================
+  // CURSOS DISPONIBLES
+  // =====================
+
+  async getAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
+    await this.findOne(periodId); // Verificar que el período existe
+
+    return this.availableCourseRepository.find({
+      where: { periodId, enabled: true },
+      order: { courseName: 'ASC' },
+    });
+  }
+
+  async getAllAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
+    await this.findOne(periodId);
+
+    return this.availableCourseRepository.find({
+      where: { periodId },
+      order: { courseName: 'ASC' },
+    });
+  }
+
+  async addAvailableCourses(
+    periodId: number,
+    dto: AddAvailableCoursesDto,
+    actorUserId?: number,
+  ): Promise<PeriodAvailableCourse[]> {
+    const period = await this.findOne(periodId);
+
+    if (period.status === AcademicPeriodStatus.CLOSED) {
+      throw new ConflictException('Cannot add courses to a closed period');
+    }
+
+    const coursesToAdd: PeriodAvailableCourse[] = [];
+
+    for (const course of dto.courses) {
+      // Verificar si ya existe
+      const existing = await this.availableCourseRepository.findOne({
+        where: { periodId, courseMoodleId: course.courseMoodleId },
+      });
+
+      if (existing) {
+        // Si ya existe, actualizarlo
+        existing.enabled = true;
+        if (course.courseName) existing.courseName = course.courseName;
+        if (course.courseShortname) existing.courseShortname = course.courseShortname;
+        if (course.maxStudents !== undefined) existing.maxStudents = course.maxStudents;
+        coursesToAdd.push(existing);
+      } else {
+        // Crear nuevo
+        const newCourse = this.availableCourseRepository.create({
+          periodId,
+          courseMoodleId: course.courseMoodleId,
+          courseName: course.courseName,
+          courseShortname: course.courseShortname,
+          categoryMoodleId: course.categoryMoodleId,
+          maxStudents: course.maxStudents,
+          enabled: true,
+        });
+        coursesToAdd.push(newCourse);
+      }
+    }
+
+    const saved = await this.availableCourseRepository.save(coursesToAdd);
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.courses_added',
+      entity: 'period_available_courses',
+      entityKey: periodId.toString(),
+      afterData: { periodId, courses: dto.courses },
+      source: 'app',
+    });
+
+    return saved;
+  }
+
+  async updateAvailableCourse(
+    periodId: number,
+    courseMoodleId: number,
+    dto: UpdateAvailableCourseDto,
+    actorUserId?: number,
+  ): Promise<PeriodAvailableCourse> {
+    const course = await this.availableCourseRepository.findOne({
+      where: { periodId, courseMoodleId },
+    });
+
+    if (!course) {
+      throw new NotFoundException(
+        `Course ${courseMoodleId} not found in period ${periodId}`,
+      );
+    }
+
+    const beforeData = { ...course };
+
+    if (dto.enabled !== undefined) course.enabled = dto.enabled;
+    if (dto.maxStudents !== undefined) course.maxStudents = dto.maxStudents;
+
+    const updated = await this.availableCourseRepository.save(course);
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.course_updated',
+      entity: 'period_available_courses',
+      entityKey: `${periodId}:${courseMoodleId}`,
+      beforeData,
+      afterData: updated,
+      source: 'app',
+    });
+
+    return updated;
+  }
+
+  async removeAvailableCourses(
+    periodId: number,
+    courseMoodleIds: number[],
+    actorUserId?: number,
+  ): Promise<void> {
+    const period = await this.findOne(periodId);
+
+    if (period.status === AcademicPeriodStatus.CLOSED) {
+      throw new ConflictException('Cannot remove courses from a closed period');
+    }
+
+    await this.availableCourseRepository.delete({
+      periodId,
+      courseMoodleId: In(courseMoodleIds),
+    });
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.courses_removed',
+      entity: 'period_available_courses',
+      entityKey: periodId.toString(),
+      afterData: { periodId, removedCourses: courseMoodleIds },
+      source: 'app',
+    });
+  }
+
+  async isCoursesAvailableForReenrolment(
+    periodId: number,
+    courseMoodleIds: number[],
+  ): Promise<{ valid: boolean; invalidCourses: number[] }> {
+    const availableCourses = await this.availableCourseRepository.find({
+      where: {
+        periodId,
+        courseMoodleId: In(courseMoodleIds),
+        enabled: true,
+      },
+    });
+
+    const availableIds = availableCourses.map((c) => c.courseMoodleId);
+    const invalidCourses = courseMoodleIds.filter(
+      (id) => !availableIds.includes(id),
+    );
+
+    return {
+      valid: invalidCourses.length === 0,
+      invalidCourses,
+    };
   }
 }

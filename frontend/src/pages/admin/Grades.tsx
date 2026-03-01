@@ -88,7 +88,9 @@ export default function AdminGrades() {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [exportLoading, setExportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [localEdits, setLocalEdits] = useState<Map<string, { grade: number; feedback?: string }>>(new Map());
+  const [localEdits, setLocalEdits] = useState<
+    Map<string, { grade: number; feedback?: string }>
+  >(new Map());
   const queryClient = useQueryClient();
 
   // Fetch courses for filter
@@ -104,7 +106,9 @@ export default function AdminGrades() {
   const { data: editSessionStatus, isLoading: sessionLoading } = useQuery({
     queryKey: ['edit-session-status'],
     queryFn: async () => {
-      const response = await api.get<EditSessionStatus>('/grades/edit-session/status');
+      const response = await api.get<EditSessionStatus>(
+        '/grades/edit-session/status',
+      );
       return response.data;
     },
   });
@@ -113,7 +117,9 @@ export default function AdminGrades() {
   const { data: courseGrades, isLoading: gradesLoading } = useQuery({
     queryKey: ['course-grades', selectedCourseId],
     queryFn: async () => {
-      const response = await api.get<CourseGradesResponse>(`/grades/course/${selectedCourseId}/editable`);
+      const response = await api.get<CourseGradesResponse>(
+        `/grades/course/${selectedCourseId}/editable`,
+      );
       return response.data;
     },
     enabled: !!selectedCourseId,
@@ -155,7 +161,9 @@ export default function AdminGrades() {
         newMap.delete(key);
         return newMap;
       });
-      queryClient.invalidateQueries({ queryKey: ['course-grades', selectedCourseId] });
+      queryClient.invalidateQueries({
+        queryKey: ['course-grades', selectedCourseId],
+      });
       toast.success('Nota guardada exitosamente');
     },
     onError: (error: any) => {
@@ -181,7 +189,7 @@ export default function AdminGrades() {
     return courseGrades.participants.filter(
       (p) =>
         p.studentName.toLowerCase().includes(term) ||
-        p.studentEmail.toLowerCase().includes(term)
+        p.studentEmail.toLowerCase().includes(term),
     );
   }, [courseGrades?.participants, searchTerm]);
 
@@ -213,7 +221,7 @@ export default function AdminGrades() {
     studentMoodleId: number,
     itemMoodleId: number,
     value: string,
-    gradeMax: number
+    gradeMax: number,
   ) => {
     const key = `${studentMoodleId}-${itemMoodleId}`;
     const numValue = parseFloat(value);
@@ -274,7 +282,7 @@ export default function AdminGrades() {
   const isEditingEnabled = editSessionStatus?.isActive ?? false;
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Calificaciones</h1>
@@ -325,11 +333,13 @@ export default function AdminGrades() {
               {editSessionStatus?.isActive && editSessionStatus.session && (
                 <span className="text-sm text-gray-500">
                   Activo desde:{' '}
-                  {new Date(editSessionStatus.session.activatedAt).toLocaleString()}
+                  {new Date(
+                    editSessionStatus.session.activatedAt,
+                  ).toLocaleString()}
                 </span>
               )}
               <Button
-                variant={editSessionStatus?.isActive ? 'destructive' : 'default'}
+                variant={editSessionStatus?.isActive ? 'danger' : 'primary'}
                 onClick={handleToggleEditSession}
                 disabled={toggleEditSession.isPending}
               >
@@ -456,10 +466,12 @@ export default function AdminGrades() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {courseGrades.course?.shortname} - {courseGrades.course?.fullname}
+                        {courseGrades.course?.shortname} -{' '}
+                        {courseGrades.course?.fullname}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {filteredParticipants.length} de {courseGrades.participants.length} estudiantes
+                        {filteredParticipants.length} de{' '}
+                        {courseGrades.participants.length} estudiantes
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -484,7 +496,7 @@ export default function AdminGrades() {
                 </div>
 
                 {/* Table with horizontal scroll only */}
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto min-w-0">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b sticky top-0 z-10">
                       <tr>
@@ -497,7 +509,10 @@ export default function AdminGrades() {
                             className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase min-w-[140px]"
                           >
                             <div className="flex flex-col items-center">
-                              <span className="truncate max-w-[120px]" title={item.itemName}>
+                              <span
+                                className="truncate max-w-[120px]"
+                                title={item.itemName}
+                              >
                                 {item.itemName}
                               </span>
                               <span className="text-gray-400 font-normal">
@@ -510,7 +525,10 @@ export default function AdminGrades() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {filteredParticipants.map((participant) => (
-                        <tr key={participant.studentMoodleId} className="hover:bg-gray-50">
+                        <tr
+                          key={participant.studentMoodleId}
+                          className="hover:bg-gray-50"
+                        >
                           <td className="px-4 py-3 sticky left-0 bg-white min-w-[200px]">
                             <div className="flex items-center gap-2">
                               <div className="p-1.5 bg-gray-100 rounded-full">
@@ -520,31 +538,41 @@ export default function AdminGrades() {
                                 <p className="font-medium text-gray-900 text-sm">
                                   {participant.studentName}
                                 </p>
-                                <p className="text-xs text-gray-500">{participant.studentEmail}</p>
+                                <p className="text-xs text-gray-500">
+                                  {participant.studentEmail}
+                                </p>
                               </div>
                             </div>
                           </td>
                           {participant.grades.map((grade) => {
                             const key = `${participant.studentMoodleId}-${grade.itemMoodleId}`;
                             const localEdit = localEdits.get(key);
-                            const displayGrade = localEdit?.grade ?? grade.editedGrade ?? grade.moodleGrade;
+                            const displayGrade =
+                              localEdit?.grade ??
+                              grade.editedGrade ??
+                              grade.moodleGrade;
                             const hasLocalEdit = localEdit !== undefined;
                             const canEdit = isEditingEnabled && grade.editable;
 
                             return (
-                              <td key={grade.itemMoodleId} className="px-4 py-3 text-center">
+                              <td
+                                key={grade.itemMoodleId}
+                                className="px-4 py-3 text-center"
+                              >
                                 {canEdit ? (
                                   <div className="flex flex-col items-center gap-1">
                                     <div className="flex items-center gap-1">
                                       <Input
                                         type="number"
-                                        value={localEdit?.grade ?? displayGrade ?? ''}
+                                        value={
+                                          localEdit?.grade ?? displayGrade ?? ''
+                                        }
                                         onChange={(e) =>
                                           handleGradeChange(
                                             participant.studentMoodleId,
                                             grade.itemMoodleId,
                                             e.target.value,
-                                            grade.gradeMax
+                                            grade.gradeMax,
                                           )
                                         }
                                         min={0}
@@ -556,11 +584,11 @@ export default function AdminGrades() {
                                       {hasLocalEdit && (
                                         <Button
                                           size="sm"
-                                          variant="default"
+                                          variant="primary"
                                           onClick={() =>
                                             handleSaveGrade(
                                               participant.studentMoodleId,
-                                              grade.itemMoodleId
+                                              grade.itemMoodleId,
                                             )
                                           }
                                           disabled={saveGrade.isPending}
@@ -580,13 +608,18 @@ export default function AdminGrades() {
                                     <span
                                       className={`px-2 py-1 rounded text-sm font-medium ${getGradeColor(
                                         displayGrade,
-                                        grade.gradeMax
+                                        grade.gradeMax,
                                       )}`}
                                     >
-                                      {displayGrade !== null ? displayGrade : '-'}
+                                      {displayGrade !== null
+                                        ? displayGrade
+                                        : '-'}
                                     </span>
                                     {grade.wasEdited && (
-                                      <Badge variant="secondary" className="text-xs mt-1">
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs mt-1"
+                                      >
                                         <Lock className="h-3 w-3 mr-1" />
                                         Editada
                                       </Badge>
@@ -626,7 +659,9 @@ export default function AdminGrades() {
             <div className="flex flex-col items-center justify-center text-gray-500">
               <BookOpen className="h-12 w-12 mb-4 text-gray-300" />
               <p>Seleccione un curso para ver las calificaciones</p>
-              <p className="text-sm mt-1">Las calificaciones se sincronizaran automaticamente desde Moodle</p>
+              <p className="text-sm mt-1">
+                Las calificaciones se sincronizaran automaticamente desde Moodle
+              </p>
             </div>
           </CardContent>
         </Card>

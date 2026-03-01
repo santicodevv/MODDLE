@@ -4,8 +4,11 @@ import type {
   AcademicPeriod,
   CreatePeriodRequest,
   UpdatePeriodRequest,
+  ReenrolmentConfigRequest,
+  AddAvailableCoursesRequest,
+  UpdateAvailableCourseRequest,
+  PeriodAvailableCourse,
   PeriodsQueryParams,
-  PaginatedResponse,
   SuccessResponse,
 } from '@/types';
 
@@ -13,8 +16,8 @@ export const periodsApi = {
   /**
    * Get all periods
    */
-  async getAll(params?: PeriodsQueryParams): Promise<PaginatedResponse<AcademicPeriod>> {
-    const response = await api.get<PaginatedResponse<AcademicPeriod>>('/periods', {
+  async getAll(params?: PeriodsQueryParams): Promise<AcademicPeriod[]> {
+    const response = await api.get<AcademicPeriod[]>('/periods', {
       params,
     });
     return response.data;
@@ -29,10 +32,18 @@ export const periodsApi = {
   },
 
   /**
-   * Get current active period
+   * Get active periods
    */
-  async getCurrent(): Promise<AcademicPeriod | null> {
-    const response = await api.get<AcademicPeriod | null>('/periods/current');
+  async getActive(): Promise<AcademicPeriod[]> {
+    const response = await api.get<AcademicPeriod[]>('/periods/active');
+    return response.data;
+  },
+
+  /**
+   * Get periods open for reenrolment
+   */
+  async getOpenForReenrolment(): Promise<AcademicPeriod[]> {
+    const response = await api.get<AcademicPeriod[]>('/periods/open-for-reenrolment');
     return response.data;
   },
 
@@ -61,7 +72,7 @@ export const periodsApi = {
   },
 
   /**
-   * Open a period for re-enrolments
+   * Open a period
    */
   async open(id: number): Promise<AcademicPeriod> {
     const response = await api.post<AcademicPeriod>(`/periods/${id}/open`);
@@ -73,6 +84,107 @@ export const periodsApi = {
    */
   async close(id: number): Promise<AcademicPeriod> {
     const response = await api.post<AcademicPeriod>(`/periods/${id}/close`);
+    return response.data;
+  },
+
+  // =====================
+  // REENROLMENT CONFIG
+  // =====================
+
+  /**
+   * Configure reenrolment dates
+   */
+  async configureReenrolment(
+    id: number,
+    data: ReenrolmentConfigRequest,
+  ): Promise<AcademicPeriod> {
+    const response = await api.patch<AcademicPeriod>(
+      `/periods/${id}/reenrolment-config`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Open reenrolment for a period
+   */
+  async openReenrolment(id: number): Promise<AcademicPeriod> {
+    const response = await api.post<AcademicPeriod>(`/periods/${id}/open-reenrolment`);
+    return response.data;
+  },
+
+  /**
+   * Close reenrolment for a period
+   */
+  async closeReenrolment(id: number): Promise<AcademicPeriod> {
+    const response = await api.post<AcademicPeriod>(`/periods/${id}/close-reenrolment`);
+    return response.data;
+  },
+
+  // =====================
+  // AVAILABLE COURSES
+  // =====================
+
+  /**
+   * Get available courses for reenrolment (enabled only)
+   */
+  async getAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
+    const response = await api.get<PeriodAvailableCourse[]>(
+      `/periods/${periodId}/available-courses`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Get all available courses (including disabled) - Admin only
+   */
+  async getAllAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
+    const response = await api.get<PeriodAvailableCourse[]>(
+      `/periods/${periodId}/available-courses/all`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Add courses as available for reenrolment
+   */
+  async addAvailableCourses(
+    periodId: number,
+    data: AddAvailableCoursesRequest,
+  ): Promise<PeriodAvailableCourse[]> {
+    const response = await api.post<PeriodAvailableCourse[]>(
+      `/periods/${periodId}/available-courses`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Update an available course
+   */
+  async updateAvailableCourse(
+    periodId: number,
+    courseMoodleId: number,
+    data: UpdateAvailableCourseRequest,
+  ): Promise<PeriodAvailableCourse> {
+    const response = await api.patch<PeriodAvailableCourse>(
+      `/periods/${periodId}/available-courses/${courseMoodleId}`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Remove available courses
+   */
+  async removeAvailableCourses(
+    periodId: number,
+    courseMoodleIds: number[],
+  ): Promise<SuccessResponse> {
+    const response = await api.delete<SuccessResponse>(
+      `/periods/${periodId}/available-courses`,
+      { data: { courseMoodleIds } },
+    );
     return response.data;
   },
 };

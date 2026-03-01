@@ -77,7 +77,10 @@ export class GradesController {
     @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
     @Request() req: any,
   ) {
-    return this.gradesService.getEditableGrades(courseMoodleId, req.user.id);
+    const isAdmin = req.user.roles?.some(
+      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+    ) ?? false;
+    return this.gradesService.getEditableGrades(courseMoodleId, req.user.id, isAdmin);
   }
 
   /**

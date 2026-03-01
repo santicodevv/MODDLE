@@ -121,6 +121,29 @@ export class MoodleClientService {
     });
   }
 
+  // Actualizar usuario en Moodle
+  async updateUser(
+    moodleUserId: number,
+    data: {
+      email?: string;
+      firstname?: string;
+      lastname?: string;
+      password?: string;
+      suspended?: boolean;
+    },
+  ): Promise<any> {
+    const userUpdate: any = { id: moodleUserId };
+    if (data.email) userUpdate.email = data.email;
+    if (data.firstname) userUpdate.firstname = data.firstname;
+    if (data.lastname) userUpdate.lastname = data.lastname;
+    if (data.password) userUpdate.password = data.password;
+    if (data.suspended !== undefined) userUpdate.suspended = data.suspended ? 1 : 0;
+
+    return this.callFunction('core_user_update_users', {
+      users: [userUpdate],
+    });
+  }
+
   // Suspender matrícula
   async suspendEnrolment(courseid: number, userid: number): Promise<any> {
     return this.callFunction('enrol_manual_unenrol_users', {

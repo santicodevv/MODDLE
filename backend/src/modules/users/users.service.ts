@@ -2,21 +2,27 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like, ILike } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { Role, RoleCode } from './entities/role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { MoodleClientService } from '../moodle-integration/moodle-client.service';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
+    private readonly moodleClient: MoodleClientService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -62,6 +68,123 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.userRepository.find({ relations: ['roles'] });
+  }
+
+  /**
+   * Get all available roles
+   */
+  async getAllRoles(): Promise<Role[]> {
+    return this.roleRepository.find({ order: { id: 'ASC' } });
+  }
+
+  /**
+   * Paginated user search
+   */
+  async findAllPaginated(
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ): Promise<{ users: User[]; total: number; page: number; limit: number }> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'roles')
+      .select([
+        'user.id',
+        'user.email',
+        'user.displayName',
+        'user.moodleUserId',
+        'user.isActive',
+        'user.createdAt',
+        'user.updatedAt',
+        'roles.id',
+        'roles.code',
+        'roles.description',
+      ]);
+
+    if (search && search.trim()) {
+      qb.where(
+        '(user.email ILIKE :search OR user.displayName ILIKE :search)',
+        { search: `%${search.trim()}%` },
+      );
+    }
+
+    qb.orderBy('user.id', 'ASC');
+
+    const total = await qb.getCount();
+    const users = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { users, total, page, limit };
+  }
+
+  /**
+   * Update a user and sync to Moodle
+   */
+  async updateUser(id: number, updateDto: UpdateUserDto): Promise<User> {
+    const user = await this.findById(id);
+
+    // Update local fields
+    if (updateDto.email !== undefined) {
+      // Check email uniqueness
+      if (updateDto.email !== user.email) {
+        const existing = await this.userRepository.findOne({
+          where: { email: updateDto.email },
+        });
+        if (existing) {
+          throw new ConflictException('Email already in use');
+        }
+      }
+      user.email = updateDto.email;
+    }
+
+    if (updateDto.displayName !== undefined) {
+      user.displayName = updateDto.displayName;
+    }
+
+    if (updateDto.isActive !== undefined) {
+      user.isActive = updateDto.isActive;
+    }
+
+    if (updateDto.password) {
+      user.passwordHash = await bcrypt.hash(updateDto.password, 10);
+    }
+
+    // Update roles if provided
+    if (updateDto.roleIds !== undefined) {
+      const roles = await this.roleRepository.findByIds(updateDto.roleIds);
+      user.roles = roles;
+    }
+
+    const saved = await this.userRepository.save(user);
+
+    // Sync to Moodle if user is linked
+    if (user.moodleUserId) {
+      try {
+        const moodleData: any = {};
+        if (updateDto.email) moodleData.email = updateDto.email;
+        if (updateDto.password) moodleData.password = updateDto.password;
+        if (updateDto.isActive !== undefined) moodleData.suspended = !updateDto.isActive;
+
+        // Split displayName into firstname/lastname for Moodle
+        if (updateDto.displayName) {
+          const parts = updateDto.displayName.trim().split(/\s+/);
+          moodleData.firstname = parts[0] || '';
+          moodleData.lastname = parts.slice(1).join(' ') || '';
+        }
+
+        if (Object.keys(moodleData).length > 0) {
+          await this.moodleClient.updateUser(user.moodleUserId, moodleData);
+          this.logger.log(`Synced user ${id} to Moodle (moodleId: ${user.moodleUserId})`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to sync user ${id} to Moodle: ${error.message}`);
+        // Don't throw — local update succeeded, Moodle sync failed
+      }
+    }
+
+    return saved;
   }
 
   async addRoleToUser(userId: number, roleCode: RoleCode): Promise<User> {
