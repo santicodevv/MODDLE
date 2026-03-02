@@ -167,10 +167,17 @@ export const gradesApi = {
   },
 
   /**
-   * Get my grades (Student)
+   * Get my grades (Student) with optional filters
    */
-  async getMyGrades(): Promise<StudentCourseGrade[]> {
-    const response = await api.get<StudentCourseGrade[]>('/student-grades/mine');
+  async getMyGrades(
+    periodId?: number,
+    courseMoodleId?: number
+  ): Promise<StudentCourseGrade[]> {
+    const params: Record<string, number> = {};
+    if (periodId) params.periodId = periodId;
+    if (courseMoodleId) params.courseMoodleId = courseMoodleId;
+
+    const response = await api.get<StudentCourseGrade[]>('/student-grades/mine', { params });
     return response.data;
   },
 
@@ -181,6 +188,164 @@ export const gradesApi = {
     const response = await api.get<StudentCourseGrade[]>(
       `/student-grades/mine/period/${periodId}`
     );
+    return response.data;
+  },
+
+  /**
+   * Get periods where I have grades (Student)
+   */
+  async getMyPeriodsWithGrades(): Promise<
+    { periodId: number; periodCode: string; periodName: string }[]
+  > {
+    const response = await api.get<
+      { periodId: number; periodCode: string; periodName: string }[]
+    >('/student-grades/mine/periods');
+    return response.data;
+  },
+
+  /**
+   * Get courses where I have grades (Student) - optionally filtered by period
+   */
+  async getMyEnrolledCourses(
+    periodId?: number
+  ): Promise<{ courseMoodleId: number; courseName: string; courseShortname: string }[]> {
+    const params = periodId ? { periodId } : {};
+    const response = await api.get<
+      { courseMoodleId: number; courseName: string; courseShortname: string }[]
+    >('/student-grades/mine/courses', { params });
+    return response.data;
+  },
+
+  // ================================
+  // Admin: Grades by Period
+  // ================================
+
+  /**
+   * Get all courses with grades for a period (Admin)
+   */
+  async getCoursesWithGradesForPeriod(
+    periodId: number
+  ): Promise<
+    {
+      courseMoodleId: number;
+      courseName: string;
+      courseShortname: string;
+      studentCount: number;
+      gradedCount: number;
+    }[]
+  > {
+    const response = await api.get<
+      {
+        courseMoodleId: number;
+        courseName: string;
+        courseShortname: string;
+        studentCount: number;
+        gradedCount: number;
+      }[]
+    >(`/student-grades/period/${periodId}/courses`);
+    return response.data;
+  },
+
+  /**
+   * Get all student grades for a specific period and course (Admin)
+   */
+  async getGradesForPeriodAndCourse(
+    periodId: number,
+    courseMoodleId: number
+  ): Promise<StudentGradeWithDetails[]> {
+    const response = await api.get<StudentGradeWithDetails[]>(
+      `/student-grades/period/${periodId}/course/${courseMoodleId}`
+    );
+    return response.data;
+  },
+
+  // ================================
+  // Admin: Grades by User
+  // ================================
+
+  /**
+   * Search users by email or name (Admin)
+   */
+  async searchUsersForGrades(
+    query: string,
+    limit: number = 10
+  ): Promise<
+    {
+      id: number;
+      email: string;
+      displayName: string | null;
+      moodleUserId: number | null;
+    }[]
+  > {
+    const response = await api.get<
+      {
+        id: number;
+        email: string;
+        displayName: string | null;
+        moodleUserId: number | null;
+      }[]
+    >('/student-grades/search-users', { params: { q: query, limit } });
+    return response.data;
+  },
+
+  /**
+   * Get all grades for a specific user (Admin)
+   * Returns courses with detailed grade items
+   */
+  async getAllGradesForUser(userId: number): Promise<{
+    user: {
+      id: number;
+      email: string;
+      displayName: string | null;
+    };
+    courses: {
+      periodId: number | null;
+      periodName: string;
+      periodCode: string;
+      courseMoodleId: number;
+      courseName: string;
+      courseShortname: string;
+      moodleSumGrade: number | null;
+      moodleSumMax: number | null;
+      totalGrade: number | null;
+      comment: string | null;
+      teacherName: string | null;
+      gradeItems: {
+        itemMoodleId: number;
+        itemName: string;
+        itemType: string | null;
+        grade: number | null;
+        gradeMax: number | null;
+      }[];
+    }[];
+  }> {
+    const response = await api.get<{
+      user: {
+        id: number;
+        email: string;
+        displayName: string | null;
+      };
+      courses: {
+        periodId: number | null;
+        periodName: string;
+        periodCode: string;
+        courseMoodleId: number;
+        courseName: string;
+        courseShortname: string;
+        moodleSumGrade: number | null;
+        moodleSumMax: number | null;
+        totalGrade: number | null;
+        comment: string | null;
+        teacherName: string | null;
+        gradeItems: {
+          itemMoodleId: number;
+          itemName: string;
+          itemType: string | null;
+          grade: number | null;
+          gradeMax: number | null;
+        }[];
+      }[];
+    }>(`/student-grades/user/${userId}/all`);
     return response.data;
   },
 };

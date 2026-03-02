@@ -227,4 +227,24 @@ export class UsersService {
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
+
+  /**
+   * Get all users with teacher role
+   */
+  async findTeachers(): Promise<{ id: number; email: string; displayName: string | null }[]> {
+    const users = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.roles', 'role')
+      .where('role.code = :code', { code: RoleCode.TEACHER })
+      .andWhere('user.isActive = true')
+      .select(['user.id', 'user.email', 'user.displayName'])
+      .orderBy('user.displayName', 'ASC')
+      .getMany();
+
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+    }));
+  }
 }

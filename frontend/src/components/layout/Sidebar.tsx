@@ -14,6 +14,7 @@ import {
   FileSearch,
   GraduationCap,
   X,
+  UserSearch,
 } from 'lucide-react';
 import type { RoleCode } from '@/types';
 
@@ -95,6 +96,12 @@ const navItems: NavItem[] = [
     label: 'Calificaciones',
     href: '/admin/grades',
     icon: ClipboardList,
+    roles: ['ADMIN'],
+  },
+  {
+    label: 'Calif. por Usuario',
+    href: '/admin/grades/user',
+    icon: UserSearch,
     roles: ['ADMIN'],
   },
   {

@@ -178,4 +178,28 @@ export class ReEnrolmentController {
     await this.reEnrolmentService.adminDelete(id, user.id);
     return { success: true };
   }
+
+  @Roles(RoleCode.ADMIN)
+  @Post(':id/admin/add-courses')
+  async adminAddCourses(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { courses: ReEnrolmentCourseDto[] },
+    @CurrentUser() user: User,
+  ) {
+    return this.reEnrolmentService.adminAddCourses(id, user.id, body.courses);
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Post(':id/admin/remove-courses')
+  async adminRemoveCourses(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { courseMoodleIds: number[] },
+    @CurrentUser() user: User,
+  ) {
+    return this.reEnrolmentService.adminRemoveCourses(
+      id,
+      user.id,
+      body.courseMoodleIds,
+    );
+  }
 }

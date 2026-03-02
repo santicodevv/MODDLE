@@ -92,3 +92,18 @@ export interface EnrolledUserWithDetails {
   enrolStatus: string;
   lastCourseAccess: string | null;
 }
+
+// Course teacher assignment
+export interface CourseTeacher {
+  id: number;
+  courseMoodleId: number;
+  courseName: string | null;
+  teacherId: number;
+  isPrimary: boolean;
+  createdAt: string;
+  teacher?: {
+    id: number;
+    email: string;
+    displayName: string;
+  };
+}

@@ -13,6 +13,7 @@ import { GradeEditSession } from './entities/grade-edit-session.entity';
 import { GradeEdit } from './entities/grade-edit.entity';
 import { PeriodAvailableCourse } from './entities/period-available-course.entity';
 import { CourseStudentGrade } from './entities/course-student-grade.entity';
+import { CourseTeacher } from './entities/course-teacher.entity';
 
 // Services
 import { PeriodsService } from './services/periods.service';
@@ -39,6 +40,7 @@ import { StudentGradesController } from './controllers/student-grades.controller
       GradeEdit,
       PeriodAvailableCourse,
       CourseStudentGrade,
+      CourseTeacher,
     ]),
     SyncModule, // Para OutboxService y AuditService
     MoodleIntegrationModule, // Para MoodleCourse, MoodleGradeItem, MoodleEnrolment

@@ -89,4 +89,14 @@ export const usersApi = {
     const response = await api.get<MoodleUser[]>('/moodle-users', { params });
     return response.data;
   },
+
+  /**
+   * Get all users with teacher role
+   */
+  async getTeachers(): Promise<{ id: number; email: string; displayName: string | null }[]> {
+    const response = await api.get<{ id: number; email: string; displayName: string | null }[]>(
+      '/users/teachers'
+    );
+    return response.data;
+  },
 };

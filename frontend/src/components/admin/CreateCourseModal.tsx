@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coursesApi } from '@/api/courses.api';
 import { periodsApi } from '@/api/periods.api';
+import { usersApi } from '@/api/users.api';
 import {
   Modal,
   ModalFooter,
@@ -20,6 +21,8 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
+  UserCheck,
+  X,
 } from 'lucide-react';
 import type { CreateCourseDto, MoodleCategory, AcademicPeriod } from '@/types';
 
@@ -44,6 +47,7 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
     periodId: undefined,
   });
   const [enableEndDate, setEnableEndDate] = useState(false);
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<number[]>([]);
 
   // Fetch categories
   const { data: categories, isLoading: categoriesLoading, refetch: refetchCategories } = useQuery({
@@ -59,6 +63,13 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
     enabled: isOpen,
   });
 
+  // Fetch teachers
+  const { data: teachers, isLoading: teachersLoading } = useQuery({
+    queryKey: ['teachers-list'],
+    queryFn: () => usersApi.getTeachers(),
+    enabled: isOpen,
+  });
+
   // Sync categories mutation
   const syncCategoriesMutation = useMutation({
     mutationFn: () => coursesApi.syncCategories(),
@@ -69,8 +80,8 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
 
   // Create course mutation
   const createCourseMutation = useMutation({
-    mutationFn: async (data: CreateCourseDto) => {
-      const { periodId, ...courseData } = data;
+    mutationFn: async (data: CreateCourseDto & { teacherIds?: number[] }) => {
+      const { periodId, teacherIds, ...courseData } = data;
       const course = await coursesApi.createCourse(courseData);
 
       // If a period is selected, add the course to that period's available courses
@@ -83,6 +94,11 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
             categoryMoodleId: course.categoryId,
           }],
         });
+      }
+
+      // If teachers are selected, assign them to the course
+      if (teacherIds && teacherIds.length > 0 && course.moodleId) {
+        await coursesApi.assignTeachers(course.moodleId, teacherIds, course.fullname);
       }
 
       return course;
@@ -112,6 +128,7 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
       periodId: undefined,
     });
     setEnableEndDate(false);
+    setSelectedTeacherIds([]);
     setError(null);
     onClose();
   };
@@ -141,6 +158,7 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
       ...formData,
       categoryid: Number(formData.categoryid),
       enddate: enableEndDate ? formData.enddate : undefined,
+      teacherIds: selectedTeacherIds.length > 0 ? selectedTeacherIds : undefined,
     };
 
     console.log('Submitting course data:', dataToSubmit);
@@ -302,6 +320,75 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
             )}
             <p className="text-xs text-gray-500 mt-1">
               El curso estará disponible para reinscripción en este período
+            </p>
+          </div>
+
+          {/* Profesores */}
+          <div>
+            <Label>
+              <UserCheck className="h-4 w-4 inline mr-1" />
+              Profesores (opcional)
+            </Label>
+            {teachersLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Spinner className="h-4 w-4" />
+                <span className="text-sm text-gray-500">Cargando profesores...</span>
+              </div>
+            ) : teachers && teachers.length > 0 ? (
+              <div className="space-y-2">
+                <Select
+                  onChange={(e) => {
+                    const teacherId = Number(e.target.value);
+                    if (teacherId && !selectedTeacherIds.includes(teacherId)) {
+                      setSelectedTeacherIds((prev) => [...prev, teacherId]);
+                    }
+                    e.target.value = '';
+                  }}
+                >
+                  <option value="">Seleccionar profesor...</option>
+                  {teachers
+                    .filter((t) => !selectedTeacherIds.includes(t.id))
+                    .map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.displayName || teacher.email}
+                      </option>
+                    ))}
+                </Select>
+                {/* Selected teachers list */}
+                {selectedTeacherIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedTeacherIds.map((teacherId) => {
+                      const teacher = teachers.find((t) => t.id === teacherId);
+                      return (
+                        <span
+                          key={teacherId}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                        >
+                          {teacher?.displayName || teacher?.email}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedTeacherIds((prev) =>
+                                prev.filter((id) => id !== teacherId)
+                              )
+                            }
+                            className="hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
+                No hay profesores disponibles.
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Asigna profesores al curso (puedes agregar más después)
             </p>
           </div>
 

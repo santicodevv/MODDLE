@@ -1,8 +1,8 @@
 // Admin Course Detail Page - View course details and enrolled users
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { coursesApi } from '@/api/courses.api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { coursesApi, usersApi } from '@/api';
 import {
   Card,
   CardContent,
@@ -23,14 +23,22 @@ import {
   Eye,
   EyeOff,
   Clock,
+  Plus,
+  X,
+  Star,
+  Trash2,
 } from 'lucide-react';
-import type { EnrolledUserWithDetails } from '@/types';
+import type { EnrolledUserWithDetails, CourseTeacher } from '@/types';
+import toast from 'react-hot-toast';
 
 export default function AdminCourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'teacher'>('all');
+  const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
+  const [teacherSearch, setTeacherSearch] = useState('');
 
   const { data: course, isLoading: courseLoading } = useQuery({
     queryKey: ['course-detail', courseId],
@@ -42,6 +50,84 @@ export default function AdminCourseDetail() {
     queryKey: ['enrolled-users', courseId],
     queryFn: () => coursesApi.getEnrolledUsersWithDetails(Number(courseId)),
     enabled: !!courseId,
+  });
+
+  // Fetch assigned teachers for the course
+  const { data: assignedTeachers, isLoading: teachersLoading } = useQuery({
+    queryKey: ['course-teachers', course?.moodleId],
+    queryFn: () => coursesApi.getTeachersForCourse(course!.moodleId),
+    enabled: !!course?.moodleId,
+  });
+
+  // Fetch all users with TEACHER role for add modal
+  const { data: allTeachers } = useQuery({
+    queryKey: ['all-teachers'],
+    queryFn: () => usersApi.getAll({ limit: 1000 }),
+    enabled: showAddTeacherModal,
+  });
+
+  // Filter available teachers (not already assigned)
+  const availableTeachers = allTeachers?.users?.filter((user) => {
+    // Check if user has TEACHER role
+    const hasTeacherRole = user.roles?.some((r) => r.code === 'TEACHER');
+    if (!hasTeacherRole) return false;
+
+    // Check if already assigned
+    const isAssigned = assignedTeachers?.some((at) => at.teacherId === user.id);
+    if (isAssigned) return false;
+
+    // Apply search filter
+    if (teacherSearch) {
+      const searchLower = teacherSearch.toLowerCase();
+      return (
+        user.displayName?.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower)
+      );
+    }
+    return true;
+  }) || [];
+
+  // Mutations for teacher management
+  const assignTeacherMutation = useMutation({
+    mutationFn: (teacherId: number) =>
+      coursesApi.assignTeachers(course!.moodleId, [teacherId], course!.fullname),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['course-teachers', course?.moodleId],
+      });
+      toast.success('Profesor asignado correctamente');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al asignar profesor');
+    },
+  });
+
+  const removeTeacherMutation = useMutation({
+    mutationFn: (teacherId: number) =>
+      coursesApi.removeTeacher(course!.moodleId, teacherId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['course-teachers', course?.moodleId],
+      });
+      toast.success('Profesor removido correctamente');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al remover profesor');
+    },
+  });
+
+  const setPrimaryMutation = useMutation({
+    mutationFn: (teacherId: number) =>
+      coursesApi.setPrimaryTeacher(course!.moodleId, teacherId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['course-teachers', course?.moodleId],
+      });
+      toast.success('Profesor principal actualizado');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al actualizar');
+    },
   });
 
   const filteredUsers = enrolledUsers?.filter((user: EnrolledUserWithDetails) => {
@@ -426,6 +512,171 @@ export default function AdminCourseDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Teacher Management Section */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              <UserCheck className="h-5 w-5 inline mr-2" />
+              Gestionar Profesores Asignados
+            </h3>
+            <Button
+              size="sm"
+              onClick={() => setShowAddTeacherModal(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Agregar Profesor
+            </Button>
+          </div>
+
+          {/* Assigned Teachers List */}
+          {teachersLoading ? (
+            <div className="flex justify-center py-4">
+              <Spinner />
+            </div>
+          ) : assignedTeachers && assignedTeachers.length > 0 ? (
+            <div className="space-y-2">
+              {assignedTeachers.map((teacher: CourseTeacher) => (
+                <div
+                  key={teacher.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <UserCheck className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {teacher.teacher?.displayName || teacher.teacher?.email || `ID: ${teacher.teacherId}`}
+                        </p>
+                        {teacher.isPrimary && (
+                          <Badge variant="warning" className="text-xs">
+                            <Star className="h-3 w-3 mr-1" />
+                            Principal
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {teacher.teacher?.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!teacher.isPrimary && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPrimaryMutation.mutate(teacher.teacherId)}
+                        disabled={setPrimaryMutation.isPending}
+                        title="Establecer como principal"
+                      >
+                        <Star className="h-4 w-4 text-yellow-500" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => {
+                        if (confirm('¿Remover este profesor del curso?')) {
+                          removeTeacherMutation.mutate(teacher.teacherId);
+                        }
+                      }}
+                      disabled={removeTeacherMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <UserCheck className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+              <p>No hay profesores asignados a este curso</p>
+              <p className="text-sm">Haz clic en "Agregar Profesor" para asignar uno</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Teacher Modal */}
+      {showAddTeacherModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Agregar Profesor</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowAddTeacherModal(false);
+                  setTeacherSearch('');
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar profesor..."
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {availableTeachers.length > 0 ? (
+                availableTeachers.map((teacher) => (
+                  <div
+                    key={teacher.id}
+                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 cursor-pointer"
+                    onClick={() => {
+                      assignTeacherMutation.mutate(teacher.id);
+                      setShowAddTeacherModal(false);
+                      setTeacherSearch('');
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <UserCheck className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{teacher.displayName || teacher.email}</p>
+                        <p className="text-sm text-gray-500">{teacher.email}</p>
+                      </div>
+                    </div>
+                    <Plus className="h-4 w-4 text-blue-600" />
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No hay profesores disponibles para agregar
+                </p>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddTeacherModal(false);
+                  setTeacherSearch('');
+                }}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

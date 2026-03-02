@@ -889,6 +889,116 @@ export class ReEnrolmentService {
     });
   }
 
+  /**
+   * Admin add courses to a submitted request (before approval)
+   */
+  async adminAddCourses(
+    id: number,
+    adminUserId: number,
+    courses: ReEnrolmentCourseDto[],
+  ): Promise<ReEnrolmentRequest> {
+    const request = await this.findOne(id);
+
+    if (request.status !== ReEnrolmentStatus.SUBMITTED) {
+      throw new BadRequestException(
+        'Solo se pueden editar solicitudes con estado "submitted"',
+      );
+    }
+
+    // Validar cursos disponibles
+    const courseMoodleIds = courses.map((c) => c.courseMoodleId);
+    const validation = await this.validateCoursesAvailable(
+      request.periodId,
+      courseMoodleIds,
+    );
+
+    if (!validation.valid) {
+      throw new BadRequestException(
+        `Los siguientes cursos no están disponibles: ${validation.invalidCourses.join(', ')}`,
+      );
+    }
+
+    // Agregar solo los que no existen
+    const existingIds = request.lines.map((l) => Number(l.courseMoodleId));
+    const newCourses = courses.filter(
+      (c) => !existingIds.includes(Number(c.courseMoodleId)),
+    );
+
+    if (newCourses.length > 0) {
+      const newCourseMoodleIds = newCourses.map((c) => c.courseMoodleId);
+
+      // Obtener nombres de cursos disponibles
+      const availableCourses = await this.availableCourseRepository.find({
+        where: {
+          periodId: request.periodId,
+          courseMoodleId: In(newCourseMoodleIds),
+        },
+      });
+
+      const courseNameMap = new Map(
+        availableCourses.map((c) => [Number(c.courseMoodleId), c.courseName]),
+      );
+
+      const lines = newCourses.map((course) =>
+        this.lineRepository.create({
+          requestId: id,
+          courseMoodleId: course.courseMoodleId,
+          courseName: courseNameMap.get(Number(course.courseMoodleId)) || null,
+          action: EnrolmentAction.ENROL,
+          status: EnrolmentLineStatus.PENDING,
+        }),
+      );
+      await this.lineRepository.save(lines);
+    }
+
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'reenrolment.admin_add_courses',
+      entity: 're_enrolment_requests',
+      entityKey: id.toString(),
+      afterData: { addedCourses: newCourses },
+      source: 'app',
+    });
+
+    return this.findOne(id);
+  }
+
+  /**
+   * Admin remove courses from a submitted request (before approval)
+   */
+  async adminRemoveCourses(
+    id: number,
+    adminUserId: number,
+    courseMoodleIds: number[],
+  ): Promise<ReEnrolmentRequest> {
+    const request = await this.findOne(id);
+
+    if (request.status !== ReEnrolmentStatus.SUBMITTED) {
+      throw new BadRequestException(
+        'Solo se pueden editar solicitudes con estado "submitted"',
+      );
+    }
+
+    const beforeCount = request.lines?.length || 0;
+
+    await this.lineRepository.delete({
+      requestId: id,
+      courseMoodleId: In(courseMoodleIds),
+    });
+
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'reenrolment.admin_remove_courses',
+      entity: 're_enrolment_requests',
+      entityKey: id.toString(),
+      beforeData: { lineCount: beforeCount },
+      afterData: { removedCourses: courseMoodleIds },
+      source: 'app',
+    });
+
+    return this.findOne(id);
+  }
+
   async countByStatus(
     periodId?: number,
   ): Promise<Record<ReEnrolmentStatus, number>> {

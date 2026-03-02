@@ -10,6 +10,7 @@ import type {
   MoodleCategory,
   CreateCourseDto,
   EnrolledUserWithDetails,
+  CourseTeacher,
 } from '@/types';
 
 export const coursesApi = {
@@ -108,6 +109,71 @@ export const coursesApi = {
    */
   async delete(courseId: number): Promise<{ success: boolean }> {
     const response = await api.delete<{ success: boolean }>(`/courses/${courseId}`);
+    return response.data;
+  },
+
+  // =====================
+  // TEACHER ASSIGNMENT
+  // =====================
+
+  /**
+   * Get teachers assigned to a course
+   */
+  async getTeachersForCourse(courseMoodleId: number): Promise<CourseTeacher[]> {
+    const response = await api.get<CourseTeacher[]>(
+      `/courses/${courseMoodleId}/teachers`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Assign teachers to a course
+   */
+  async assignTeachers(
+    courseMoodleId: number,
+    teacherIds: number[],
+    courseName?: string,
+  ): Promise<CourseTeacher[]> {
+    const response = await api.post<CourseTeacher[]>(
+      `/courses/${courseMoodleId}/teachers`,
+      { teacherIds, courseName },
+    );
+    return response.data;
+  },
+
+  /**
+   * Remove a teacher from a course
+   */
+  async removeTeacher(
+    courseMoodleId: number,
+    teacherId: number,
+  ): Promise<{ success: boolean }> {
+    const response = await api.delete<{ success: boolean }>(
+      `/courses/${courseMoodleId}/teachers/${teacherId}`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Set a teacher as primary for a course
+   */
+  async setPrimaryTeacher(
+    courseMoodleId: number,
+    teacherId: number,
+  ): Promise<CourseTeacher> {
+    const response = await api.post<CourseTeacher>(
+      `/courses/${courseMoodleId}/teachers/${teacherId}/primary`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Get courses where a teacher is assigned
+   */
+  async getCoursesForTeacher(teacherId: number): Promise<CourseTeacher[]> {
+    const response = await api.get<CourseTeacher[]>(
+      `/courses/teacher/${teacherId}/courses`,
+    );
     return response.data;
   },
 };

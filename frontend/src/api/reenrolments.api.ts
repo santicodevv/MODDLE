@@ -183,4 +183,32 @@ export const reenrolmentsApi = {
     const response = await api.delete<SuccessResponse>(`/re-enrolments/admin/${id}`);
     return response.data;
   },
+
+  /**
+   * Admin add courses to a submitted request (before approval)
+   */
+  async adminAddCourses(
+    id: number,
+    courses: { courseMoodleId: number }[],
+  ): Promise<ReEnrolmentRequest> {
+    const response = await api.post<ReEnrolmentRequest>(
+      `/re-enrolments/${id}/admin/add-courses`,
+      { courses },
+    );
+    return response.data;
+  },
+
+  /**
+   * Admin remove courses from a submitted request (before approval)
+   */
+  async adminRemoveCourses(
+    id: number,
+    courseMoodleIds: number[],
+  ): Promise<ReEnrolmentRequest> {
+    const response = await api.post<ReEnrolmentRequest>(
+      `/re-enrolments/${id}/admin/remove-courses`,
+      { courseMoodleIds },
+    );
+    return response.data;
+  },
 };

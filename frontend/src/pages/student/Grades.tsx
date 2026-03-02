@@ -23,24 +23,34 @@ import type { StudentCourseGrade } from '@/types';
 
 export default function StudentGrades() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
 
-  // Fetch periods
-  const { data: periods, isLoading: periodsLoading } = useQuery({
-    queryKey: ['periods'],
-    queryFn: () => periodsApi.getAll(),
+  // Fetch periods where I have grades
+  const { data: myPeriods, isLoading: periodsLoading } = useQuery({
+    queryKey: ['my-periods-with-grades'],
+    queryFn: () => gradesApi.getMyPeriodsWithGrades(),
   });
 
-  // Get active period as default
-  const activePeriod = periods?.find((p) => p.status === 'open');
-  const effectivePeriodId = selectedPeriodId ?? activePeriod?.id;
+  // Fetch courses where I have grades (filtered by period if selected)
+  const { data: myCourses, isLoading: coursesLoading } = useQuery({
+    queryKey: ['my-enrolled-courses', selectedPeriodId],
+    queryFn: () => gradesApi.getMyEnrolledCourses(selectedPeriodId || undefined),
+  });
 
-  // Fetch my grades
+  // Reset course filter when period changes
+  const handlePeriodChange = (periodId: number | null) => {
+    setSelectedPeriodId(periodId);
+    setSelectedCourseId(null); // Reset course filter
+  };
+
+  // Fetch my grades with filters
   const { data: grades, isLoading: gradesLoading } = useQuery({
-    queryKey: ['my-grades', effectivePeriodId],
+    queryKey: ['my-grades', selectedPeriodId, selectedCourseId],
     queryFn: () =>
-      effectivePeriodId
-        ? gradesApi.getMyGradesByPeriod(effectivePeriodId)
-        : gradesApi.getMyGrades(),
+      gradesApi.getMyGrades(
+        selectedPeriodId || undefined,
+        selectedCourseId || undefined
+      ),
     enabled: true,
   });
 
@@ -61,7 +71,7 @@ export default function StudentGrades() {
     return 'Reprobado';
   };
 
-  const isLoading = periodsLoading || gradesLoading;
+  const isLoading = periodsLoading || coursesLoading || gradesLoading;
 
   // Calculate statistics
   const gradedCourses = grades?.filter((g: StudentCourseGrade) => g.totalGrade !== null) || [];
@@ -77,29 +87,56 @@ export default function StudentGrades() {
         <p className="text-gray-600 mt-1">Consulta tus notas finales por curso</p>
       </div>
 
-      {/* Period selector */}
+      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <GraduationCap className="h-5 w-5 text-gray-500" />
-            <div className="flex-1 max-w-xs">
-              <Label>Periodo academico</Label>
-              {periodsLoading ? (
-                <Spinner className="h-4 w-4" />
-              ) : (
-                <Select
-                  value={effectivePeriodId || ''}
-                  onChange={(e) => setSelectedPeriodId(Number(e.target.value) || null)}
-                  className="mt-1"
-                >
-                  <option value="">Todos los periodos</option>
-                  {periods?.map((period) => (
-                    <option key={period.id} value={period.id}>
-                      {period.name} {period.status === 'open' ? '(Actual)' : ''}
-                    </option>
-                  ))}
-                </Select>
-              )}
+          <div className="flex flex-wrap items-end gap-4">
+            {/* Period filter */}
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-5 w-5 text-gray-500" />
+              <div className="min-w-[200px]">
+                <Label>Período académico</Label>
+                {periodsLoading ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <Select
+                    value={selectedPeriodId || ''}
+                    onChange={(e) => handlePeriodChange(Number(e.target.value) || null)}
+                    className="mt-1"
+                  >
+                    <option value="">Todos los períodos</option>
+                    {myPeriods?.map((period) => (
+                      <option key={period.periodId} value={period.periodId}>
+                        {period.periodName}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            {/* Course filter */}
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-5 w-5 text-gray-500" />
+              <div className="min-w-[250px]">
+                <Label>Curso</Label>
+                {coursesLoading ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <Select
+                    value={selectedCourseId || ''}
+                    onChange={(e) => setSelectedCourseId(Number(e.target.value) || null)}
+                    className="mt-1"
+                  >
+                    <option value="">Todos los cursos</option>
+                    {myCourses?.map((course) => (
+                      <option key={course.courseMoodleId} value={course.courseMoodleId}>
+                        {course.courseName}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

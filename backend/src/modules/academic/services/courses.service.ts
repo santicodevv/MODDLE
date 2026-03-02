@@ -1,12 +1,15 @@
 import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, In } from 'typeorm';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleCategory } from '../../moodle-integration/entities/moodle-category.entity';
 import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
 import { MoodleClientService } from '../../moodle-integration/moodle-client.service';
 import { CreateCourseDto } from '../dto/create-course.dto';
+import { CourseTeacher } from '../entities/course-teacher.entity';
+import { User } from '../../users/entities/user.entity';
+import { AuditService } from '../../sync/services/audit.service';
 
 export interface CoursesQueryParams {
   page?: number;
@@ -44,7 +47,12 @@ export class CoursesService {
     private readonly categoryRepository: Repository<MoodleCategory>,
     @InjectRepository(MoodleUser)
     private readonly moodleUserRepository: Repository<MoodleUser>,
+    @InjectRepository(CourseTeacher)
+    private readonly courseTeacherRepository: Repository<CourseTeacher>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly moodleClient: MoodleClientService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -454,5 +462,159 @@ export class CoursesService {
     await this.courseRepository.delete(id);
 
     this.logger.log(`Deleted course ${id} (Moodle ID: ${course.moodleId})`);
+  }
+
+  // =====================
+  // TEACHER ASSIGNMENT METHODS
+  // =====================
+
+  /**
+   * Assign teachers to a course
+   */
+  async assignTeachers(
+    courseMoodleId: number,
+    teacherIds: number[],
+    adminUserId: number,
+    courseName?: string,
+  ): Promise<CourseTeacher[]> {
+    // Verify teachers exist
+    const teachers = await this.userRepository.find({
+      where: { id: In(teacherIds), isActive: true },
+    });
+
+    if (teachers.length !== teacherIds.length) {
+      const foundIds = teachers.map((t) => t.id);
+      const notFoundIds = teacherIds.filter((id) => !foundIds.includes(id));
+      throw new BadRequestException(
+        `Teachers not found: ${notFoundIds.join(', ')}`,
+      );
+    }
+
+    // Check for existing assignments
+    const existingAssignments = await this.courseTeacherRepository.find({
+      where: {
+        courseMoodleId,
+        teacherId: In(teacherIds),
+      },
+    });
+
+    const existingTeacherIds = existingAssignments.map((a) => a.teacherId);
+    const newTeacherIds = teacherIds.filter(
+      (id) => !existingTeacherIds.includes(id),
+    );
+
+    if (newTeacherIds.length === 0) {
+      return existingAssignments;
+    }
+
+    // Create new assignments
+    const newAssignments = newTeacherIds.map((teacherId) =>
+      this.courseTeacherRepository.create({
+        courseMoodleId,
+        courseName,
+        teacherId,
+        isPrimary: existingAssignments.length === 0 && newTeacherIds.indexOf(teacherId) === 0,
+      }),
+    );
+
+    const savedAssignments = await this.courseTeacherRepository.save(newAssignments);
+
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'course.teachers_assigned',
+      entity: 'course_teachers',
+      entityKey: `${courseMoodleId}`,
+      afterData: { teacherIds: newTeacherIds },
+      source: 'app',
+    });
+
+    return [...existingAssignments, ...savedAssignments];
+  }
+
+  /**
+   * Remove a teacher from a course
+   */
+  async removeTeacher(
+    courseMoodleId: number,
+    teacherId: number,
+    adminUserId: number,
+  ): Promise<void> {
+    const assignment = await this.courseTeacherRepository.findOne({
+      where: { courseMoodleId, teacherId },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Teacher assignment not found');
+    }
+
+    await this.courseTeacherRepository.delete(assignment.id);
+
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'course.teacher_removed',
+      entity: 'course_teachers',
+      entityKey: `${courseMoodleId}`,
+      beforeData: assignment,
+      source: 'app',
+    });
+  }
+
+  /**
+   * Get teachers assigned to a course
+   */
+  async getTeachersForCourse(courseMoodleId: number): Promise<CourseTeacher[]> {
+    return this.courseTeacherRepository.find({
+      where: { courseMoodleId },
+      relations: ['teacher'],
+      order: { isPrimary: 'DESC', createdAt: 'ASC' },
+    });
+  }
+
+  /**
+   * Get all courses where a teacher is assigned
+   */
+  async getCoursesForTeacher(teacherId: number): Promise<CourseTeacher[]> {
+    return this.courseTeacherRepository.find({
+      where: { teacherId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Set a teacher as primary for a course
+   */
+  async setPrimaryTeacher(
+    courseMoodleId: number,
+    teacherId: number,
+    adminUserId: number,
+  ): Promise<CourseTeacher> {
+    const assignment = await this.courseTeacherRepository.findOne({
+      where: { courseMoodleId, teacherId },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Teacher assignment not found');
+    }
+
+    // Remove primary from all other teachers
+    await this.courseTeacherRepository.update(
+      { courseMoodleId },
+      { isPrimary: false },
+    );
+
+    // Set this teacher as primary
+    assignment.isPrimary = true;
+    const updated = await this.courseTeacherRepository.save(assignment);
+
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'course.primary_teacher_set',
+      entity: 'course_teachers',
+      entityKey: `${courseMoodleId}`,
+      afterData: { teacherId },
+      source: 'app',
+    });
+
+    return updated;
   }
 }

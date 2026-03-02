@@ -55,6 +55,15 @@ export class UsersController {
     return this.usersService.getAllRoles();
   }
 
+  /**
+   * Get all users with teacher role
+   */
+  @Roles(RoleCode.ADMIN)
+  @Get('teachers')
+  async getTeachers() {
+    return this.usersService.findTeachers();
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
     return this.usersService.findById(id);

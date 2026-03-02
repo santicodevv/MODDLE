@@ -122,4 +122,79 @@ export class CoursesController {
     await this.coursesService.delete(id);
     return { success: true };
   }
+
+  // =====================
+  // TEACHER ASSIGNMENT ENDPOINTS
+  // =====================
+
+  /**
+   * Get teachers assigned to a course
+   */
+  @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
+  @Get(':courseMoodleId/teachers')
+  async getTeachersForCourse(
+    @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
+  ) {
+    return this.coursesService.getTeachersForCourse(courseMoodleId);
+  }
+
+  /**
+   * Assign teachers to a course
+   */
+  @Roles(RoleCode.ADMIN)
+  @Post(':courseMoodleId/teachers')
+  async assignTeachers(
+    @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
+    @Body() body: { teacherIds: number[]; courseName?: string },
+    @CurrentUser() user: User,
+  ) {
+    return this.coursesService.assignTeachers(
+      courseMoodleId,
+      body.teacherIds,
+      user.id,
+      body.courseName,
+    );
+  }
+
+  /**
+   * Remove a teacher from a course
+   */
+  @Roles(RoleCode.ADMIN)
+  @Delete(':courseMoodleId/teachers/:teacherId')
+  async removeTeacher(
+    @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
+    @Param('teacherId', ParseIntPipe) teacherId: number,
+    @CurrentUser() user: User,
+  ) {
+    await this.coursesService.removeTeacher(courseMoodleId, teacherId, user.id);
+    return { success: true };
+  }
+
+  /**
+   * Set a teacher as primary for a course
+   */
+  @Roles(RoleCode.ADMIN)
+  @Post(':courseMoodleId/teachers/:teacherId/primary')
+  async setPrimaryTeacher(
+    @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
+    @Param('teacherId', ParseIntPipe) teacherId: number,
+    @CurrentUser() user: User,
+  ) {
+    return this.coursesService.setPrimaryTeacher(
+      courseMoodleId,
+      teacherId,
+      user.id,
+    );
+  }
+
+  /**
+   * Get courses where a teacher is assigned
+   */
+  @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
+  @Get('teacher/:teacherId/courses')
+  async getCoursesForTeacher(
+    @Param('teacherId', ParseIntPipe) teacherId: number,
+  ) {
+    return this.coursesService.getCoursesForTeacher(teacherId);
+  }
 }
