@@ -389,10 +389,10 @@ function CourseGradeSection({
             </div>
             <div>
               <h3 className="font-medium text-gray-900">
-                {course.courseShortname} - {course.courseName}
+                {course.courseName}
               </h3>
               <p className="text-sm text-gray-500">
-                {course.studentCount} estudiantes • {course.gradedCount}{' '}
+                {course.courseShortname} • {course.studentCount} estudiantes • {course.gradedCount}{' '}
                 calificados
               </p>
             </div>
