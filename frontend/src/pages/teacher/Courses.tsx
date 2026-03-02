@@ -2,24 +2,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib';
-import {
-  Card,
-  CardContent,
-  Spinner,
-  Button,
-  Badge,
-} from '@/components/ui';
-import {
-  BookOpen,
-  Users,
-  ClipboardList,
-  ChevronRight,
-} from 'lucide-react';
+import { Card, CardContent, Spinner, Button, Badge } from '@/components/ui';
+import { BookOpen, Users, ClipboardList, ChevronRight } from 'lucide-react';
 
 interface Course {
   moodleId: number;
   fullname: string;
   shortname: string;
+  subjectName?: string;
   visible: boolean;
   categoryId: number;
 }
@@ -50,7 +40,9 @@ export default function TeacherCourses() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mis Cursos</h1>
-          <p className="mt-1 text-gray-600">Seleccione un curso para gestionar calificaciones</p>
+          <p className="mt-1 text-gray-600">
+            Seleccione un curso para gestionar calificaciones
+          </p>
         </div>
         {editSessionStatus?.isActive && (
           <Badge variant="success" className="px-3 py-1 text-sm">
@@ -63,8 +55,12 @@ export default function TeacherCourses() {
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${editSessionStatus?.isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
-              <ClipboardList className={`h-5 w-5 ${editSessionStatus?.isActive ? 'text-green-600' : 'text-gray-400'}`} />
+            <div
+              className={`p-2 rounded-full ${editSessionStatus?.isActive ? 'bg-green-100' : 'bg-gray-100'}`}
+            >
+              <ClipboardList
+                className={`h-5 w-5 ${editSessionStatus?.isActive ? 'text-green-600' : 'text-gray-400'}`}
+              />
             </div>
             <div>
               <p className="font-medium text-gray-900">
@@ -93,7 +89,7 @@ export default function TeacherCourses() {
             <Card
               key={course.moodleId}
               className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/teacher/courses/${course.moodleId}/grades`)}
+              onClick={() => navigate(`/teacher/grades/${course.moodleId}`)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
@@ -102,8 +98,12 @@ export default function TeacherCourses() {
                       <BookOpen className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{course.shortname}</p>
-                      <p className="text-sm text-gray-600 mt-1">{course.fullname}</p>
+                      <p className="font-medium text-gray-900">
+                        {course.shortname}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {course.subjectName || course.fullname}
+                      </p>
                     </div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -113,16 +113,14 @@ export default function TeacherCourses() {
                     <Users className="h-4 w-4" />
                     <span>Estudiantes</span>
                   </div>
-                  {!course.visible && (
-                    <Badge variant="secondary">Oculto</Badge>
-                  )}
+                  {!course.visible && <Badge variant="secondary">Oculto</Badge>}
                 </div>
                 <Button
                   variant="outline"
                   className="w-full mt-4"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/teacher/courses/${course.moodleId}/grades`);
+                    navigate(`/teacher/grades/${course.moodleId}`);
                   }}
                 >
                   <ClipboardList className="h-4 w-4 mr-2" />
@@ -138,7 +136,9 @@ export default function TeacherCourses() {
             <div className="text-center text-gray-500">
               <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p>No hay cursos disponibles</p>
-              <p className="text-sm mt-1">Los cursos apareceran aqui cuando se sincronicen desde Moodle</p>
+              <p className="text-sm mt-1">
+                Los cursos apareceran aqui cuando se sincronicen desde Moodle
+              </p>
             </div>
           </CardContent>
         </Card>

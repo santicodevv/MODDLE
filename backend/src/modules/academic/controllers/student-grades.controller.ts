@@ -48,12 +48,14 @@ export class StudentGradesController {
     @Body() dto: UpdateStudentGradeDto,
     @Request() req: any,
   ) {
+    const isAdmin = req.user.roles?.some((r: any) => r.code === 'ADMIN') || false;
     return this.studentGradesService.updateGrade(
       courseMoodleId,
       studentId,
       periodId,
       dto,
       req.user.id,
+      isAdmin,
     );
   }
 

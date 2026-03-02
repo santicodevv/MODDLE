@@ -72,13 +72,17 @@ export default function TeacherGradeEntry() {
   const queryClient = useQueryClient();
 
   // Track local edits before saving
-  const [localEdits, setLocalEdits] = useState<Map<string, { grade: number; feedback?: string }>>(new Map());
+  const [localEdits, setLocalEdits] = useState<
+    Map<string, { grade: number; feedback?: string }>
+  >(new Map());
 
   // Fetch course grades with editable status
   const { data, isLoading, error } = useQuery({
     queryKey: ['teacher-course-grades', courseId],
     queryFn: async () => {
-      const response = await api.get<CourseGradesResponse>(`/grades/course/${courseId}/editable`);
+      const response = await api.get<CourseGradesResponse>(
+        `/grades/course/${courseId}/editable`,
+      );
       return response.data;
     },
     enabled: !!courseId,
@@ -105,7 +109,9 @@ export default function TeacherGradeEntry() {
         return newMap;
       });
       // Refresh data
-      queryClient.invalidateQueries({ queryKey: ['teacher-course-grades', courseId] });
+      queryClient.invalidateQueries({
+        queryKey: ['teacher-course-grades', courseId],
+      });
       toast.success('Nota guardada exitosamente');
     },
     onError: (error: any) => {
@@ -117,7 +123,7 @@ export default function TeacherGradeEntry() {
     studentMoodleId: number,
     itemMoodleId: number,
     value: string,
-    gradeMax: number
+    gradeMax: number,
   ) => {
     const key = `${studentMoodleId}-${itemMoodleId}`;
     const numValue = parseFloat(value);
@@ -143,10 +149,7 @@ export default function TeacherGradeEntry() {
     });
   };
 
-  const handleSaveGrade = (
-    studentMoodleId: number,
-    itemMoodleId: number
-  ) => {
+  const handleSaveGrade = (studentMoodleId: number, itemMoodleId: number) => {
     const key = `${studentMoodleId}-${itemMoodleId}`;
     const edit = localEdits.get(key);
 
@@ -241,9 +244,12 @@ export default function TeacherGradeEntry() {
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-yellow-600" />
               <div>
-                <p className="font-medium text-yellow-800">Edicion de notas deshabilitada</p>
+                <p className="font-medium text-yellow-800">
+                  Edicion de notas deshabilitada
+                </p>
                 <p className="text-sm text-yellow-700">
-                  Contacte al administrador para habilitar la edicion de calificaciones.
+                  Contacte al administrador para habilitar la edicion de
+                  calificaciones.
                 </p>
               </div>
             </div>
@@ -268,7 +274,10 @@ export default function TeacherGradeEntry() {
                         className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase min-w-[140px]"
                       >
                         <div className="flex flex-col items-center">
-                          <span className="truncate max-w-[120px]" title={item.itemName}>
+                          <span
+                            className="truncate max-w-[120px]"
+                            title={item.itemName}
+                          >
                             {item.itemName}
                           </span>
                           <span className="text-gray-400 font-normal">
@@ -281,7 +290,10 @@ export default function TeacherGradeEntry() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data.participants.map((participant) => (
-                    <tr key={participant.studentMoodleId} className="hover:bg-gray-50">
+                    <tr
+                      key={participant.studentMoodleId}
+                      className="hover:bg-gray-50"
+                    >
                       <td className="px-4 py-3 sticky left-0 bg-white">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 bg-gray-100 rounded-full">
@@ -291,31 +303,41 @@ export default function TeacherGradeEntry() {
                             <p className="font-medium text-gray-900 text-sm">
                               {participant.studentName}
                             </p>
-                            <p className="text-xs text-gray-500">{participant.studentEmail}</p>
+                            <p className="text-xs text-gray-500">
+                              {participant.studentEmail}
+                            </p>
                           </div>
                         </div>
                       </td>
                       {participant.grades.map((grade) => {
                         const key = `${participant.studentMoodleId}-${grade.itemMoodleId}`;
                         const localEdit = localEdits.get(key);
-                        const displayGrade = localEdit?.grade ?? grade.editedGrade ?? grade.moodleGrade;
+                        const displayGrade =
+                          localEdit?.grade ??
+                          grade.editedGrade ??
+                          grade.moodleGrade;
                         const hasLocalEdit = localEdit !== undefined;
                         const canEdit = isEditingEnabled && grade.editable;
 
                         return (
-                          <td key={grade.itemMoodleId} className="px-4 py-3 text-center">
+                          <td
+                            key={grade.itemMoodleId}
+                            className="px-4 py-3 text-center"
+                          >
                             {canEdit ? (
                               <div className="flex flex-col items-center gap-1">
                                 <div className="flex items-center gap-1">
                                   <Input
                                     type="number"
-                                    value={localEdit?.grade ?? displayGrade ?? ''}
+                                    value={
+                                      localEdit?.grade ?? displayGrade ?? ''
+                                    }
                                     onChange={(e) =>
                                       handleGradeChange(
                                         participant.studentMoodleId,
                                         grade.itemMoodleId,
                                         e.target.value,
-                                        grade.gradeMax
+                                        grade.gradeMax,
                                       )
                                     }
                                     min={0}
@@ -331,7 +353,7 @@ export default function TeacherGradeEntry() {
                                       onClick={() =>
                                         handleSaveGrade(
                                           participant.studentMoodleId,
-                                          grade.itemMoodleId
+                                          grade.itemMoodleId,
                                         )
                                       }
                                       disabled={saveGrade.isPending}
@@ -351,13 +373,16 @@ export default function TeacherGradeEntry() {
                                 <span
                                   className={`font-medium ${getGradeColor(
                                     displayGrade,
-                                    grade.gradeMax
+                                    grade.gradeMax,
                                   )}`}
                                 >
                                   {displayGrade !== null ? displayGrade : '-'}
                                 </span>
                                 {grade.wasEdited && (
-                                  <Badge variant="secondary" className="text-xs mt-1">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs mt-1"
+                                  >
                                     <Lock className="h-3 w-3 mr-1" />
                                     Editada
                                   </Badge>

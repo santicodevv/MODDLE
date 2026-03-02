@@ -130,7 +130,7 @@ export class StudentGradesService {
       results.push({
         id: existingGrade?.id ?? 0,
         courseMoodleId,
-        courseName: course.fullname,
+        courseName: course.subjectName || course.fullname,
         courseShortname: course.shortname,
         studentId: student.id,
         studentName: student.displayName || `${student.email}`,
@@ -150,6 +150,7 @@ export class StudentGradesService {
   /**
    * Calculate Moodle grade sums for students
    * Note: decimal fields from TypeORM come as strings, must parse to numbers
+   * Excludes itemtype='course' as that is the total, not an individual grade
    */
   private async calculateMoodleSums(
     courseMoodleId: number,
@@ -157,10 +158,13 @@ export class StudentGradesService {
   ): Promise<Map<number, { sum: number; max: number }>> {
     const result = new Map<number, { sum: number; max: number }>();
 
-    // Get grade items for the course
-    const gradeItems = await this.gradeItemRepository.find({
+    // Get grade items for the course, excluding 'course' type (that's the total)
+    const allGradeItems = await this.gradeItemRepository.find({
       where: { courseMoodleId },
     });
+
+    // Filter out itemtype='course' - that's the course total, not individual grades
+    const gradeItems = allGradeItems.filter((gi) => gi.itemtype !== 'course');
 
     if (gradeItems.length === 0) {
       return result;
@@ -196,6 +200,8 @@ export class StudentGradesService {
 
   /**
    * Update or create a student grade (for teacher)
+   * Teachers CANNOT re-edit once a totalGrade has been saved.
+   * Admins CAN always edit.
    */
   async updateGrade(
     courseMoodleId: number,
@@ -203,6 +209,7 @@ export class StudentGradesService {
     periodId: number,
     dto: UpdateStudentGradeDto,
     teacherId: number,
+    isAdmin: boolean = false,
   ): Promise<CourseStudentGrade> {
     // Get course info
     const course = await this.courseRepository.findOne({
@@ -231,6 +238,13 @@ export class StudentGradesService {
       },
     });
 
+    // GRADE LOCKING: If grade already has a totalGrade and caller is NOT admin, block
+    if (!isAdmin && grade && grade.totalGrade !== null) {
+      throw new ForbiddenException(
+        'La calificación ya fue registrada y no puede ser modificada. Contacte al administrador.',
+      );
+    }
+
     const isNew = !grade;
     const beforeData = grade ? { ...grade } : null;
 
@@ -240,7 +254,7 @@ export class StudentGradesService {
         studentId,
         periodId,
         teacherId,
-        courseName: course.fullname,
+        courseName: course.subjectName || course.fullname,
         courseShortname: course.shortname,
       });
     }
@@ -272,91 +286,219 @@ export class StudentGradesService {
 
   /**
    * Get student's own grades (for student dashboard)
-   * Optional filters by periodId and courseMoodleId
+   * Shows ALL enrolled courses for the selected period,
+   * with totalGrade/comment from course_student_grades if they exist.
+   * If no manual grade has been entered yet, totalGrade and comment are null.
    */
   async getMyGrades(
     studentId: number,
     periodId?: number,
     courseMoodleId?: number,
   ): Promise<StudentCourseGrade[]> {
-    const where: any = { studentId };
-    if (periodId) {
-      where.periodId = periodId;
-    }
-    if (courseMoodleId) {
-      where.courseMoodleId = courseMoodleId;
-    }
-
-    const grades = await this.gradeRepository.find({
-      where,
-      relations: ['period', 'teacher'],
-      order: { updatedAt: 'DESC' },
+    // Get the student's moodleUserId
+    const user = await this.userRepository.findOne({
+      where: { id: studentId },
     });
 
-    return grades.map((g) => ({
-      courseMoodleId: g.courseMoodleId,
-      courseName: g.courseName || 'Curso',
-      courseShortname: g.courseShortname || '',
-      periodId: g.periodId,
-      periodName: g.period?.name || '',
-      totalGrade: g.totalGrade,
-      comment: g.comment,
-      teacherName: g.teacher?.displayName || null,
-    }));
+    if (!user?.moodleUserId) {
+      return [];
+    }
+
+    // Get all enrollments for this student
+    const enrolments = await this.enrolmentRepository.find({
+      where: {
+        userMoodleId: user.moodleUserId,
+        roleCode: 'student',
+        enrolStatus: 'active',
+      },
+    });
+
+    if (enrolments.length === 0) {
+      return [];
+    }
+
+    let enrolledCourseIds = enrolments.map((e) => e.courseMoodleId);
+
+    // If periodId is provided, filter to only courses available in that period
+    let periodName = '';
+    if (periodId) {
+      const periodCourses = await this.periodCourseRepository.find({
+        where: {
+          periodId,
+          courseMoodleId: In(enrolledCourseIds),
+        },
+        relations: ['period'],
+      });
+      enrolledCourseIds = periodCourses.map((pc) => pc.courseMoodleId);
+      periodName = periodCourses[0]?.period?.name || '';
+    }
+
+    if (enrolledCourseIds.length === 0) {
+      return [];
+    }
+
+    // If courseMoodleId filter is provided
+    if (courseMoodleId) {
+      enrolledCourseIds = enrolledCourseIds.filter((id) => id === courseMoodleId);
+      if (enrolledCourseIds.length === 0) {
+        return [];
+      }
+    }
+
+    // Get course info
+    const courses = await this.courseRepository.find({
+      where: { moodleId: In(enrolledCourseIds) },
+    });
+    const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
+
+    // Get existing manual grades for this student (if any)
+    const gradeWhere: any = {
+      studentId,
+      courseMoodleId: In(enrolledCourseIds),
+    };
+    if (periodId) {
+      gradeWhere.periodId = periodId;
+    }
+
+    const existingGrades = await this.gradeRepository.find({
+      where: gradeWhere,
+      relations: ['period', 'teacher'],
+    });
+
+    const gradeMap = new Map(
+      existingGrades.map((g) => [g.courseMoodleId, g]),
+    );
+
+    // Build results: one entry per enrolled course
+    const results: StudentCourseGrade[] = [];
+
+    for (const courseId of [...new Set(enrolledCourseIds)]) {
+      const course = courseMap.get(courseId);
+      const grade = gradeMap.get(courseId);
+
+      results.push({
+        courseMoodleId: courseId,
+        courseName: course?.subjectName || course?.fullname || grade?.courseName || `Curso ${courseId}`,
+        courseShortname: course?.shortname || grade?.courseShortname || '',
+        periodId: periodId || grade?.periodId || 0,
+        periodName: grade?.period?.name || periodName || '',
+        totalGrade: grade?.totalGrade ?? null,
+        comment: grade?.comment ?? null,
+        teacherName: grade?.teacher?.displayName || null,
+      });
+    }
+
+    // Sort by course name
+    return results.sort((a, b) => a.courseName.localeCompare(b.courseName));
   }
 
   /**
-   * Get the list of courses where a student has grades (for filter dropdown)
+   * Get the list of courses where a student is enrolled (for filter dropdown)
+   * Now uses moodle_enrolments instead of course_student_grades
    */
   async getMyEnrolledCourses(
     studentId: number,
     periodId?: number,
   ): Promise<{ courseMoodleId: number; courseName: string; courseShortname: string }[]> {
-    const where: any = { studentId };
-    if (periodId) {
-      where.periodId = periodId;
-    }
-
-    const grades = await this.gradeRepository.find({
-      where,
-      select: ['courseMoodleId', 'courseName', 'courseShortname'],
+    // Get the user's moodleUserId
+    const user = await this.userRepository.findOne({
+      where: { id: studentId },
     });
 
-    // Get unique courses
-    const uniqueCourses = new Map<number, { courseMoodleId: number; courseName: string; courseShortname: string }>();
-    for (const g of grades) {
-      if (!uniqueCourses.has(g.courseMoodleId)) {
-        uniqueCourses.set(g.courseMoodleId, {
-          courseMoodleId: g.courseMoodleId,
-          courseName: g.courseName || 'Curso',
-          courseShortname: g.courseShortname || '',
-        });
-      }
+    if (!user?.moodleUserId) {
+      return [];
     }
 
-    return Array.from(uniqueCourses.values());
+    // Get all enrollments for this user
+    const enrolments = await this.enrolmentRepository.find({
+      where: {
+        userMoodleId: user.moodleUserId,
+        roleCode: 'student',
+        enrolStatus: 'active',
+      },
+    });
+
+    if (enrolments.length === 0) {
+      return [];
+    }
+
+    const courseMoodleIds = enrolments.map((e) => e.courseMoodleId);
+
+    // If periodId filter is provided, only get courses available in that period
+    let filteredCourseIds = courseMoodleIds;
+    if (periodId) {
+      const periodCourses = await this.periodCourseRepository.find({
+        where: {
+          periodId,
+          courseMoodleId: In(courseMoodleIds),
+        },
+      });
+      filteredCourseIds = periodCourses.map((pc) => pc.courseMoodleId);
+    }
+
+    if (filteredCourseIds.length === 0) {
+      return [];
+    }
+
+    // Get course info
+    const courses = await this.courseRepository.find({
+      where: { moodleId: In(filteredCourseIds) },
+    });
+
+    return courses.map((c) => ({
+      courseMoodleId: c.moodleId,
+      courseName: c.subjectName || c.fullname,
+      courseShortname: c.shortname,
+    }));
   }
 
   /**
-   * Get list of periods where a student has grades (for filter dropdown)
+   * Get list of periods where a student has enrolled courses (for filter dropdown)
+   * Now uses moodle_enrolments + period_available_courses
    */
   async getMyPeriodsWithGrades(
     studentId: number,
   ): Promise<{ periodId: number; periodCode: string; periodName: string }[]> {
-    const grades = await this.gradeRepository.find({
-      where: { studentId },
+    // Get the user's moodleUserId
+    const user = await this.userRepository.findOne({
+      where: { id: studentId },
+    });
+
+    if (!user?.moodleUserId) {
+      return [];
+    }
+
+    // Get all enrollments for this user
+    const enrolments = await this.enrolmentRepository.find({
+      where: {
+        userMoodleId: user.moodleUserId,
+        roleCode: 'student',
+        enrolStatus: 'active',
+      },
+    });
+
+    if (enrolments.length === 0) {
+      return [];
+    }
+
+    const courseMoodleIds = enrolments.map((e) => e.courseMoodleId);
+
+    // Get periods that have these courses available
+    const periodCourses = await this.periodCourseRepository.find({
+      where: {
+        courseMoodleId: In(courseMoodleIds),
+      },
       relations: ['period'],
-      select: ['periodId'],
     });
 
     // Get unique periods
     const uniquePeriods = new Map<number, { periodId: number; periodCode: string; periodName: string }>();
-    for (const g of grades) {
-      if (g.period && !uniquePeriods.has(g.periodId)) {
-        uniquePeriods.set(g.periodId, {
-          periodId: g.periodId,
-          periodCode: g.period.code,
-          periodName: g.period.name,
+    for (const pc of periodCourses) {
+      if (pc.period && !uniquePeriods.has(pc.periodId)) {
+        uniquePeriods.set(pc.periodId, {
+          periodId: pc.periodId,
+          periodCode: pc.period.code,
+          periodName: pc.period.name,
         });
       }
     }
@@ -446,7 +588,7 @@ export class StudentGradesService {
           studentId: student.id,
           periodId,
           teacherId,
-          courseName: course.fullname,
+          courseName: course.subjectName || course.fullname,
           courseShortname: course.shortname,
         });
       }
@@ -526,7 +668,7 @@ export class StudentGradesService {
           where: { moodleId: ac.courseMoodleId },
         });
         if (course) {
-          courseName = course.fullname;
+          courseName = course.subjectName || course.fullname;
           courseShortname = course.shortname;
         }
       }
@@ -745,9 +887,9 @@ export class StudentGradesService {
       const key = period ? `${enrol.courseMoodleId}:${period.id}` : null;
       const manualGrade = key ? gradeMap.get(key) : null;
 
-      // Get grade items for this course
+      // Get grade items for this course, excluding 'course' type (that's the total)
       const courseGradeItems = allGradeItems.filter(
-        (gi) => gi.courseMoodleId === enrol.courseMoodleId,
+        (gi) => gi.courseMoodleId === enrol.courseMoodleId && gi.itemtype !== 'course',
       );
 
       // Build detailed grade items with student's grades
@@ -795,7 +937,7 @@ export class StudentGradesService {
         periodName: period?.name ?? 'Sin período',
         periodCode: period?.code ?? '',
         courseMoodleId: enrol.courseMoodleId,
-        courseName: course?.fullname ?? `Curso ${enrol.courseMoodleId}`,
+        courseName: (course?.subjectName || course?.fullname) ?? `Curso ${enrol.courseMoodleId}`,
         courseShortname: course?.shortname ?? '',
         moodleSumGrade: sumGrade,
         moodleSumMax: sumMax,

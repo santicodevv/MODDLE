@@ -24,6 +24,7 @@ import { GradeEditSession } from '../modules/academic/entities/grade-edit-sessio
 import { GradeEdit } from '../modules/academic/entities/grade-edit.entity';
 import { PeriodAvailableCourse } from '../modules/academic/entities/period-available-course.entity';
 import { CourseStudentGrade } from '../modules/academic/entities/course-student-grade.entity';
+import { CourseTeacher } from '../modules/academic/entities/course-teacher.entity';
 
 // Entidades de certificados
 import { Transcript } from '../modules/transcripts/entities/transcript.entity';
@@ -52,6 +53,7 @@ export const entities = [
   GradeEdit,
   PeriodAvailableCourse,
   CourseStudentGrade,
+  CourseTeacher,
   // Transcripts
   Transcript,
 ];

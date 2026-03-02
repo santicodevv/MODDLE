@@ -1,14 +1,13 @@
 // Student Courses Page
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { coursesApi } from '@/api';
-import { Card, CardContent, Spinner, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Spinner, Badge } from '@/components/ui';
 import {
   BookOpen,
   Users,
   GraduationCap,
   AlertCircle,
-  ChevronRight,
+  ExternalLink,
   Calendar,
 } from 'lucide-react';
 
@@ -26,12 +25,19 @@ interface CourseWithCounts {
 }
 
 export default function StudentCourses() {
-  const navigate = useNavigate();
-
-  const { data: courses, isLoading, error } = useQuery({
+  const {
+    data: courses,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['student-enrolled-courses'],
     queryFn: () => coursesApi.getEnrolledCourses(),
   });
+
+  const moodleUrl = (import.meta.env.VITE_MOODLE_URL || '').replace(/\/+$/, '');
+
+  const getMoodleCourseUrl = (courseMoodleId: number) =>
+    `${moodleUrl}/course/view.php?id=${courseMoodleId}`;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
@@ -59,7 +65,8 @@ export default function StudentCourses() {
               <AlertCircle className="h-12 w-12 mb-4" />
               <p className="text-lg font-medium">Error al cargar los cursos</p>
               <p className="text-sm text-gray-500">
-                {(error as any)?.response?.data?.message || 'Intenta nuevamente'}
+                {(error as any)?.response?.data?.message ||
+                  'Intenta nuevamente'}
               </p>
             </div>
           </CardContent>
@@ -106,7 +113,8 @@ export default function StudentCourses() {
               <div>
                 <p className="text-sm text-gray-500">Cursos Activos</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {courses?.filter((c: CourseWithCounts) => c.visible).length || 0}
+                  {courses?.filter((c: CourseWithCounts) => c.visible).length ||
+                    0}
                 </p>
               </div>
             </div>
@@ -122,8 +130,9 @@ export default function StudentCourses() {
                 <p className="text-sm text-gray-500">Companeros</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {courses?.reduce(
-                    (sum: number, c: CourseWithCounts) => sum + (c.studentCount || 0),
-                    0
+                    (sum: number, c: CourseWithCounts) =>
+                      sum + (c.studentCount || 0),
+                    0,
                   ) || 0}
                 </p>
               </div>
@@ -136,58 +145,60 @@ export default function StudentCourses() {
       {courses && courses.length > 0 ? (
         <div className="grid gap-4">
           {(courses as CourseWithCounts[]).map((course) => (
-            <Card
+            <a
               key={course.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/student/grades`)}
+              href={getMoodleCourseUrl(course.moodleId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="p-3 rounded-lg bg-blue-100">
-                      <BookOpen className="h-6 w-6 text-blue-600" />
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="p-3 rounded-lg bg-blue-100">
+                        <BookOpen className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {course.subjectName || course.fullname}
+                          </h3>
+                          {!course.visible && (
+                            <Badge variant="secondary">Oculto</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 mb-2">
+                          {course.shortname}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {course.studentCount || 0} estudiantes
+                          </span>
+                          {course.startdate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Inicio: {formatDate(course.startdate)}
+                            </span>
+                          )}
+                          {course.enddate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Fin: {formatDate(course.enddate)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {course.fullname}
-                        </h3>
-                        {!course.visible && (
-                          <Badge variant="secondary">Oculto</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500 mb-2">
-                        {course.shortname}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {course.studentCount || 0} estudiantes
-                        </span>
-                        {course.startdate && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            Inicio: {formatDate(course.startdate)}
-                          </span>
-                        )}
-                        {course.enddate && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            Fin: {formatDate(course.enddate)}
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <span className="text-sm font-medium">Ir a Moodle</span>
+                      <ExternalLink className="h-4 w-4" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      Ver Calificaciones
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </a>
           ))}
         </div>
       ) : (

@@ -30,8 +30,9 @@ export class GradesController {
    */
   @Get('courses')
   @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
-  async getCourses() {
-    return this.gradesService.getCourses();
+  async getCourses(@CurrentUser() user: User) {
+    const isAdmin = user.roles?.some((r) => r.code === RoleCode.ADMIN) || false;
+    return this.gradesService.getCourses(user.id, isAdmin);
   }
 
   /**

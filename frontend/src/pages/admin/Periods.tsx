@@ -44,7 +44,9 @@ interface MoodleCourse {
 export default function AdminPeriods() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedPeriod, setSelectedPeriod] = useState<AcademicPeriod | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<AcademicPeriod | null>(
+    null,
+  );
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showReenrolmentConfig, setShowReenrolmentConfig] = useState(false);
 
@@ -60,7 +62,9 @@ export default function AdminPeriods() {
     reenrolmentStartDate: '',
     reenrolmentEndDate: '',
   });
-  const [selectedCoursesToAdd, setSelectedCoursesToAdd] = useState<number[]>([]);
+  const [selectedCoursesToAdd, setSelectedCoursesToAdd] = useState<number[]>(
+    [],
+  );
 
   // Queries
   const { data: periods, isLoading: loadingPeriods } = useQuery({
@@ -68,16 +72,20 @@ export default function AdminPeriods() {
     queryFn: () => periodsApi.getAll(),
   });
 
-  const { data: availableCourses, isLoading: loadingAvailableCourses } = useQuery({
-    queryKey: ['period-available-courses', selectedPeriod?.id],
-    queryFn: () => periodsApi.getAllAvailableCourses(selectedPeriod!.id),
-    enabled: !!selectedPeriod && viewMode === 'courses',
-  });
+  const { data: availableCourses, isLoading: loadingAvailableCourses } =
+    useQuery({
+      queryKey: ['period-available-courses', selectedPeriod?.id],
+      queryFn: () => periodsApi.getAllAvailableCourses(selectedPeriod!.id),
+      enabled: !!selectedPeriod && viewMode === 'courses',
+    });
 
   const { data: moodleCourses, isLoading: loadingMoodleCourses } = useQuery({
     queryKey: ['moodle-courses'],
     queryFn: async () => {
-      const response = await api.get<{ courses: MoodleCourse[]; total: number }>('/courses', {
+      const response = await api.get<{
+        courses: MoodleCourse[];
+        total: number;
+      }>('/courses', {
         params: { limit: 1000 }, // Get all courses
       });
       return response.data.courses;
@@ -91,7 +99,13 @@ export default function AdminPeriods() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-periods'] });
       setShowCreateForm(false);
-      setNewPeriod({ code: '', name: '', startDate: '', endDate: '', description: '' });
+      setNewPeriod({
+        code: '',
+        name: '',
+        startDate: '',
+        endDate: '',
+        description: '',
+      });
       toast.success('Período creado');
     },
     onError: (error: any) => {
@@ -100,8 +114,13 @@ export default function AdminPeriods() {
   });
 
   const configReenrolmentMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: typeof reenrolmentConfig }) =>
-      periodsApi.configureReenrolment(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: typeof reenrolmentConfig;
+    }) => periodsApi.configureReenrolment(id, data),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['admin-periods'] });
       setSelectedPeriod(updated);
@@ -121,7 +140,9 @@ export default function AdminPeriods() {
       toast.success('Reinscripción abierta');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al abrir reinscripción');
+      toast.error(
+        error.response?.data?.message || 'Error al abrir reinscripción',
+      );
     },
   });
 
@@ -133,7 +154,9 @@ export default function AdminPeriods() {
       toast.success('Reinscripción cerrada');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al cerrar reinscripción');
+      toast.error(
+        error.response?.data?.message || 'Error al cerrar reinscripción',
+      );
     },
   });
 
@@ -175,8 +198,13 @@ export default function AdminPeriods() {
   });
 
   const removeCoursesMutation = useMutation({
-    mutationFn: ({ periodId, courseMoodleIds }: { periodId: number; courseMoodleIds: number[] }) =>
-      periodsApi.removeAvailableCourses(periodId, courseMoodleIds),
+    mutationFn: ({
+      periodId,
+      courseMoodleIds,
+    }: {
+      periodId: number;
+      courseMoodleIds: number[];
+    }) => periodsApi.removeAvailableCourses(periodId, courseMoodleIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['period-available-courses'] });
       toast.success('Curso eliminado');
@@ -195,7 +223,8 @@ export default function AdminPeriods() {
       periodId: number;
       courseMoodleId: number;
       enabled: boolean;
-    }) => periodsApi.updateAvailableCourse(periodId, courseMoodleId, { enabled }),
+    }) =>
+      periodsApi.updateAvailableCourse(periodId, courseMoodleId, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['period-available-courses'] });
     },
@@ -234,7 +263,7 @@ export default function AdminPeriods() {
       const course = moodleCourses?.find((c) => c.moodleId === moodleId);
       return {
         courseMoodleId: moodleId,
-        courseName: course?.fullname,
+        courseName: course?.subjectName || course?.fullname,
         courseShortname: course?.shortname,
         categoryMoodleId: course?.categoryId,
       };
@@ -244,11 +273,12 @@ export default function AdminPeriods() {
   };
 
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { variant: any; icon: any; label: string }> = {
-      planned: { variant: 'secondary', icon: Clock, label: 'Planificado' },
-      open: { variant: 'success', icon: CheckCircle, label: 'Abierto' },
-      closed: { variant: 'error', icon: XCircle, label: 'Cerrado' },
-    };
+    const configs: Record<string, { variant: any; icon: any; label: string }> =
+      {
+        planned: { variant: 'secondary', icon: Clock, label: 'Planificado' },
+        open: { variant: 'success', icon: CheckCircle, label: 'Abierto' },
+        closed: { variant: 'error', icon: XCircle, label: 'Cerrado' },
+      };
     const config = configs[status] || configs.planned;
     const Icon = config.icon;
     return (
@@ -303,7 +333,9 @@ export default function AdminPeriods() {
                   <Input
                     id="code"
                     value={newPeriod.code}
-                    onChange={(e) => setNewPeriod({ ...newPeriod, code: e.target.value })}
+                    onChange={(e) =>
+                      setNewPeriod({ ...newPeriod, code: e.target.value })
+                    }
                     placeholder="Ej: 2026.2"
                     required
                   />
@@ -313,7 +345,9 @@ export default function AdminPeriods() {
                   <Input
                     id="name"
                     value={newPeriod.name}
-                    onChange={(e) => setNewPeriod({ ...newPeriod, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewPeriod({ ...newPeriod, name: e.target.value })
+                    }
                     placeholder="Ej: Segundo Semestre 2026"
                     required
                   />
@@ -324,7 +358,9 @@ export default function AdminPeriods() {
                     id="startDate"
                     type="date"
                     value={newPeriod.startDate}
-                    onChange={(e) => setNewPeriod({ ...newPeriod, startDate: e.target.value })}
+                    onChange={(e) =>
+                      setNewPeriod({ ...newPeriod, startDate: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -334,7 +370,9 @@ export default function AdminPeriods() {
                     id="endDate"
                     type="date"
                     value={newPeriod.endDate}
-                    onChange={(e) => setNewPeriod({ ...newPeriod, endDate: e.target.value })}
+                    onChange={(e) =>
+                      setNewPeriod({ ...newPeriod, endDate: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -343,7 +381,11 @@ export default function AdminPeriods() {
                 <Button type="submit" disabled={createMutation.isPending}>
                   Crear Período
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateForm(false)}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -375,7 +417,9 @@ export default function AdminPeriods() {
                         </div>
                         <div>
                           <div className="flex items-center gap-3 mb-1">
-                            <h3 className="text-lg font-semibold text-gray-900">{period.name}</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {period.name}
+                            </h3>
                             {getStatusBadge(period.status)}
                             {period.reenrolmentOpen && (
                               <Badge variant="info">
@@ -402,8 +446,12 @@ export default function AdminPeriods() {
               <CardContent className="p-12">
                 <div className="flex flex-col items-center justify-center text-gray-500">
                   <AlertCircle className="h-12 w-12 mb-4 text-gray-300" />
-                  <p className="text-lg font-medium">No hay períodos académicos</p>
-                  <p className="text-sm mb-4">Crea un nuevo período para comenzar</p>
+                  <p className="text-lg font-medium">
+                    No hay períodos académicos
+                  </p>
+                  <p className="text-sm mb-4">
+                    Crea un nuevo período para comenzar
+                  </p>
                   <Button onClick={() => setShowCreateForm(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Crear Período
@@ -436,7 +484,9 @@ export default function AdminPeriods() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedPeriod.name}</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {selectedPeriod.name}
+                    </h2>
                     {getStatusBadge(selectedPeriod.status)}
                     {selectedPeriod.reenrolmentOpen && (
                       <Badge variant="info">
@@ -447,20 +497,31 @@ export default function AdminPeriods() {
                   </div>
                   <p className="text-gray-500">Código: {selectedPeriod.code}</p>
                   <p className="text-sm text-gray-500 mt-2">
-                    Período: {new Date(selectedPeriod.startDate).toLocaleDateString()} -{' '}
+                    Período:{' '}
+                    {new Date(selectedPeriod.startDate).toLocaleDateString()} -{' '}
                     {new Date(selectedPeriod.endDate).toLocaleDateString()}
                   </p>
-                  {selectedPeriod.reenrolmentStartDate && selectedPeriod.reenrolmentEndDate && (
-                    <p className="text-sm text-gray-500">
-                      Reinscripción:{' '}
-                      {new Date(selectedPeriod.reenrolmentStartDate).toLocaleDateString()} -{' '}
-                      {new Date(selectedPeriod.reenrolmentEndDate).toLocaleDateString()}
-                    </p>
-                  )}
+                  {selectedPeriod.reenrolmentStartDate &&
+                    selectedPeriod.reenrolmentEndDate && (
+                      <p className="text-sm text-gray-500">
+                        Reinscripción:{' '}
+                        {new Date(
+                          selectedPeriod.reenrolmentStartDate,
+                        ).toLocaleDateString()}{' '}
+                        -{' '}
+                        {new Date(
+                          selectedPeriod.reenrolmentEndDate,
+                        ).toLocaleDateString()}
+                      </p>
+                    )}
                 </div>
                 <div className="flex gap-2">
                   {selectedPeriod.status === 'planned' && (
-                    <Button onClick={() => openPeriodMutation.mutate(selectedPeriod.id)}>
+                    <Button
+                      onClick={() =>
+                        openPeriodMutation.mutate(selectedPeriod.id)
+                      }
+                    >
                       <Play className="h-4 w-4 mr-2" />
                       Abrir Período
                     </Button>
@@ -468,7 +529,9 @@ export default function AdminPeriods() {
                   {selectedPeriod.status === 'open' && (
                     <Button
                       variant="outline"
-                      onClick={() => closePeriodMutation.mutate(selectedPeriod.id)}
+                      onClick={() =>
+                        closePeriodMutation.mutate(selectedPeriod.id)
+                      }
                     >
                       <Square className="h-4 w-4 mr-2" />
                       Cerrar Período
@@ -477,7 +540,11 @@ export default function AdminPeriods() {
                   <Button
                     variant="danger"
                     onClick={() => {
-                      if (confirm('¿Estás seguro de eliminar este período? Esta acción no se puede deshacer.')) {
+                      if (
+                        confirm(
+                          '¿Estás seguro de eliminar este período? Esta acción no se puede deshacer.',
+                        )
+                      ) {
                         deletePeriodMutation.mutate(selectedPeriod.id);
                       }
                     }}
@@ -542,7 +609,10 @@ export default function AdminPeriods() {
                         <Save className="h-4 w-4 mr-2" />
                         Guardar
                       </Button>
-                      <Button variant="outline" onClick={() => setShowReenrolmentConfig(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowReenrolmentConfig(false)}
+                      >
                         <X className="h-4 w-4 mr-2" />
                         Cancelar
                       </Button>
@@ -551,14 +621,20 @@ export default function AdminPeriods() {
                 ) : (
                   <div className="space-y-4">
                     <div className="text-sm text-gray-600">
-                      {selectedPeriod.reenrolmentStartDate && selectedPeriod.reenrolmentEndDate ? (
+                      {selectedPeriod.reenrolmentStartDate &&
+                      selectedPeriod.reenrolmentEndDate ? (
                         <>
                           <p>
                             Inicio:{' '}
-                            {new Date(selectedPeriod.reenrolmentStartDate).toLocaleDateString()}
+                            {new Date(
+                              selectedPeriod.reenrolmentStartDate,
+                            ).toLocaleDateString()}
                           </p>
                           <p>
-                            Fin: {new Date(selectedPeriod.reenrolmentEndDate).toLocaleDateString()}
+                            Fin:{' '}
+                            {new Date(
+                              selectedPeriod.reenrolmentEndDate,
+                            ).toLocaleDateString()}
                           </p>
                         </>
                       ) : (
@@ -566,7 +642,10 @@ export default function AdminPeriods() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setShowReenrolmentConfig(true)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowReenrolmentConfig(true)}
+                      >
                         <Settings className="h-4 w-4 mr-2" />
                         Configurar Fechas
                       </Button>
@@ -574,7 +653,9 @@ export default function AdminPeriods() {
                         selectedPeriod.reenrolmentEndDate &&
                         !selectedPeriod.reenrolmentOpen && (
                           <Button
-                            onClick={() => openReenrolmentMutation.mutate(selectedPeriod.id)}
+                            onClick={() =>
+                              openReenrolmentMutation.mutate(selectedPeriod.id)
+                            }
                             disabled={openReenrolmentMutation.isPending}
                           >
                             <Play className="h-4 w-4 mr-2" />
@@ -584,7 +665,9 @@ export default function AdminPeriods() {
                       {selectedPeriod.reenrolmentOpen && (
                         <Button
                           variant="outline"
-                          onClick={() => closeReenrolmentMutation.mutate(selectedPeriod.id)}
+                          onClick={() =>
+                            closeReenrolmentMutation.mutate(selectedPeriod.id)
+                          }
                           disabled={closeReenrolmentMutation.isPending}
                         >
                           <Square className="h-4 w-4 mr-2" />
@@ -605,7 +688,8 @@ export default function AdminPeriods() {
                   Cursos Disponibles
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Gestiona qué cursos estarán disponibles para reinscripción en este período.
+                  Gestiona qué cursos estarán disponibles para reinscripción en
+                  este período.
                 </p>
                 <Button onClick={() => setViewMode('courses')}>
                   <Settings className="h-4 w-4 mr-2" />
@@ -644,7 +728,9 @@ export default function AdminPeriods() {
             {/* Current Available Courses */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Cursos Habilitados</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Cursos Habilitados
+                </h3>
                 {loadingAvailableCourses ? (
                   <div className="flex justify-center py-8">
                     <Spinner />
@@ -655,17 +741,22 @@ export default function AdminPeriods() {
                       <div
                         key={course.id}
                         className={`flex items-center justify-between p-3 rounded-lg border ${
-                          course.enabled ? 'bg-green-50 border-green-200' : 'bg-gray-50'
+                          course.enabled
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-gray-50'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <BookOpen className="h-4 w-4 text-gray-400" />
                           <div>
                             <p className="font-medium text-gray-900">
-                              {course.courseName || `Curso ${course.courseMoodleId}`}
+                              {course.courseName ||
+                                `Curso ${course.courseMoodleId}`}
                             </p>
                             {course.courseShortname && (
-                              <p className="text-sm text-gray-500">{course.courseShortname}</p>
+                              <p className="text-sm text-gray-500">
+                                {course.courseShortname}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -693,7 +784,9 @@ export default function AdminPeriods() {
                             onClick={() =>
                               removeCoursesMutation.mutate({
                                 periodId: selectedPeriod.id,
-                                courseMoodleIds: [Number(course.courseMoodleId)],
+                                courseMoodleIds: [
+                                  Number(course.courseMoodleId),
+                                ],
                               })
                             }
                           >
@@ -723,7 +816,9 @@ export default function AdminPeriods() {
                   <>
                     <div className="space-y-2 max-h-72 overflow-y-auto mb-4">
                       {coursesToShow.map((course) => {
-                        const isSelected = selectedCoursesToAdd.includes(course.moodleId);
+                        const isSelected = selectedCoursesToAdd.includes(
+                          course.moodleId,
+                        );
                         return (
                           <div
                             key={course.id}
@@ -747,11 +842,17 @@ export default function AdminPeriods() {
                                   : 'border-gray-300'
                               }`}
                             >
-                              {isSelected && <CheckCircle className="h-3 w-3 text-white" />}
+                              {isSelected && (
+                                <CheckCircle className="h-3 w-3 text-white" />
+                              )}
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{course.fullname}</p>
-                              <p className="text-sm text-gray-500">{course.shortname}</p>
+                              <p className="font-medium text-gray-900">
+                                {course.subjectName || course.fullname}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {course.shortname}
+                              </p>
                             </div>
                           </div>
                         );
@@ -759,7 +860,10 @@ export default function AdminPeriods() {
                     </div>
                     <Button
                       onClick={handleAddCourses}
-                      disabled={selectedCoursesToAdd.length === 0 || addCoursesMutation.isPending}
+                      disabled={
+                        selectedCoursesToAdd.length === 0 ||
+                        addCoursesMutation.isPending
+                      }
                       className="w-full"
                     >
                       <Plus className="h-4 w-4 mr-2" />

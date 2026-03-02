@@ -23,8 +23,10 @@ import {
   Plus,
   ExternalLink,
   Trash2,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
-import { CreateCourseModal } from '@/components/admin';
 import toast from 'react-hot-toast';
 
 interface Course {
@@ -38,6 +40,7 @@ interface Course {
   enddate: string;
   studentCount?: number;
   teacherCount?: number;
+  subjectName?: string;
   lastSyncedAt: string;
 }
 
@@ -54,8 +57,26 @@ export default function AdminCourses() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSubjectName, setEditingSubjectName] = useState(false);
+  const [subjectNameValue, setSubjectNameValue] = useState('');
   const limit = 20;
+
+  const updateSubjectNameMutation = useMutation({
+    mutationFn: ({ id, subjectName }: { id: number; subjectName: string }) =>
+      coursesApi.updateSubjectName(id, subjectName),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      if (selectedCourse) {
+        setSelectedCourse({
+          ...selectedCourse,
+          subjectName: updated.subjectName,
+        });
+      }
+      setEditingSubjectName(false);
+      toast.success('Nombre de asignatura actualizado');
+    },
+    onError: () => toast.error('Error al actualizar'),
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => coursesApi.delete(id),
@@ -100,7 +121,7 @@ export default function AdminCourses() {
             Cursos sincronizados desde Moodle
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
+        <Button onClick={() => navigate('/admin/courses/create')}>
           <Plus className="h-4 w-4 mr-2" />
           Crear Curso
         </Button>
@@ -163,18 +184,24 @@ export default function AdminCourses() {
                           <tr
                             key={course.id}
                             className={`hover:bg-gray-50 cursor-pointer ${
-                              selectedCourse?.id === course.id ? 'bg-blue-50' : ''
+                              selectedCourse?.id === course.id
+                                ? 'bg-blue-50'
+                                : ''
                             }`}
                             onClick={() => setSelectedCourse(course)}
                           >
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${course.visible ? 'bg-green-100' : 'bg-gray-100'}`}>
-                                  <BookOpen className={`h-4 w-4 ${course.visible ? 'text-green-600' : 'text-gray-400'}`} />
+                                <div
+                                  className={`p-2 rounded-lg ${course.visible ? 'bg-green-100' : 'bg-gray-100'}`}
+                                >
+                                  <BookOpen
+                                    className={`h-4 w-4 ${course.visible ? 'text-green-600' : 'text-gray-400'}`}
+                                  />
                                 </div>
                                 <div>
                                   <p className="font-medium text-gray-900 text-sm">
-                                    {course.fullname}
+                                    {course.subjectName || course.fullname}
                                   </p>
                                   <p className="text-xs text-gray-500">
                                     ID Moodle: {course.moodleId}
@@ -196,7 +223,11 @@ export default function AdminCourses() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <Badge variant={course.visible ? 'success' : 'secondary'}>
+                              <Badge
+                                variant={
+                                  course.visible ? 'success' : 'secondary'
+                                }
+                              >
                                 {course.visible ? 'Activo' : 'Inactivo'}
                               </Badge>
                             </td>
@@ -262,7 +293,9 @@ export default function AdminCourses() {
                 <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                   <BookOpen className="h-12 w-12 mb-4 text-gray-300" />
                   <p>No hay cursos sincronizados</p>
-                  <p className="text-sm">Ejecuta una sincronización desde Moodle</p>
+                  <p className="text-sm">
+                    Ejecuta una sincronización desde Moodle
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -285,6 +318,65 @@ export default function AdminCourses() {
                       <p className="font-medium">{selectedCourse.fullname}</p>
                     </div>
 
+                    {/* Nombre Asignatura - Editable */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500 uppercase">
+                          Asignatura
+                        </p>
+                        {!editingSubjectName && (
+                          <button
+                            onClick={() => {
+                              setSubjectNameValue(
+                                selectedCourse.subjectName || '',
+                              );
+                              setEditingSubjectName(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      {editingSubjectName ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Input
+                            value={subjectNameValue}
+                            onChange={(e) =>
+                              setSubjectNameValue(e.target.value)
+                            }
+                            placeholder="Nombre de asignatura"
+                            className="h-8 text-sm"
+                          />
+                          <button
+                            onClick={() =>
+                              updateSubjectNameMutation.mutate({
+                                id: selectedCourse.id,
+                                subjectName: subjectNameValue,
+                              })
+                            }
+                            className="p-1 text-green-600 hover:text-green-700"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingSubjectName(false)}
+                            className="p-1 text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="font-medium text-sm">
+                          {selectedCourse.subjectName || (
+                            <span className="text-gray-400 italic">
+                              Sin asignar
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Código</p>
                       <p className="font-mono">{selectedCourse.shortname}</p>
@@ -292,36 +384,50 @@ export default function AdminCourses() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">ID Moodle</p>
+                        <p className="text-xs text-gray-500 uppercase">
+                          ID Moodle
+                        </p>
                         <p>{selectedCourse.moodleId}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Categoría</p>
+                        <p className="text-xs text-gray-500 uppercase">
+                          Categoría
+                        </p>
                         <p>{selectedCourse.categoryId}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Fecha Inicio</p>
+                        <p className="text-xs text-gray-500 uppercase">
+                          Fecha Inicio
+                        </p>
                         <p className="text-sm">
                           {selectedCourse.startdate
-                            ? new Date(selectedCourse.startdate).toLocaleDateString()
+                            ? new Date(
+                                selectedCourse.startdate,
+                              ).toLocaleDateString()
                             : '-'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Fecha Fin</p>
+                        <p className="text-xs text-gray-500 uppercase">
+                          Fecha Fin
+                        </p>
                         <p className="text-sm">
                           {selectedCourse.enddate
-                            ? new Date(selectedCourse.enddate).toLocaleDateString()
+                            ? new Date(
+                                selectedCourse.enddate,
+                              ).toLocaleDateString()
                             : '-'}
                         </p>
                       </div>
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500 uppercase mb-2">Estadísticas</p>
+                      <p className="text-xs text-gray-500 uppercase mb-2">
+                        Estadísticas
+                      </p>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-blue-50 rounded-lg p-3 text-center">
                           <GraduationCap className="h-5 w-5 text-blue-600 mx-auto mb-1" />
@@ -341,10 +447,14 @@ export default function AdminCourses() {
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Última Sincronización</p>
+                      <p className="text-xs text-gray-500 uppercase">
+                        Última Sincronización
+                      </p>
                       <p className="text-sm">
                         {selectedCourse.lastSyncedAt
-                          ? new Date(selectedCourse.lastSyncedAt).toLocaleString()
+                          ? new Date(
+                              selectedCourse.lastSyncedAt,
+                            ).toLocaleString()
                           : 'No sincronizado'}
                       </p>
                     </div>
@@ -352,7 +462,9 @@ export default function AdminCourses() {
                     <div className="flex gap-2 mt-4">
                       <Button
                         className="flex-1"
-                        onClick={() => navigate(`/admin/courses/${selectedCourse.id}`)}
+                        onClick={() =>
+                          navigate(`/admin/courses/${selectedCourse.id}`)
+                        }
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Ver Detalle
@@ -360,7 +472,11 @@ export default function AdminCourses() {
                       <Button
                         variant="danger"
                         onClick={() => {
-                          if (confirm('¿Eliminar este curso? Se eliminara solo de la base de datos local, no de Moodle.')) {
+                          if (
+                            confirm(
+                              '¿Eliminar este curso? Se eliminara solo de la base de datos local, no de Moodle.',
+                            )
+                          ) {
                             deleteMutation.mutate(selectedCourse.id);
                           }
                         }}
@@ -374,19 +490,15 @@ export default function AdminCourses() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-gray-500">
                   <BookOpen className="h-12 w-12 mb-4 text-gray-300" />
-                  <p className="text-sm">Selecciona un curso para ver detalles</p>
+                  <p className="text-sm">
+                    Selecciona un curso para ver detalles
+                  </p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Create Course Modal */}
-      <CreateCourseModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
     </div>
   );
 }

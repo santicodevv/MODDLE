@@ -18,6 +18,7 @@ import { MoodleGrade } from '../../moodle-integration/entities/moodle-grade.enti
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
 import { User } from '../../users/entities/user.entity';
+import { CourseTeacher } from '../entities/course-teacher.entity';
 import { OutboxService } from '../../sync/services/outbox.service';
 import { AuditService } from '../../sync/services/audit.service';
 import { OutboxEventType } from '../../sync/entities/outbox-event.entity';
@@ -50,6 +51,8 @@ export class GradesService {
     private readonly moodleUserRepository: Repository<MoodleUser>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(CourseTeacher)
+    private readonly courseTeacherRepository: Repository<CourseTeacher>,
     private readonly outboxService: OutboxService,
     private readonly auditService: AuditService,
     private readonly moodleSyncService: MoodleSyncService,
@@ -449,9 +452,42 @@ export class GradesService {
   // ==================== EDIT SESSION METHODS ====================
 
   /**
-   * Get all courses for dropdown
+   * Get courses for dropdown - teachers see only their courses, admins see all
    */
-  async getCourses() {
+  async getCourses(userId?: number, isAdmin?: boolean) {
+    if (!isAdmin && userId) {
+      const courseMoodleIds = new Set<number>();
+
+      // 1. Check moodle_enrolments for teacher/editingteacher roles
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (user?.moodleUserId) {
+        const enrolments = await this.enrolmentRepository
+          .createQueryBuilder('e')
+          .where('e.userMoodleId = :moodleId', { moodleId: user.moodleUserId })
+          .andWhere('(e.roleCode = :r1 OR e.roleCode = :r2)', { r1: 'editingteacher', r2: 'teacher' })
+          .getMany();
+
+        enrolments.forEach((e) => courseMoodleIds.add(Number(e.courseMoodleId)));
+      }
+
+      // 2. Check course_teachers table (manual assignments)
+      const teacherAssignments = await this.courseTeacherRepository.find({
+        where: { teacherId: userId },
+      });
+      teacherAssignments.forEach((a) => courseMoodleIds.add(Number(a.courseMoodleId)));
+
+      if (courseMoodleIds.size === 0) {
+        return [];
+      }
+
+      return this.courseRepository
+        .createQueryBuilder('course')
+        .where('course.moodleId IN (:...ids)', { ids: [...courseMoodleIds] })
+        .orderBy('course.fullname', 'ASC')
+        .getMany();
+    }
+
+    // Admin sees all courses
     return this.courseRepository.find({
       order: { fullname: 'ASC' },
     });
@@ -605,7 +641,7 @@ export class GradesService {
       course: course
         ? {
             moodleId: Number(course.moodleId),
-            fullname: course.fullname,
+            fullname: course.subjectName || course.fullname,
             shortname: course.shortname,
           }
         : null,

@@ -1,8 +1,8 @@
 // Admin Dashboard
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context';
 import { api } from '@/lib';
-import { Card, CardContent, Badge, Spinner } from '@/components/ui';
+import { Card, CardContent, Badge, Spinner, Button } from '@/components/ui';
 import {
   Users,
   BookOpen,
@@ -13,8 +13,10 @@ import {
   TrendingUp,
   CheckCircle,
   XCircle,
-  Calendar
+  Calendar,
+  ClipboardList,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface DashboardStats {
   totalUsers: number;
@@ -46,6 +48,7 @@ interface RecentActivity {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -61,7 +64,7 @@ export default function AdminDashboard() {
     queryKey: ['admin-recent-activity'],
     queryFn: async () => {
       const response = await api.get<RecentActivity[]>('/audit', {
-        params: { limit: 5 }
+        params: { limit: 5 },
       });
       return response.data;
     },
@@ -73,6 +76,30 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const response = await api.get('/re-enrolments/pending');
       return response.data;
+    },
+  });
+
+  // Fetch grade edit session status
+  const { data: editSessionStatus } = useQuery({
+    queryKey: ['edit-session-status'],
+    queryFn: async () => {
+      const response = await api.get('/grades/edit-session/status');
+      return response.data;
+    },
+  });
+
+  // Toggle edit session mutation
+  const toggleEditSession = useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/grades/edit-session/toggle');
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['edit-session-status'] });
+      toast.success(data.message || 'Estado actualizado');
+    },
+    onError: () => {
+      toast.error('Error al cambiar el estado');
     },
   });
 
@@ -100,7 +127,9 @@ export default function AdminDashboard() {
     },
     {
       label: 'Reinscripciones Pendientes',
-      value: Array.isArray(pendingReenrolments) ? pendingReenrolments.length : '-',
+      value: Array.isArray(pendingReenrolments)
+        ? pendingReenrolments.length
+        : '-',
       icon: RefreshCw,
       color: 'text-orange-600',
       bg: 'bg-orange-100',
@@ -113,9 +142,7 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">
           Panel de Administración
         </h1>
-        <p className="mt-1 text-gray-600">
-          Bienvenido, {user?.displayName}
-        </p>
+        <p className="mt-1 text-gray-600">Bienvenido, {user?.displayName}</p>
       </div>
 
       {/* Stats Grid */}
@@ -165,9 +192,17 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="font-medium text-gray-900">{stats.activePeriod.name}</p>
+                    <p className="font-medium text-gray-900">
+                      {stats.activePeriod.name}
+                    </p>
                     <p className="text-sm text-gray-500">
-                      {new Date(stats.activePeriod.startDate).toLocaleDateString()} - {new Date(stats.activePeriod.endDate).toLocaleDateString()}
+                      {new Date(
+                        stats.activePeriod.startDate,
+                      ).toLocaleDateString()}{' '}
+                      -{' '}
+                      {new Date(
+                        stats.activePeriod.endDate,
+                      ).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -178,6 +213,46 @@ export default function AdminDashboard() {
                 No hay período académico activo
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Grade Edit Session Toggle */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Edición de Notas
+              </h3>
+              {editSessionStatus?.isActive ? (
+                <Badge variant="success">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Habilitada
+                </Badge>
+              ) : (
+                <Badge variant="secondary">
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Deshabilitada
+                </Badge>
+              )}
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                {editSessionStatus?.isActive
+                  ? 'Los profesores pueden editar calificaciones. Una vez que guardan una nota, no podrán modificarla.'
+                  : 'Los profesores no pueden editar calificaciones actualmente.'}
+              </p>
+              <Button
+                variant={editSessionStatus?.isActive ? 'danger' : 'primary'}
+                className="w-full"
+                onClick={() => toggleEditSession.mutate()}
+                disabled={toggleEditSession.isPending}
+              >
+                <ClipboardList className="h-4 w-4 mr-2" />
+                {editSessionStatus?.isActive
+                  ? 'Deshabilitar Edición'
+                  : 'Habilitar Edición'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -196,19 +271,27 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-gray-600">Usuarios Moodle</span>
-                <span className="text-gray-900 font-medium">{stats?.totalUsers ?? '-'}</span>
+                <span className="text-gray-900 font-medium">
+                  {stats?.totalUsers ?? '-'}
+                </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-gray-600">Cursos Sincronizados</span>
-                <span className="text-gray-900 font-medium">{stats?.totalCourses ?? '-'}</span>
+                <span className="text-gray-900 font-medium">
+                  {stats?.totalCourses ?? '-'}
+                </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-gray-600">Inscripciones</span>
-                <span className="text-gray-900 font-medium">{stats?.totalEnrolments ?? '-'}</span>
+                <span className="text-gray-900 font-medium">
+                  {stats?.totalEnrolments ?? '-'}
+                </span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600">Calificaciones</span>
-                <span className="text-gray-900 font-medium">{stats?.totalGrades ?? '-'}</span>
+                <span className="text-gray-900 font-medium">
+                  {stats?.totalGrades ?? '-'}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -234,11 +317,17 @@ export default function AdminDashboard() {
                     className="flex items-center justify-between py-2 border-b last:border-0"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        activity.action === 'CREATE' ? 'bg-green-100' :
-                        activity.action === 'UPDATE' ? 'bg-blue-100' :
-                        activity.action === 'DELETE' ? 'bg-red-100' : 'bg-gray-100'
-                      }`}>
+                      <div
+                        className={`p-2 rounded-full ${
+                          activity.action === 'CREATE'
+                            ? 'bg-green-100'
+                            : activity.action === 'UPDATE'
+                              ? 'bg-blue-100'
+                              : activity.action === 'DELETE'
+                                ? 'bg-red-100'
+                                : 'bg-gray-100'
+                        }`}
+                      >
                         {activity.action === 'CREATE' ? (
                           <CheckCircle className="h-4 w-4 text-green-600" />
                         ) : activity.action === 'DELETE' ? (
@@ -251,7 +340,9 @@ export default function AdminDashboard() {
                         <p className="text-sm font-medium text-gray-900">
                           {activity.action} - {activity.entity}
                         </p>
-                        <p className="text-xs text-gray-500">{activity.actor?.email || 'Sistema'}</p>
+                        <p className="text-xs text-gray-500">
+                          {activity.actor?.email || 'Sistema'}
+                        </p>
                       </div>
                     </div>
                     <span className="text-xs text-gray-400">

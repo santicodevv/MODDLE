@@ -36,7 +36,9 @@ export default function AdminCourseDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'teacher'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'teacher'>(
+    'all',
+  );
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState('');
 
@@ -67,30 +69,37 @@ export default function AdminCourseDetail() {
   });
 
   // Filter available teachers (not already assigned)
-  const availableTeachers = allTeachers?.users?.filter((user) => {
-    // Check if user has TEACHER role
-    const hasTeacherRole = user.roles?.some((r) => r.code === 'TEACHER');
-    if (!hasTeacherRole) return false;
+  const availableTeachers =
+    allTeachers?.users?.filter((user) => {
+      // Check if user has TEACHER role
+      const hasTeacherRole = user.roles?.some((r) => r.code === 'TEACHER');
+      if (!hasTeacherRole) return false;
 
-    // Check if already assigned
-    const isAssigned = assignedTeachers?.some((at) => at.teacherId === user.id);
-    if (isAssigned) return false;
-
-    // Apply search filter
-    if (teacherSearch) {
-      const searchLower = teacherSearch.toLowerCase();
-      return (
-        user.displayName?.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
+      // Check if already assigned
+      const isAssigned = assignedTeachers?.some(
+        (at) => at.teacherId === user.id,
       );
-    }
-    return true;
-  }) || [];
+      if (isAssigned) return false;
+
+      // Apply search filter
+      if (teacherSearch) {
+        const searchLower = teacherSearch.toLowerCase();
+        return (
+          user.displayName?.toLowerCase().includes(searchLower) ||
+          user.email.toLowerCase().includes(searchLower)
+        );
+      }
+      return true;
+    }) || [];
 
   // Mutations for teacher management
   const assignTeacherMutation = useMutation({
     mutationFn: (teacherId: number) =>
-      coursesApi.assignTeachers(course!.moodleId, [teacherId], course!.fullname),
+      coursesApi.assignTeachers(
+        course!.moodleId,
+        [teacherId],
+        course!.fullname,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['course-teachers', course?.moodleId],
@@ -130,26 +139,33 @@ export default function AdminCourseDetail() {
     },
   });
 
-  const filteredUsers = enrolledUsers?.filter((user: EnrolledUserWithDetails) => {
-    const matchesSearch =
-      !search ||
-      user.firstname.toLowerCase().includes(search.toLowerCase()) ||
-      user.lastname.toLowerCase().includes(search.toLowerCase()) ||
-      user.email.toLowerCase().includes(search.toLowerCase()) ||
-      user.username.toLowerCase().includes(search.toLowerCase());
+  const filteredUsers = enrolledUsers?.filter(
+    (user: EnrolledUserWithDetails) => {
+      const matchesSearch =
+        !search ||
+        user.firstname.toLowerCase().includes(search.toLowerCase()) ||
+        user.lastname.toLowerCase().includes(search.toLowerCase()) ||
+        user.email.toLowerCase().includes(search.toLowerCase()) ||
+        user.username.toLowerCase().includes(search.toLowerCase());
 
-    const matchesRole =
-      roleFilter === 'all' ||
-      (roleFilter === 'student' && user.roleCode === 'student') ||
-      (roleFilter === 'teacher' && user.roleCode.toLowerCase().includes('teacher'));
+      const matchesRole =
+        roleFilter === 'all' ||
+        (roleFilter === 'student' && user.roleCode === 'student') ||
+        (roleFilter === 'teacher' &&
+          user.roleCode.toLowerCase().includes('teacher'));
 
-    return matchesSearch && matchesRole;
-  });
+      return matchesSearch && matchesRole;
+    },
+  );
 
-  const students = enrolledUsers?.filter((u: EnrolledUserWithDetails) => u.roleCode === 'student') || [];
-  const teachers = enrolledUsers?.filter((u: EnrolledUserWithDetails) =>
-    u.roleCode.toLowerCase().includes('teacher')
-  ) || [];
+  const students =
+    enrolledUsers?.filter(
+      (u: EnrolledUserWithDetails) => u.roleCode === 'student',
+    ) || [];
+  const teachers =
+    enrolledUsers?.filter((u: EnrolledUserWithDetails) =>
+      u.roleCode.toLowerCase().includes('teacher'),
+    ) || [];
 
   if (courseLoading) {
     return (
@@ -164,7 +180,11 @@ export default function AdminCourseDetail() {
       <div className="text-center py-12">
         <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-4" />
         <p className="text-gray-500">Curso no encontrado</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate('/admin/courses')}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => navigate('/admin/courses')}
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Cursos
         </Button>
@@ -187,12 +207,17 @@ export default function AdminCourseDetail() {
         </Button>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{course.fullname}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {course.subjectName || course.fullname}
+            </h1>
             <p className="mt-1 text-gray-600">
               Detalles del curso y personas inscritas
             </p>
           </div>
-          <Badge variant={course.visible ? 'success' : 'secondary'} className="text-sm">
+          <Badge
+            variant={course.visible ? 'success' : 'secondary'}
+            className="text-sm"
+          >
             {course.visible ? (
               <>
                 <Eye className="h-3 w-3 mr-1" />
@@ -276,12 +301,18 @@ export default function AdminCourseDetail() {
             </h3>
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 uppercase">Nombre Completo</p>
-                <p className="font-medium">{course.fullname}</p>
+                <p className="text-xs text-gray-500 uppercase">
+                  Nombre Completo
+                </p>
+                <p className="font-medium">
+                  {course.subjectName || course.fullname}
+                </p>
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 uppercase">Nombre Corto (C&oacute;digo)</p>
+                <p className="text-xs text-gray-500 uppercase">
+                  Nombre Corto (C&oacute;digo)
+                </p>
                 <p className="font-mono">{course.shortname}</p>
               </div>
 
@@ -297,13 +328,17 @@ export default function AdminCourseDetail() {
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 uppercase">Categor&iacute;a ID</p>
+                <p className="text-xs text-gray-500 uppercase">
+                  Categor&iacute;a ID
+                </p>
                 <p>{course.categoryId || '-'}</p>
               </div>
 
               {course.idnumber && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">N&uacute;mero ID</p>
+                  <p className="text-xs text-gray-500 uppercase">
+                    N&uacute;mero ID
+                  </p>
                   <p>{course.idnumber}</p>
                 </div>
               )}
@@ -355,7 +390,9 @@ export default function AdminCourseDetail() {
 
               {course.summary && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Descripci&oacute;n</p>
+                  <p className="text-xs text-gray-500 uppercase">
+                    Descripci&oacute;n
+                  </p>
                   <p className="text-sm text-gray-600 mt-1">{course.summary}</p>
                 </div>
               )}
@@ -437,7 +474,10 @@ export default function AdminCourseDetail() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filteredUsers.map((user: EnrolledUserWithDetails) => (
-                      <tr key={`${user.moodleId}-${user.roleCode}`} className="hover:bg-gray-50">
+                      <tr
+                        key={`${user.moodleId}-${user.roleCode}`}
+                        className="hover:bg-gray-50"
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div
@@ -463,26 +503,34 @@ export default function AdminCourseDetail() {
                               <p className="font-medium text-gray-900">
                                 {user.firstname} {user.lastname}
                               </p>
-                              <p className="text-xs text-gray-500">@{user.username}</p>
+                              <p className="text-xs text-gray-500">
+                                @{user.username}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <Badge
-                            variant={user.roleCode === 'student' ? 'default' : 'secondary'}
+                            variant={
+                              user.roleCode === 'student'
+                                ? 'default'
+                                : 'secondary'
+                            }
                           >
                             {user.roleCode === 'student'
                               ? 'Estudiante'
                               : user.roleCode === 'editingteacher'
-                              ? 'Profesor Editor'
-                              : 'Profesor'}
+                                ? 'Profesor Editor'
+                                : 'Profesor'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1 text-sm text-gray-600">
                             <Clock className="h-3 w-3" />
                             {user.lastCourseAccess
-                              ? new Date(user.lastCourseAccess).toLocaleDateString('es-ES', {
+                              ? new Date(
+                                  user.lastCourseAccess,
+                                ).toLocaleDateString('es-ES', {
                                   day: '2-digit',
                                   month: 'short',
                                   year: 'numeric',
@@ -493,8 +541,16 @@ export default function AdminCourseDetail() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <Badge variant={user.enrolStatus === 'active' ? 'success' : 'secondary'}>
-                            {user.enrolStatus === 'active' ? 'Activo' : 'Suspendido'}
+                          <Badge
+                            variant={
+                              user.enrolStatus === 'active'
+                                ? 'success'
+                                : 'secondary'
+                            }
+                          >
+                            {user.enrolStatus === 'active'
+                              ? 'Activo'
+                              : 'Suspendido'}
                           </Badge>
                         </td>
                       </tr>
@@ -506,7 +562,9 @@ export default function AdminCourseDetail() {
               <div className="flex flex-col items-center justify-center py-8 text-gray-500">
                 <Users className="h-12 w-12 mb-4 text-gray-300" />
                 <p>No hay personas inscritas</p>
-                {search && <p className="text-sm">Intenta con otra b&uacute;squeda</p>}
+                {search && (
+                  <p className="text-sm">Intenta con otra b&uacute;squeda</p>
+                )}
               </div>
             )}
           </CardContent>
@@ -521,10 +579,7 @@ export default function AdminCourseDetail() {
               <UserCheck className="h-5 w-5 inline mr-2" />
               Gestionar Profesores Asignados
             </h3>
-            <Button
-              size="sm"
-              onClick={() => setShowAddTeacherModal(true)}
-            >
+            <Button size="sm" onClick={() => setShowAddTeacherModal(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Agregar Profesor
             </Button>
@@ -549,7 +604,9 @@ export default function AdminCourseDetail() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">
-                          {teacher.teacher?.displayName || teacher.teacher?.email || `ID: ${teacher.teacherId}`}
+                          {teacher.teacher?.displayName ||
+                            teacher.teacher?.email ||
+                            `ID: ${teacher.teacherId}`}
                         </p>
                         {teacher.isPrimary && (
                           <Badge variant="warning" className="text-xs">
@@ -568,7 +625,9 @@ export default function AdminCourseDetail() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setPrimaryMutation.mutate(teacher.teacherId)}
+                        onClick={() =>
+                          setPrimaryMutation.mutate(teacher.teacherId)
+                        }
                         disabled={setPrimaryMutation.isPending}
                         title="Establecer como principal"
                       >
@@ -596,7 +655,9 @@ export default function AdminCourseDetail() {
             <div className="text-center py-6 text-gray-500">
               <UserCheck className="h-10 w-10 mx-auto text-gray-300 mb-2" />
               <p>No hay profesores asignados a este curso</p>
-              <p className="text-sm">Haz clic en "Agregar Profesor" para asignar uno</p>
+              <p className="text-sm">
+                Haz clic en "Agregar Profesor" para asignar uno
+              </p>
             </div>
           )}
         </CardContent>
@@ -649,7 +710,9 @@ export default function AdminCourseDetail() {
                         <UserCheck className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium">{teacher.displayName || teacher.email}</p>
+                        <p className="font-medium">
+                          {teacher.displayName || teacher.email}
+                        </p>
                         <p className="text-sm text-gray-500">{teacher.email}</p>
                       </div>
                     </div>

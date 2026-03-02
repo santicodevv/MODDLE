@@ -245,6 +245,19 @@ export class CoursesService {
   }
 
   /**
+   * Update the subject name of a course (local only)
+   */
+  async updateSubjectName(courseId: number, subjectName: string) {
+    const course = await this.courseRepository.findOne({ where: { id: courseId } });
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
+    course.subjectName = subjectName;
+    await this.courseRepository.save(course);
+    return course;
+  }
+
+  /**
    * Create a new course in Moodle and save locally
    */
   async createCourse(data: CreateCourseDto) {
@@ -323,6 +336,9 @@ export class CoursesService {
     }
     if (data.enddate) {
       course.enddate = new Date(data.enddate);
+    }
+    if (data.subjectName) {
+      course.subjectName = data.subjectName;
     }
 
     await this.courseRepository.save(course);
@@ -498,9 +514,9 @@ export class CoursesService {
       },
     });
 
-    const existingTeacherIds = existingAssignments.map((a) => a.teacherId);
+    const existingTeacherIds = existingAssignments.map((a) => Number(a.teacherId));
     const newTeacherIds = teacherIds.filter(
-      (id) => !existingTeacherIds.includes(id),
+      (id) => !existingTeacherIds.includes(Number(id)),
     );
 
     if (newTeacherIds.length === 0) {
@@ -563,11 +579,20 @@ export class CoursesService {
    * Get teachers assigned to a course
    */
   async getTeachersForCourse(courseMoodleId: number): Promise<CourseTeacher[]> {
-    return this.courseTeacherRepository.find({
-      where: { courseMoodleId },
-      relations: ['teacher'],
-      order: { isPrimary: 'DESC', createdAt: 'ASC' },
-    });
+    try {
+      return await this.courseTeacherRepository.find({
+        where: { courseMoodleId },
+        relations: ['teacher'],
+        order: { isPrimary: 'DESC', createdAt: 'ASC' },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error fetching teachers for course ${courseMoodleId}: ${error.message}`,
+        error.stack,
+      );
+      // Return empty array instead of crashing 
+      return [];
+    }
   }
 
   /**

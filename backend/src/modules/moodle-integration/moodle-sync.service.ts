@@ -248,6 +248,11 @@ export class MoodleSyncService {
           } else {
             await this.moodleEnrolmentRepository.save(enrolmentData);
           }
+
+          // Auto-assign TEACHER role if enrolled as teacher/editingteacher
+          if (role.shortname === 'teacher' || role.shortname === 'editingteacher') {
+            await this.ensureTeacherRole(enrollment.id);
+          }
         }
       }
 
@@ -256,6 +261,94 @@ export class MoodleSyncService {
       this.logger.error(`Error syncing enrolments for course ${courseMoodleId}: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Ensure a Moodle user with teacher enrollment gets the TEACHER role in app_users
+   */
+  private async ensureTeacherRole(moodleUserId: number): Promise<void> {
+    try {
+      const appUser = await this.appUserRepository.findOne({
+        where: { moodleUserId },
+        relations: ['roles'],
+      });
+
+      if (!appUser) return;
+
+      // Check if already has TEACHER role
+      if (appUser.roles.some((r) => r.code === RoleCode.TEACHER)) return;
+
+      const teacherRole = await this.roleRepository.findOne({
+        where: { code: RoleCode.TEACHER },
+      });
+
+      if (!teacherRole) {
+        this.logger.warn('TEACHER role not found in database');
+        return;
+      }
+
+      // Remove STUDENT role and add TEACHER role
+      appUser.roles = appUser.roles.filter((r) => r.code !== RoleCode.STUDENT);
+      appUser.roles.push(teacherRole);
+      await this.appUserRepository.save(appUser);
+      this.logger.log(`Auto-assigned TEACHER role (removed STUDENT) to user ${appUser.email} (moodleId: ${moodleUserId})`);
+    } catch (error) {
+      this.logger.warn(`Failed to auto-assign TEACHER role for moodleId ${moodleUserId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Scan ALL existing moodle_enrolments for teacher/editingteacher roles
+   * and assign the TEACHER role to corresponding app_users.
+   * Runs on startup so no manual sync needed.
+   */
+  async fixTeacherRoles(): Promise<number> {
+    this.logger.log('Scanning enrolments to fix teacher roles...');
+
+    // Get all enrolments with teacher roles
+    const teacherEnrolments = await this.moodleEnrolmentRepository
+      .createQueryBuilder('e')
+      .select('DISTINCT e.userMoodleId', 'userMoodleId')
+      .where('e.roleCode IN (:...roles)', { roles: ['teacher', 'editingteacher'] })
+      .getRawMany();
+
+    const teacherMoodleIds = teacherEnrolments.map((e) => Number(e.userMoodleId));
+
+    if (teacherMoodleIds.length === 0) {
+      this.logger.log('No teacher enrolments found.');
+      return 0;
+    }
+
+    const teacherRole = await this.roleRepository.findOne({
+      where: { code: RoleCode.TEACHER },
+    });
+
+    if (!teacherRole) {
+      this.logger.warn('TEACHER role not found in database');
+      return 0;
+    }
+
+    let assignedCount = 0;
+
+    for (const moodleId of teacherMoodleIds) {
+      const appUser = await this.appUserRepository.findOne({
+        where: { moodleUserId: moodleId },
+        relations: ['roles'],
+      });
+
+      if (!appUser) continue;
+      if (appUser.roles.some((r) => r.code === RoleCode.TEACHER)) continue;
+
+      // Remove STUDENT role and add TEACHER role
+      appUser.roles = appUser.roles.filter((r) => r.code !== RoleCode.STUDENT);
+      appUser.roles.push(teacherRole);
+      await this.appUserRepository.save(appUser);
+      assignedCount++;
+      this.logger.log(`Fixed: assigned TEACHER role (removed STUDENT) to ${appUser.email}`);
+    }
+
+    this.logger.log(`Teacher role fix complete. Assigned ${assignedCount} new TEACHER roles.`);
+    return assignedCount;
   }
 
   async syncAllEnrolments(): Promise<number> {

@@ -44,4 +44,9 @@ export class CreateCourseDto {
   @IsString()
   @IsOptional()
   enddate?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  subjectName?: string;
 }

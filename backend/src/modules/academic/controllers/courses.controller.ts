@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -121,6 +122,18 @@ export class CoursesController {
   async deleteCourse(@Param('id', ParseIntPipe) id: number) {
     await this.coursesService.delete(id);
     return { success: true };
+  }
+
+  /**
+   * Update course subject name (local only)
+   */
+  @Roles(RoleCode.ADMIN)
+  @Patch(':id/subject-name')
+  async updateSubjectName(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { subjectName: string },
+  ) {
+    return this.coursesService.updateSubjectName(id, body.subjectName);
   }
 
   // =====================

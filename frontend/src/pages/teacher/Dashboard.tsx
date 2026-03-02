@@ -4,7 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context';
 import { coursesApi } from '@/api/courses.api';
 import { Card, CardContent, Spinner, Button } from '@/components/ui';
-import { BookOpen, Users, ClipboardList, CheckCircle, ArrowRight } from 'lucide-react';
+import {
+  BookOpen,
+  Users,
+  ClipboardList,
+  CheckCircle,
+  ArrowRight,
+} from 'lucide-react';
 
 interface TeacherCourse {
   id: number;
@@ -28,7 +34,10 @@ export default function TeacherDashboard() {
   });
 
   const courses = coursesData?.data || [];
-  const totalStudents = courses.reduce((sum: number, c: TeacherCourse) => sum + (c.enrolledCount || 0), 0);
+  const totalStudents = courses.reduce(
+    (sum: number, c: TeacherCourse) => sum + (c.enrolledCount || 0),
+    0,
+  );
 
   const stats = [
     {
@@ -82,7 +91,9 @@ export default function TeacherDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{stat.label}</p>
-                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                  <p className={`text-2xl font-bold ${stat.color}`}>
+                    {stat.value}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -97,7 +108,11 @@ export default function TeacherDashboard() {
               <h3 className="text-lg font-semibold text-gray-900">
                 Mis Cursos
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/courses')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/teacher/courses')}
+              >
                 Ver todos
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
@@ -112,11 +127,17 @@ export default function TeacherDashboard() {
                   <div
                     key={course.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/teacher/grades/${course.moodleId}`)}
+                    onClick={() =>
+                      navigate(`/teacher/grades/${course.moodleId}`)
+                    }
                   >
                     <div>
-                      <p className="font-medium text-gray-900">{course.shortname}</p>
-                      <p className="text-sm text-gray-500">{course.fullname}</p>
+                      <p className="font-medium text-gray-900">
+                        {course.shortname}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {course.subjectName || course.fullname}
+                      </p>
                     </div>
                     <Button variant="outline" size="sm">
                       <ClipboardList className="h-4 w-4 mr-1" />
@@ -151,7 +172,9 @@ export default function TeacherDashboard() {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => navigate(`/teacher/grades/${courses[0].moodleId}`)}
+                  onClick={() =>
+                    navigate(`/teacher/grades/${courses[0].moodleId}`)
+                  }
                 >
                   <ClipboardList className="h-4 w-4 mr-2" />
                   Registrar calificaciones
