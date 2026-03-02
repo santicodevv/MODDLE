@@ -41,7 +41,14 @@ export class UsersService {
       passwordHash: hashedPassword,
       displayName: createUserDto.displayName,
       moodleUserId: createUserDto.moodleUserId,
+      isActive: createUserDto.isActive ?? true,
     });
+
+    // Assign roles if provided
+    if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
+      const roles = await this.roleRepository.findByIds(createUserDto.roleIds);
+      user.roles = roles;
+    }
 
     return this.userRepository.save(user);
   }

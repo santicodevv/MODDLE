@@ -168,4 +168,14 @@ export class ReEnrolmentController {
   async getByPeriod(@Param('periodId', ParseIntPipe) periodId: number) {
     return this.reEnrolmentService.findByPeriod(periodId);
   }
+
+  @Roles(RoleCode.ADMIN)
+  @Delete('admin/:id')
+  async adminDelete(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: User,
+  ) {
+    await this.reEnrolmentService.adminDelete(id, user.id);
+    return { success: true };
+  }
 }

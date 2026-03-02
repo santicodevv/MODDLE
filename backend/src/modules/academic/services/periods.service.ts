@@ -11,6 +11,8 @@ import {
   AcademicPeriodStatus,
 } from '../entities/academic-period.entity';
 import { PeriodAvailableCourse } from '../entities/period-available-course.entity';
+import { ReEnrolmentRequest } from '../entities/re-enrolment-request.entity';
+import { ReEnrolmentLine } from '../entities/re-enrolment-line.entity';
 import { CreatePeriodDto } from '../dto/create-period.dto';
 import {
   ReenrolmentConfigDto,
@@ -26,6 +28,10 @@ export class PeriodsService {
     private readonly periodRepository: Repository<AcademicPeriod>,
     @InjectRepository(PeriodAvailableCourse)
     private readonly availableCourseRepository: Repository<PeriodAvailableCourse>,
+    @InjectRepository(ReEnrolmentRequest)
+    private readonly reenrolmentRequestRepository: Repository<ReEnrolmentRequest>,
+    @InjectRepository(ReEnrolmentLine)
+    private readonly reenrolmentLineRepository: Repository<ReEnrolmentLine>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -462,6 +468,38 @@ export class PeriodsService {
       entity: 'period_available_courses',
       entityKey: periodId.toString(),
       afterData: { periodId, removedCourses: courseMoodleIds },
+      source: 'app',
+    });
+  }
+
+  async delete(id: number, actorUserId?: number): Promise<void> {
+    const period = await this.findOne(id);
+
+    // Obtener todas las solicitudes de reinscripción del período
+    const requests = await this.reenrolmentRequestRepository.find({
+      where: { periodId: id },
+    });
+
+    // Eliminar líneas de reinscripción asociadas
+    for (const request of requests) {
+      await this.reenrolmentLineRepository.delete({ requestId: request.id });
+    }
+
+    // Eliminar solicitudes de reinscripción
+    await this.reenrolmentRequestRepository.delete({ periodId: id });
+
+    // Eliminar cursos disponibles asociados
+    await this.availableCourseRepository.delete({ periodId: id });
+
+    // Eliminar el período
+    await this.periodRepository.delete(id);
+
+    await this.auditService.log({
+      actorUserId,
+      action: 'period.deleted',
+      entity: 'academic_periods',
+      entityKey: id.toString(),
+      beforeData: period,
       source: 'app',
     });
   }

@@ -45,6 +45,11 @@ export class PeriodsController {
     return this.periodsService.findActive();
   }
 
+  @Get('open-for-reenrolment')
+  async findOpenForReenrolment() {
+    return this.periodsService.findOpenForReenrolment();
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.periodsService.findOne(id);
@@ -78,14 +83,19 @@ export class PeriodsController {
     return this.periodsService.close(id, user.id);
   }
 
+  @Roles(RoleCode.ADMIN)
+  @Delete(':id')
+  async delete(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: User,
+  ) {
+    await this.periodsService.delete(id, user.id);
+    return { success: true };
+  }
+
   // =====================
   // ENDPOINTS DE REINSCRIPCIÓN
   // =====================
-
-  @Get('open-for-reenrolment')
-  async findOpenForReenrolment() {
-    return this.periodsService.findOpenForReenrolment();
-  }
 
   @Roles(RoleCode.ADMIN)
   @Patch(':id/reenrolment-config')

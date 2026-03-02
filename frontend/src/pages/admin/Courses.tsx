@@ -1,8 +1,9 @@
 // Admin Courses Page - View synchronized courses
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib';
+import { coursesApi } from '@/api';
 import {
   Card,
   CardContent,
@@ -15,15 +16,16 @@ import {
   BookOpen,
   Search,
   Users,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Eye,
   GraduationCap,
   Plus,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { CreateCourseModal } from '@/components/admin';
+import toast from 'react-hot-toast';
 
 interface Course {
   id: number;
@@ -48,11 +50,24 @@ interface CoursesResponse {
 
 export default function AdminCourses() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const limit = 20;
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => coursesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      setSelectedCourse(null);
+      toast.success('Curso eliminado');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al eliminar curso');
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-courses', page, search],
@@ -334,13 +349,26 @@ export default function AdminCourses() {
                       </p>
                     </div>
 
-                    <Button
-                      className="w-full mt-4"
-                      onClick={() => navigate(`/admin/courses/${selectedCourse.id}`)}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Ver Detalle Completo
-                    </Button>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        className="flex-1"
+                        onClick={() => navigate(`/admin/courses/${selectedCourse.id}`)}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Ver Detalle
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => {
+                          if (confirm('¿Eliminar este curso? Se eliminara solo de la base de datos local, no de Moodle.')) {
+                            deleteMutation.mutate(selectedCourse.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (

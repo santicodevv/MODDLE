@@ -23,6 +23,7 @@ import { LocalGrade } from '../modules/academic/entities/local-grade.entity';
 import { GradeEditSession } from '../modules/academic/entities/grade-edit-session.entity';
 import { GradeEdit } from '../modules/academic/entities/grade-edit.entity';
 import { PeriodAvailableCourse } from '../modules/academic/entities/period-available-course.entity';
+import { CourseStudentGrade } from '../modules/academic/entities/course-student-grade.entity';
 
 // Entidades de certificados
 import { Transcript } from '../modules/transcripts/entities/transcript.entity';
@@ -50,6 +51,7 @@ export const entities = [
   GradeEditSession,
   GradeEdit,
   PeriodAvailableCourse,
+  CourseStudentGrade,
   // Transcripts
   Transcript,
 ];

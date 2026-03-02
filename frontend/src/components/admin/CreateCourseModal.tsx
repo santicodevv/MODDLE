@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coursesApi } from '@/api/courses.api';
+import { periodsApi } from '@/api/periods.api';
 import {
   Modal,
   ModalFooter,
@@ -18,8 +19,9 @@ import {
   Calendar,
   Eye,
   EyeOff,
+  GraduationCap,
 } from 'lucide-react';
-import type { CreateCourseDto, MoodleCategory } from '@/types';
+import type { CreateCourseDto, MoodleCategory, AcademicPeriod } from '@/types';
 
 interface CreateCourseModalProps {
   isOpen: boolean;
@@ -39,6 +41,7 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
     visible: true,
     startdate: '',
     enddate: '',
+    periodId: undefined,
   });
   const [enableEndDate, setEnableEndDate] = useState(false);
 
@@ -46,6 +49,13 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
   const { data: categories, isLoading: categoriesLoading, refetch: refetchCategories } = useQuery({
     queryKey: ['moodle-categories'],
     queryFn: () => coursesApi.getCategories(),
+    enabled: isOpen,
+  });
+
+  // Fetch active periods
+  const { data: periods, isLoading: periodsLoading } = useQuery({
+    queryKey: ['active-periods'],
+    queryFn: () => periodsApi.getAll(),
     enabled: isOpen,
   });
 
@@ -59,9 +69,28 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
 
   // Create course mutation
   const createCourseMutation = useMutation({
-    mutationFn: (data: CreateCourseDto) => coursesApi.createCourse(data),
+    mutationFn: async (data: CreateCourseDto) => {
+      const { periodId, ...courseData } = data;
+      const course = await coursesApi.createCourse(courseData);
+
+      // If a period is selected, add the course to that period's available courses
+      if (periodId && course.moodleId) {
+        await periodsApi.addAvailableCourses(periodId, {
+          courses: [{
+            courseMoodleId: course.moodleId,
+            courseName: course.fullname,
+            courseShortname: course.shortname,
+            categoryMoodleId: course.categoryId,
+          }],
+        });
+      }
+
+      return course;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['periods'] });
+      queryClient.invalidateQueries({ queryKey: ['period-available-courses'] });
       onSuccess?.();
       handleClose();
     },
@@ -80,6 +109,7 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
       visible: true,
       startdate: '',
       enddate: '',
+      periodId: undefined,
     });
     setEnableEndDate(false);
     setError(null);
@@ -233,6 +263,46 @@ export function CreateCourseModal({ isOpen, onClose, onSuccess }: CreateCourseMo
                 No hay categorias disponibles. Haz click en "Sincronizar" para obtener las categorias de Moodle.
               </div>
             )}
+          </div>
+
+          {/* Periodo académico */}
+          <div>
+            <Label htmlFor="periodId">
+              <GraduationCap className="h-4 w-4 inline mr-1" />
+              Período académico (opcional)
+            </Label>
+            {periodsLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Spinner className="h-4 w-4" />
+                <span className="text-sm text-gray-500">Cargando períodos...</span>
+              </div>
+            ) : periods && periods.length > 0 ? (
+              <Select
+                id="periodId"
+                name="periodId"
+                value={formData.periodId || ''}
+                onChange={(e) => setFormData((prev) => ({
+                  ...prev,
+                  periodId: e.target.value ? Number(e.target.value) : undefined,
+                }))}
+              >
+                <option value="">Sin asignar a período</option>
+                {periods
+                  .filter((p: AcademicPeriod) => p.status !== 'closed')
+                  .map((period: AcademicPeriod) => (
+                    <option key={period.id} value={period.id}>
+                      {period.name} ({period.status === 'open' ? 'Activo' : 'Planificado'})
+                    </option>
+                  ))}
+              </Select>
+            ) : (
+              <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
+                No hay períodos disponibles.
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              El curso estará disponible para reinscripción en este período
+            </p>
           </div>
 
           {/* Visibilidad */}

@@ -192,6 +192,28 @@ export default function StudentReEnrolment() {
     }
   }
 
+  // Obtener cursos ya solicitados (en solicitudes submitted, approved o applied) para el período seleccionado
+  const getAlreadyRequestedCourses = (): Set<number> => {
+    if (!selectedPeriod || !myRequests) return new Set();
+
+    const requestedCourses = new Set<number>();
+    myRequests
+      .filter(
+        (r) =>
+          r.periodId === selectedPeriod.id &&
+          ['submitted', 'approved', 'applied'].includes(r.status)
+      )
+      .forEach((request) => {
+        request.lines?.forEach((line) => {
+          requestedCourses.add(Number(line.courseMoodleId));
+        });
+      });
+
+    return requestedCourses;
+  };
+
+  const alreadyRequestedCourses = getAlreadyRequestedCourses();
+
   return (
     <div>
       {/* Header */}
@@ -356,35 +378,47 @@ export default function StudentReEnrolment() {
               <div className="grid gap-3 mb-6">
                 {availableCourses.map((course) => {
                   const isSelected = selectedCourses.includes(course.courseMoodleId);
+                  const isAlreadyRequested = alreadyRequestedCourses.has(Number(course.courseMoodleId));
+                  const isDisabled = isAlreadyRequested;
+
                   return (
                     <Card
                       key={course.id}
-                      className={`cursor-pointer transition-all ${
-                        isSelected
-                          ? 'ring-2 ring-blue-500 bg-blue-50'
-                          : 'hover:shadow-md'
+                      className={`transition-all ${
+                        isDisabled
+                          ? 'opacity-60 cursor-not-allowed bg-gray-50'
+                          : isSelected
+                          ? 'ring-2 ring-blue-500 bg-blue-50 cursor-pointer'
+                          : 'hover:shadow-md cursor-pointer'
                       }`}
-                      onClick={() => handleToggleCourse(course.courseMoodleId)}
+                      onClick={() => !isDisabled && handleToggleCourse(course.courseMoodleId)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           <div
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                              isSelected
+                              isAlreadyRequested
+                                ? 'bg-green-600 border-green-600'
+                                : isSelected
                                 ? 'bg-blue-600 border-blue-600'
                                 : 'border-gray-300'
                             }`}
                           >
-                            {isSelected && (
+                            {(isSelected || isAlreadyRequested) && (
                               <CheckCircle className="h-4 w-4 text-white" />
                             )}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <BookOpen className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium text-gray-900">
+                              <span className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}>
                                 {course.courseName || `Curso ${course.courseMoodleId}`}
                               </span>
+                              {isAlreadyRequested && (
+                                <Badge variant="success" className="ml-2">
+                                  Ya solicitado
+                                </Badge>
+                              )}
                             </div>
                             {course.courseShortname && (
                               <p className="text-sm text-gray-500 ml-6">

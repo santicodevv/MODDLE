@@ -26,6 +26,15 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  /**
+   * Admin-only endpoint to create a user with roles
+   */
+  @Roles(RoleCode.ADMIN)
+  @Post('admin/create')
+  async adminCreate(@Body() createUserDto: CreateUserDto): Promise<User> {
+    return this.usersService.create(createUserDto);
+  }
+
   @Roles(RoleCode.ADMIN)
   @Get()
   async findAll(

@@ -50,12 +50,13 @@ const navItems: NavItem[] = [
     icon: RefreshCw,
     roles: ['STUDENT'],
   },
-  {
-    label: 'Constancias',
-    href: '/student/transcripts',
-    icon: FileText,
-    roles: ['STUDENT'],
-  },
+  // Temporalmente oculto
+  // {
+  //   label: 'Constancias',
+  //   href: '/student/transcripts',
+  //   icon: FileText,
+  //   roles: ['STUDENT'],
+  // },
 
   // Teacher
   {
@@ -108,12 +109,13 @@ const navItems: NavItem[] = [
     icon: RefreshCw,
     roles: ['ADMIN'],
   },
-  {
-    label: 'Constancias',
-    href: '/admin/transcripts',
-    icon: FileText,
-    roles: ['ADMIN'],
-  },
+  // Temporalmente oculto
+  // {
+  //   label: 'Constancias',
+  //   href: '/admin/transcripts',
+  //   icon: FileText,
+  //   roles: ['ADMIN'],
+  // },
   {
     label: 'Sincronización',
     href: '/admin/sync',

@@ -2,16 +2,20 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
   ParseIntPipe,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CoursesService } from '../services/courses.service';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
 
 @Controller('courses')
 export class CoursesController {
@@ -63,6 +67,18 @@ export class CoursesController {
   }
 
   /**
+   * Get courses enrolled by current user (student)
+   */
+  @Roles(RoleCode.STUDENT)
+  @Get('enrolled')
+  async getMyEnrolledCourses(@CurrentUser() user: User) {
+    if (!user.moodleUserId) {
+      throw new BadRequestException('User is not linked to a Moodle account');
+    }
+    return this.coursesService.getCoursesForUser(user.moodleUserId);
+  }
+
+  /**
    * Get a single course by ID
    */
   @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
@@ -95,5 +111,15 @@ export class CoursesController {
   @Get(':id/enrolled-users')
   async getEnrolledUsers(@Param('id', ParseIntPipe) id: number) {
     return this.coursesService.getEnrolledUsersWithDetails(id);
+  }
+
+  /**
+   * Delete a course (local only)
+   */
+  @Roles(RoleCode.ADMIN)
+  @Delete(':id')
+  async deleteCourse(@Param('id', ParseIntPipe) id: number) {
+    await this.coursesService.delete(id);
+    return { success: true };
   }
 }

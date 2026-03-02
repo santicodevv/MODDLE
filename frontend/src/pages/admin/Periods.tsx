@@ -77,10 +77,10 @@ export default function AdminPeriods() {
   const { data: moodleCourses, isLoading: loadingMoodleCourses } = useQuery({
     queryKey: ['moodle-courses'],
     queryFn: async () => {
-      const response = await api.get<{ data: MoodleCourse[]; total: number }>('/courses', {
+      const response = await api.get<{ courses: MoodleCourse[]; total: number }>('/courses', {
         params: { limit: 1000 }, // Get all courses
       });
-      return response.data.data;
+      return response.data.courses;
     },
     enabled: viewMode === 'courses',
   });
@@ -201,6 +201,19 @@ export default function AdminPeriods() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Error');
+    },
+  });
+
+  const deletePeriodMutation = useMutation({
+    mutationFn: (id: number) => periodsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-periods'] });
+      setViewMode('list');
+      setSelectedPeriod(null);
+      toast.success('Período eliminado');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al eliminar período');
     },
   });
 
@@ -461,6 +474,18 @@ export default function AdminPeriods() {
                       Cerrar Período
                     </Button>
                   )}
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      if (confirm('¿Estás seguro de eliminar este período? Esta acción no se puede deshacer.')) {
+                        deletePeriodMutation.mutate(selectedPeriod.id);
+                      }
+                    }}
+                    disabled={deletePeriodMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -668,7 +693,7 @@ export default function AdminPeriods() {
                             onClick={() =>
                               removeCoursesMutation.mutate({
                                 periodId: selectedPeriod.id,
-                                courseMoodleIds: [course.courseMoodleId],
+                                courseMoodleIds: [Number(course.courseMoodleId)],
                               })
                             }
                           >

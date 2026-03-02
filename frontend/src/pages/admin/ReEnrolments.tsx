@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reenrolmentsApi, periodsApi } from '@/api';
-import type { ReEnrolmentRequest, ReEnrolmentStatus, AcademicPeriod } from '@/types';
+import type { ReEnrolmentRequest, ReEnrolmentStatus } from '@/types';
 import {
   Card,
   CardContent,
@@ -20,7 +20,6 @@ import {
   User,
   BookOpen,
   AlertCircle,
-  ChevronLeft,
   ArrowLeft,
   Calendar,
   FileText,
@@ -29,6 +28,7 @@ import {
   Filter,
   BarChart3,
   X,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -83,8 +83,8 @@ export default function AdminReEnrolments() {
       if (search) {
         const searchLower = search.toLowerCase();
         data = data.filter(r =>
-          r.user?.displayName?.toLowerCase().includes(searchLower) ||
-          r.user?.email?.toLowerCase().includes(searchLower) ||
+          r.student?.displayName?.toLowerCase().includes(searchLower) ||
+          r.student?.email?.toLowerCase().includes(searchLower) ||
           r.period?.name?.toLowerCase().includes(searchLower) ||
           r.period?.code?.toLowerCase().includes(searchLower)
         );
@@ -97,16 +97,17 @@ export default function AdminReEnrolments() {
   // Mutations
   const approveMutation = useMutation({
     mutationFn: (id: number) => reenrolmentsApi.approve(id),
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
       queryClient.invalidateQueries({ queryKey: ['reenrolment-stats'] });
-      toast.success('Solicitud aprobada');
-      if (selectedRequest) {
-        setSelectedRequest({ ...selectedRequest, status: 'approved' });
+      toast.success('Solicitud aprobada y aplicada a Moodle');
+      // Update with fresh data from server including line statuses
+      if (data) {
+        setSelectedRequest(data);
       }
     },
-    onError: () => {
-      toast.error('Error al aprobar la solicitud');
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al aprobar la solicitud');
     },
   });
 
@@ -131,16 +132,33 @@ export default function AdminReEnrolments() {
 
   const applyMutation = useMutation({
     mutationFn: (id: number) => reenrolmentsApi.applyToMoodle(id),
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
       queryClient.invalidateQueries({ queryKey: ['reenrolment-stats'] });
       toast.success('Inscripciones aplicadas a Moodle');
-      if (selectedRequest) {
-        setSelectedRequest({ ...selectedRequest, status: 'applied' });
+      // Update with fresh data from server including line statuses
+      if (data) {
+        setSelectedRequest(data);
       }
     },
     onError: () => {
       toast.error('Error al aplicar en Moodle');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => reenrolmentsApi.adminDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
+      queryClient.invalidateQueries({ queryKey: ['reenrolment-stats'] });
+      toast.success('Solicitud eliminada');
+      if (selectedRequest) {
+        setViewMode('list');
+        setSelectedRequest(null);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al eliminar');
     },
   });
 
@@ -236,11 +254,11 @@ export default function AdminReEnrolments() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500">Nombre</p>
-                    <p className="font-medium">{selectedRequest.user?.displayName || 'N/A'}</p>
+                    <p className="font-medium">{selectedRequest.student?.displayName || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-medium">{selectedRequest.user?.email || 'N/A'}</p>
+                    <p className="font-medium">{selectedRequest.student?.email || 'N/A'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -327,7 +345,7 @@ export default function AdminReEnrolments() {
                         disabled={approveMutation.isPending}
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Aprobar Solicitud
+                        {approveMutation.isPending ? 'Aprobando...' : 'Aprobar y Aplicar'}
                       </Button>
                       <Button
                         variant="outline"
@@ -341,18 +359,21 @@ export default function AdminReEnrolments() {
                     </div>
                   )}
 
-                  {selectedRequest.status === 'approved' && (
-                    <div className="pt-4 border-t">
-                      <Button
-                        className="w-full"
-                        onClick={() => applyMutation.mutate(selectedRequest.id)}
-                        disabled={applyMutation.isPending}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Aplicar a Moodle
-                      </Button>
-                    </div>
-                  )}
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="danger"
+                      className="w-full"
+                      onClick={() => {
+                        if (confirm('¿Eliminar esta solicitud? Esta accion no se puede deshacer.')) {
+                          deleteMutation.mutate(selectedRequest.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar Solicitud
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -600,10 +621,10 @@ export default function AdminReEnrolments() {
                         <div>
                           <p className="text-sm text-gray-500">Estudiante</p>
                           <p className="font-medium text-gray-900">
-                            {request.user?.displayName || 'N/A'}
+                            {request.student?.displayName || 'N/A'}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {request.user?.email || ''}
+                            {request.student?.email || ''}
                           </p>
                         </div>
                       </div>
@@ -649,7 +670,7 @@ export default function AdminReEnrolments() {
                           disabled={approveMutation.isPending}
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
-                          Aprobar
+                          {approveMutation.isPending ? 'Aplicando...' : 'Aprobar'}
                         </Button>
                         <Button
                           variant="outline"
@@ -660,15 +681,6 @@ export default function AdminReEnrolments() {
                           Rechazar
                         </Button>
                       </>
-                    )}
-                    {request.status === 'approved' && (
-                      <Button
-                        onClick={() => applyMutation.mutate(request.id)}
-                        disabled={applyMutation.isPending}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Aplicar a Moodle
-                      </Button>
                     )}
                   </div>
                 </div>

@@ -21,7 +21,7 @@ export interface ReEnrolmentRequest {
     code: string;
     name: string;
   };
-  user?: {
+  student?: {
     id: number;
     email: string;
     displayName: string;

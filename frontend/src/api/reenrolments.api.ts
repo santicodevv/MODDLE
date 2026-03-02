@@ -175,4 +175,12 @@ export const reenrolmentsApi = {
     );
     return response.data;
   },
+
+  /**
+   * Admin delete any re-enrolment request
+   */
+  async adminDelete(id: number): Promise<SuccessResponse> {
+    const response = await api.delete<SuccessResponse>(`/re-enrolments/admin/${id}`);
+    return response.data;
+  },
 };

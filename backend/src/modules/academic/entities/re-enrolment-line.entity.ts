@@ -41,6 +41,9 @@ export class ReEnrolmentLine {
   @Index()
   courseMoodleId: number;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'course_name' })
+  courseName: string | null;
+
   @Column({ type: 'varchar', length: 50 })
   action: EnrolmentAction;
 

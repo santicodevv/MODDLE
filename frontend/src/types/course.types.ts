@@ -77,6 +77,7 @@ export interface CreateCourseDto {
   visible?: boolean;
   startdate?: string;
   enddate?: string;
+  periodId?: number; // Optional: assign to academic period
 }
 
 // Enrolled user with details

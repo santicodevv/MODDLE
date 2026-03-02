@@ -9,6 +9,10 @@ import type {
   GradesQueryParams,
   StudentGradeRow,
   StudentGradeReport,
+  StudentGradeWithDetails,
+  StudentCourseGrade,
+  UpdateStudentGradeDto,
+  SyncMoodleSumsResult,
   PaginatedResponse,
   SuccessResponse,
 } from '@/types';
@@ -109,6 +113,74 @@ export const gradesApi = {
       params: { itemMoodleId },
       responseType: 'blob',
     });
+    return response.data;
+  },
+
+  // ================================
+  // Student Final Grades (Teacher view with total + comment)
+  // ================================
+
+  /**
+   * Get all student grades for a course by period (Teacher/Admin)
+   */
+  async getStudentGradesByCourse(
+    courseMoodleId: number,
+    periodId: number
+  ): Promise<StudentGradeWithDetails[]> {
+    const response = await api.get<StudentGradeWithDetails[]>(
+      `/student-grades/course/${courseMoodleId}`,
+      { params: { periodId } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Update a student's grade (Teacher/Admin)
+   */
+  async updateStudentGrade(
+    courseMoodleId: number,
+    studentId: number,
+    periodId: number,
+    data: UpdateStudentGradeDto
+  ): Promise<StudentGradeWithDetails> {
+    const response = await api.patch<StudentGradeWithDetails>(
+      `/student-grades/course/${courseMoodleId}/student/${studentId}`,
+      data,
+      { params: { periodId } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Sync Moodle grade sums for all students in a course (Admin)
+   */
+  async syncMoodleSums(
+    courseMoodleId: number,
+    periodId: number
+  ): Promise<SyncMoodleSumsResult> {
+    const response = await api.post<SyncMoodleSumsResult>(
+      `/student-grades/course/${courseMoodleId}/sync-sums`,
+      {},
+      { params: { periodId } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get my grades (Student)
+   */
+  async getMyGrades(): Promise<StudentCourseGrade[]> {
+    const response = await api.get<StudentCourseGrade[]>('/student-grades/mine');
+    return response.data;
+  },
+
+  /**
+   * Get my grades for a specific period (Student)
+   */
+  async getMyGradesByPeriod(periodId: number): Promise<StudentCourseGrade[]> {
+    const response = await api.get<StudentCourseGrade[]>(
+      `/student-grades/mine/period/${periodId}`
+    );
     return response.data;
   },
 };

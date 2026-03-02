@@ -23,6 +23,7 @@ const StudentTranscripts = lazy(() => import('@/pages/student/Transcripts'));
 const TeacherDashboard = lazy(() => import('@/pages/teacher/Dashboard'));
 const TeacherCourses = lazy(() => import('@/pages/teacher/Courses'));
 const TeacherGradeEntry = lazy(() => import('@/pages/teacher/GradeEntry'));
+const TeacherGrades = lazy(() => import('@/pages/teacher/TeacherGrades'));
 
 // Admin pages
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
@@ -75,7 +76,7 @@ export const routes: RouteObject[] = [
               { path: 'grades', element: <StudentGrades /> },
               { path: 'courses', element: <StudentCourses /> },
               { path: 'reenrolment', element: <StudentReEnrolment /> },
-              { path: 'transcripts', element: <StudentTranscripts /> },
+              // { path: 'transcripts', element: <StudentTranscripts /> }, // Temporalmente oculto
             ],
           },
 
@@ -88,6 +89,7 @@ export const routes: RouteObject[] = [
               { path: 'courses', element: <TeacherCourses /> },
               { path: 'courses/:courseId/grades', element: <TeacherGradeEntry /> },
               { path: 'courses/:courseId/grades/:itemId', element: <TeacherGradeEntry /> },
+              { path: 'grades/:courseId', element: <TeacherGrades /> },
             ],
           },
 
@@ -103,7 +105,7 @@ export const routes: RouteObject[] = [
               { path: 'grades', element: <AdminGrades /> },
               { path: 'periods', element: <AdminPeriods /> },
               { path: 'reenrolments', element: <AdminReEnrolments /> },
-              { path: 'transcripts', element: <AdminTranscripts /> },
+              // { path: 'transcripts', element: <AdminTranscripts /> }, // Temporalmente oculto
               { path: 'sync', element: <AdminSync /> },
               { path: 'audit', element: <AdminAudit /> },
             ],

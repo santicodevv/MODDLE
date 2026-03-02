@@ -102,4 +102,12 @@ export const coursesApi = {
     const response = await api.get<EnrolledUserWithDetails[]>(`/courses/${courseId}/enrolled-users`);
     return response.data;
   },
+
+  /**
+   * Delete a course (local only)
+   */
+  async delete(courseId: number): Promise<{ success: boolean }> {
+    const response = await api.delete<{ success: boolean }>(`/courses/${courseId}`);
+    return response.data;
+  },
 };

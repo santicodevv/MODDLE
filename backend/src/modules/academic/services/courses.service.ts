@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
@@ -327,6 +327,63 @@ export class CoursesService {
   }
 
   /**
+   * Get courses where a user is enrolled
+   */
+  async getCoursesForUser(userMoodleId: number): Promise<CourseWithCounts[]> {
+    // Find all enrollments for this user
+    const enrolments = await this.enrolmentRepository.find({
+      where: {
+        userMoodleId,
+        enrolStatus: 'active',
+      },
+    });
+
+    if (enrolments.length === 0) {
+      return [];
+    }
+
+    // Get unique course moodle IDs
+    const courseMoodleIds = [...new Set(enrolments.map((e) => e.courseMoodleId))];
+
+    // Get the courses
+    const courses = await this.courseRepository
+      .createQueryBuilder('course')
+      .where('course.moodleId IN (:...ids)', { ids: courseMoodleIds })
+      .orderBy('course.fullname', 'ASC')
+      .getMany();
+
+    // Add counts for each course
+    const coursesWithCounts: CourseWithCounts[] = await Promise.all(
+      courses.map(async (course) => {
+        const [studentCount, teacherCount] = await Promise.all([
+          this.enrolmentRepository.count({
+            where: {
+              courseMoodleId: course.moodleId,
+              roleCode: 'student',
+              enrolStatus: 'active',
+            },
+          }),
+          this.enrolmentRepository.count({
+            where: {
+              courseMoodleId: course.moodleId,
+              roleCode: ILike('%teacher%'),
+              enrolStatus: 'active',
+            },
+          }),
+        ]);
+
+        return {
+          ...course,
+          studentCount,
+          teacherCount,
+        };
+      }),
+    );
+
+    return coursesWithCounts;
+  }
+
+  /**
    * Get enrolled users with their details
    */
   async getEnrolledUsersWithDetails(
@@ -378,5 +435,24 @@ export class CoursesService {
         };
       })
       .filter((u): u is EnrolledUserWithDetails => u !== null);
+  }
+
+  /**
+   * Delete a course (local only, does not delete from Moodle)
+   */
+  async delete(id: number): Promise<void> {
+    const course = await this.courseRepository.findOne({ where: { id } });
+
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${id} not found`);
+    }
+
+    // Delete associated enrollments
+    await this.enrolmentRepository.delete({ courseMoodleId: course.moodleId });
+
+    // Delete the course
+    await this.courseRepository.delete(id);
+
+    this.logger.log(`Deleted course ${id} (Moodle ID: ${course.moodleId})`);
   }
 }

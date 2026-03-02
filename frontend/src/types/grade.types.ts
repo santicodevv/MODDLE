@@ -101,3 +101,47 @@ export interface GradesQueryParams {
   itemMoodleId?: number;
   periodId?: number;
 }
+
+// =========================
+// Student Final Grades (for teacher total + comment)
+// =========================
+
+// Grade with details for teacher view
+export interface StudentGradeWithDetails {
+  id: number;
+  courseMoodleId: number;
+  courseName: string | null;
+  courseShortname: string | null;
+  studentId: number;
+  studentName: string;
+  studentEmail: string;
+  periodId: number;
+  moodleSumGrade: number | null; // Sum of all Moodle grades (read-only for teacher)
+  moodleSumMax: number | null;   // Max possible sum
+  totalGrade: number | null;     // Teacher-assigned final grade
+  comment: string | null;        // Teacher comment
+  updatedAt: string;
+}
+
+// Grade for student view (only total and comment)
+export interface StudentCourseGrade {
+  courseMoodleId: number;
+  courseName: string;
+  courseShortname: string;
+  periodId: number;
+  periodName: string;
+  totalGrade: number | null;
+  comment: string | null;
+  teacherName: string | null;
+}
+
+// Update student grade DTO
+export interface UpdateStudentGradeDto {
+  totalGrade?: number;
+  comment?: string;
+}
+
+// Sync result
+export interface SyncMoodleSumsResult {
+  updated: number;
+}

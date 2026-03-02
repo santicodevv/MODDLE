@@ -22,6 +22,8 @@ import { CreateReEnrolmentDto, ReEnrolmentCourseDto } from '../dto/create-re-enr
 import { AuditService } from '../../sync/services/audit.service';
 import { OutboxService } from '../../sync/services/outbox.service';
 import { OutboxEventType } from '../../sync/entities/outbox-event.entity';
+import { MoodleClientService } from '../../moodle-integration/moodle-client.service';
+import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
 
 @Injectable()
 export class ReEnrolmentService {
@@ -36,8 +38,11 @@ export class ReEnrolmentService {
     private readonly periodRepository: Repository<AcademicPeriod>,
     @InjectRepository(PeriodAvailableCourse)
     private readonly availableCourseRepository: Repository<PeriodAvailableCourse>,
+    @InjectRepository(MoodleEnrolment)
+    private readonly enrolmentRepository: Repository<MoodleEnrolment>,
     private readonly auditService: AuditService,
     private readonly outboxService: OutboxService,
+    private readonly moodleClient: MoodleClientService,
   ) {}
 
   async create(
@@ -118,6 +123,19 @@ export class ReEnrolmentService {
           `The following courses are not available for reenrolment: ${validation.invalidCourses.join(', ')}`,
         );
       }
+
+      // Validar que los cursos no estén ya solicitados en otras solicitudes
+      const duplicateValidation = await this.validateCoursesNotAlreadyRequested(
+        studentUserId,
+        createDto.periodId,
+        courseMoodleIds,
+      );
+
+      if (!duplicateValidation.valid) {
+        throw new BadRequestException(
+          `The following courses are already requested: ${duplicateValidation.alreadyRequestedCourses.join(', ')}`,
+        );
+      }
     }
 
     // Crear solicitud
@@ -130,12 +148,27 @@ export class ReEnrolmentService {
 
     const savedRequest = await this.requestRepository.save(request);
 
-    // Crear líneas
+    // Crear líneas con nombres de cursos
     if (createDto.courses && createDto.courses.length > 0) {
+      const courseMoodleIds = createDto.courses.map((c) => c.courseMoodleId);
+
+      // Obtener nombres de cursos disponibles
+      const availableCourses = await this.availableCourseRepository.find({
+        where: {
+          periodId: createDto.periodId,
+          courseMoodleId: In(courseMoodleIds),
+        },
+      });
+
+      const courseNameMap = new Map(
+        availableCourses.map((c) => [Number(c.courseMoodleId), c.courseName]),
+      );
+
       const lines = createDto.courses.map((course) =>
         this.lineRepository.create({
           requestId: savedRequest.id,
           courseMoodleId: course.courseMoodleId,
+          courseName: courseNameMap.get(Number(course.courseMoodleId)) || null,
           action: EnrolmentAction.ENROL,
           status: EnrolmentLineStatus.PENDING,
         }),
@@ -169,14 +202,62 @@ export class ReEnrolmentService {
       },
     });
 
-    const availableIds = availableCourses.map((c) => c.courseMoodleId);
+    // Convert to numbers to handle bigint comparison issues
+    const availableIds = availableCourses.map((c) => Number(c.courseMoodleId));
     const invalidCourses = courseMoodleIds.filter(
-      (id) => !availableIds.includes(id),
+      (id) => !availableIds.includes(Number(id)),
     );
 
     return {
       valid: invalidCourses.length === 0,
       invalidCourses,
+    };
+  }
+
+  /**
+   * Validates that courses are not already requested in submitted/approved/applied requests
+   */
+  private async validateCoursesNotAlreadyRequested(
+    studentUserId: number,
+    periodId: number,
+    courseMoodleIds: number[],
+    excludeRequestId?: number,
+  ): Promise<{ valid: boolean; alreadyRequestedCourses: number[] }> {
+    // Find all non-draft requests for this student and period
+    const existingRequests = await this.requestRepository.find({
+      where: {
+        appUserId: studentUserId,
+        periodId,
+        status: In([
+          ReEnrolmentStatus.SUBMITTED,
+          ReEnrolmentStatus.APPROVED,
+          ReEnrolmentStatus.APPLIED,
+        ]),
+      },
+      relations: ['lines'],
+    });
+
+    // Filter out the current request if updating
+    const relevantRequests = excludeRequestId
+      ? existingRequests.filter((r) => r.id !== excludeRequestId)
+      : existingRequests;
+
+    // Collect all already requested course IDs
+    const alreadyRequestedIds = new Set<number>();
+    relevantRequests.forEach((request) => {
+      request.lines?.forEach((line) => {
+        alreadyRequestedIds.add(Number(line.courseMoodleId));
+      });
+    });
+
+    // Check which courses are already requested
+    const alreadyRequestedCourses = courseMoodleIds.filter((id) =>
+      alreadyRequestedIds.has(Number(id)),
+    );
+
+    return {
+      valid: alreadyRequestedCourses.length === 0,
+      alreadyRequestedCourses,
     };
   }
 
@@ -190,30 +271,127 @@ export class ReEnrolmentService {
       throw new NotFoundException(`Re-enrolment request ${id} not found`);
     }
 
+    // Enrich lines with course names if missing
+    await this.enrichLinesWithCourseNames(request);
+
     return request;
   }
 
+  /**
+   * Create local enrolment record after Moodle enrolment
+   */
+  private async createLocalEnrolment(
+    courseMoodleId: number,
+    userMoodleId: number,
+  ): Promise<void> {
+    // Check if already exists
+    const existing = await this.enrolmentRepository.findOne({
+      where: {
+        courseMoodleId,
+        userMoodleId,
+        roleCode: 'student',
+      },
+    });
+
+    if (existing) {
+      // Update to active if suspended
+      if (existing.enrolStatus !== 'active') {
+        await this.enrolmentRepository.update(existing.id, {
+          enrolStatus: 'active',
+          timemodified: new Date(),
+        });
+      }
+      return;
+    }
+
+    // Create new enrolment record
+    const enrolment = this.enrolmentRepository.create({
+      courseMoodleId,
+      userMoodleId,
+      roleCode: 'student',
+      enrolStatus: 'active',
+      timestart: new Date(),
+      timemodified: new Date(),
+      lastSyncedAt: new Date(),
+    });
+
+    await this.enrolmentRepository.save(enrolment);
+  }
+
+  /**
+   * Enrich request lines with course names from available courses
+   */
+  private async enrichLinesWithCourseNames(
+    request: ReEnrolmentRequest,
+  ): Promise<void> {
+    if (!request.lines || request.lines.length === 0) return;
+
+    // Find lines without courseName
+    const linesWithoutName = request.lines.filter((l) => !l.courseName);
+    if (linesWithoutName.length === 0) return;
+
+    // Get course names from available courses
+    const courseMoodleIds = linesWithoutName.map((l) => l.courseMoodleId);
+    const availableCourses = await this.availableCourseRepository.find({
+      where: {
+        periodId: request.periodId,
+        courseMoodleId: In(courseMoodleIds),
+      },
+    });
+
+    const courseNameMap = new Map(
+      availableCourses.map((c) => [Number(c.courseMoodleId), c.courseName]),
+    );
+
+    // Update lines with course names (in memory only, not persisted)
+    for (const line of linesWithoutName) {
+      const name = courseNameMap.get(Number(line.courseMoodleId));
+      if (name) {
+        line.courseName = name;
+      }
+    }
+  }
+
   async findByStudent(studentUserId: number): Promise<ReEnrolmentRequest[]> {
-    return this.requestRepository.find({
+    const requests = await this.requestRepository.find({
       where: { appUserId: studentUserId },
       relations: ['period', 'lines'],
       order: { createdAt: 'DESC' },
     });
+
+    // Enrich all requests with course names
+    for (const request of requests) {
+      await this.enrichLinesWithCourseNames(request);
+    }
+
+    return requests;
   }
 
   async findAll(): Promise<ReEnrolmentRequest[]> {
-    return this.requestRepository.find({
+    const requests = await this.requestRepository.find({
       relations: ['student', 'period', 'lines'],
       order: { createdAt: 'DESC' },
     });
+
+    for (const request of requests) {
+      await this.enrichLinesWithCourseNames(request);
+    }
+
+    return requests;
   }
 
   async findPending(): Promise<ReEnrolmentRequest[]> {
-    return this.requestRepository.find({
+    const requests = await this.requestRepository.find({
       where: { status: ReEnrolmentStatus.SUBMITTED },
       relations: ['student', 'period', 'lines'],
       order: { submittedAt: 'ASC' },
     });
+
+    for (const request of requests) {
+      await this.enrichLinesWithCourseNames(request);
+    }
+
+    return requests;
   }
 
   async submit(
@@ -273,7 +451,7 @@ export class ReEnrolmentService {
     request.decidedAt = new Date();
     request.decidedBy = adminUserId;
 
-    const updated = await this.requestRepository.save(request);
+    await this.requestRepository.save(request);
 
     // Auditoría
     await this.auditService.log({
@@ -282,11 +460,12 @@ export class ReEnrolmentService {
       entity: 're_enrolment_requests',
       entityKey: id.toString(),
       beforeData,
-      afterData: updated,
+      afterData: request,
       source: 'app',
     });
 
-    return this.findOne(id);
+    // Aplicar automáticamente a Moodle
+    return this.applyToMoodle(id, adminUserId);
   }
 
   async reject(
@@ -333,52 +512,63 @@ export class ReEnrolmentService {
     }
 
     this.logger.log(
-      `Applying re-enrolment request ${id} to Moodle (${request.lines.length} courses)`,
+      `Applying re-enrolment request ${id} to Moodle (${request.lines?.length || 0} courses)`,
     );
 
     // Obtener moodle_user_id del estudiante
     const student = request.student;
-    if (!student.moodleUserId) {
-      throw new BadRequestException(
-        'Student does not have a Moodle user ID',
+    if (!student?.moodleUserId) {
+      this.logger.warn(
+        `Student ${student?.id} does not have a Moodle user ID, skipping Moodle enrolment`,
       );
-    }
-
-    // Crear eventos en outbox para cada curso
-    for (const line of request.lines) {
-      if (line.status === EnrolmentLineStatus.DONE) {
-        this.logger.debug(`Line ${line.id} already applied, skipping`);
-        continue;
-      }
-
-      try {
-        await this.outboxService.createEvent(
-          OutboxEventType.ENROLMENT_CREATED,
-          {
-            courseMoodleId: line.courseMoodleId,
-            userMoodleId: student.moodleUserId,
-            roleId: 5, // Student role en Moodle
-          },
-        );
-
-        // Marcar línea como done
+      // Marcar todas las líneas como done de todas formas (inscripción local)
+      for (const line of request.lines || []) {
         await this.lineRepository.update(line.id, {
           status: EnrolmentLineStatus.DONE,
           appliedAt: new Date(),
         });
+      }
+    } else {
+      // Inscribir directamente en Moodle para cada curso
+      for (const line of request.lines || []) {
+        if (line.status === EnrolmentLineStatus.DONE) {
+          this.logger.debug(`Line ${line.id} already applied, skipping`);
+          continue;
+        }
 
-        this.logger.log(
-          `Enrolment event created for course ${line.courseMoodleId}`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Error creating enrolment event: ${error.message}`,
-        );
+        try {
+          // Inscribir directamente en Moodle
+          await this.moodleClient.enrolUser(
+            Number(line.courseMoodleId),
+            student.moodleUserId,
+            5, // Student role en Moodle
+          );
 
-        await this.lineRepository.update(line.id, {
-          status: EnrolmentLineStatus.FAILED,
-          lastError: error.message,
-        });
+          // Crear registro local de enrolment
+          await this.createLocalEnrolment(
+            Number(line.courseMoodleId),
+            student.moodleUserId,
+          );
+
+          // Marcar línea como done
+          await this.lineRepository.update(line.id, {
+            status: EnrolmentLineStatus.DONE,
+            appliedAt: new Date(),
+          });
+
+          this.logger.log(
+            `User ${student.moodleUserId} enrolled in course ${line.courseMoodleId}`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Error enrolling user in Moodle: ${error.message}`,
+          );
+
+          await this.lineRepository.update(line.id, {
+            status: EnrolmentLineStatus.FAILED,
+            lastError: error.message,
+          });
+        }
       }
     }
 
@@ -409,7 +599,7 @@ export class ReEnrolmentService {
     studentUserId: number,
     periodId: number,
   ): Promise<ReEnrolmentRequest | null> {
-    return this.requestRepository.findOne({
+    const request = await this.requestRepository.findOne({
       where: {
         appUserId: studentUserId,
         periodId,
@@ -417,6 +607,12 @@ export class ReEnrolmentService {
       },
       relations: ['period', 'lines'],
     });
+
+    if (request) {
+      await this.enrichLinesWithCourseNames(request);
+    }
+
+    return request;
   }
 
   async findDraftOrCreate(
@@ -468,17 +664,46 @@ export class ReEnrolmentService {
           `The following courses are not available: ${validation.invalidCourses.join(', ')}`,
         );
       }
+
+      // Validar que los cursos no estén ya solicitados en otras solicitudes
+      const duplicateValidation = await this.validateCoursesNotAlreadyRequested(
+        studentUserId,
+        request.periodId,
+        courseMoodleIds,
+        id, // Excluir la solicitud actual
+      );
+
+      if (!duplicateValidation.valid) {
+        throw new BadRequestException(
+          `The following courses are already requested: ${duplicateValidation.alreadyRequestedCourses.join(', ')}`,
+        );
+      }
     }
 
     // Eliminar líneas existentes
     await this.lineRepository.delete({ requestId: id });
 
-    // Crear nuevas líneas
+    // Crear nuevas líneas con nombres de cursos
     if (courses && courses.length > 0) {
+      const courseMoodleIds = courses.map((c) => c.courseMoodleId);
+
+      // Obtener nombres de cursos disponibles
+      const availableCourses = await this.availableCourseRepository.find({
+        where: {
+          periodId: request.periodId,
+          courseMoodleId: In(courseMoodleIds),
+        },
+      });
+
+      const courseNameMap = new Map(
+        availableCourses.map((c) => [Number(c.courseMoodleId), c.courseName]),
+      );
+
       const lines = courses.map((course) =>
         this.lineRepository.create({
           requestId: id,
           courseMoodleId: course.courseMoodleId,
+          courseName: courseNameMap.get(Number(course.courseMoodleId)) || null,
           action: EnrolmentAction.ENROL,
           status: EnrolmentLineStatus.PENDING,
         }),
@@ -532,6 +757,20 @@ export class ReEnrolmentService {
       );
     }
 
+    // Validar que los cursos no estén ya solicitados en otras solicitudes
+    const duplicateValidation = await this.validateCoursesNotAlreadyRequested(
+      studentUserId,
+      request.periodId,
+      courseMoodleIds,
+      id, // Excluir la solicitud actual
+    );
+
+    if (!duplicateValidation.valid) {
+      throw new BadRequestException(
+        `The following courses are already requested: ${duplicateValidation.alreadyRequestedCourses.join(', ')}`,
+      );
+    }
+
     // Agregar solo los que no existen
     const existingIds = request.lines.map((l) => l.courseMoodleId);
     const newCourses = courses.filter(
@@ -539,10 +778,25 @@ export class ReEnrolmentService {
     );
 
     if (newCourses.length > 0) {
+      const courseMoodleIds = newCourses.map((c) => c.courseMoodleId);
+
+      // Obtener nombres de cursos disponibles
+      const availableCourses = await this.availableCourseRepository.find({
+        where: {
+          periodId: request.periodId,
+          courseMoodleId: In(courseMoodleIds),
+        },
+      });
+
+      const courseNameMap = new Map(
+        availableCourses.map((c) => [Number(c.courseMoodleId), c.courseName]),
+      );
+
       const lines = newCourses.map((course) =>
         this.lineRepository.create({
           requestId: id,
           courseMoodleId: course.courseMoodleId,
+          courseName: courseNameMap.get(Number(course.courseMoodleId)) || null,
           action: EnrolmentAction.ENROL,
           status: EnrolmentLineStatus.PENDING,
         }),
@@ -600,10 +854,38 @@ export class ReEnrolmentService {
   }
 
   async findByPeriod(periodId: number): Promise<ReEnrolmentRequest[]> {
-    return this.requestRepository.find({
+    const requests = await this.requestRepository.find({
       where: { periodId },
       relations: ['student', 'lines'],
       order: { createdAt: 'DESC' },
+    });
+
+    for (const request of requests) {
+      await this.enrichLinesWithCourseNames(request);
+    }
+
+    return requests;
+  }
+
+  /**
+   * Admin delete any re-enrolment request
+   */
+  async adminDelete(id: number, adminUserId: number): Promise<void> {
+    const request = await this.findOne(id);
+
+    // Delete lines first
+    await this.lineRepository.delete({ requestId: id });
+
+    // Delete request
+    await this.requestRepository.delete(id);
+
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'reenrolment.admin_deleted',
+      entity: 're_enrolment_requests',
+      entityKey: id.toString(),
+      beforeData: request,
+      source: 'app',
     });
   }
 

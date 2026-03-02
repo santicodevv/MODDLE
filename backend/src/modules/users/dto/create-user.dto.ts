@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsArray, IsNumber, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail()
@@ -16,4 +16,13 @@ export class CreateUserDto {
 
   @IsOptional()
   moodleUserId?: number;
+
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @IsOptional()
+  roleIds?: number[];
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
