@@ -22,9 +22,13 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
+  // CORS - Usar variable de entorno o valor por defecto
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
+    : ['https://app.sebti.edu.do'];
+
   app.enableCors({
-    origin: ['https://app.sebti.edu.do'],
+    origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });

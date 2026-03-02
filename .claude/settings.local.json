@@ -36,7 +36,8 @@
       "Bash(taskkill //F //PID 10564)",
       "Bash(npx tsc:*)",
       "Bash(PGPASSWORD=moddle_pass psql:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(git add:*)"
     ]
   }
 }
