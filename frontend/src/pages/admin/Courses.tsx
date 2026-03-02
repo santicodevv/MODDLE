@@ -100,7 +100,7 @@ export default function AdminCourses() {
     },
   });
 
-  const { data: courseDetails, isLoading: detailsLoading } = useQuery({
+  const { data: _courseDetails, isLoading: _detailsLoading } = useQuery({
     queryKey: ['course-details', selectedCourse?.id],
     queryFn: async () => {
       if (!selectedCourse) return null;

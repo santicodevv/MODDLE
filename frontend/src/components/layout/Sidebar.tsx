@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   BookOpen,
   ClipboardList,
-  FileText,
   RefreshCw,
   Users,
   Calendar,
@@ -147,18 +146,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Filter items based on user's roles
   const filteredItems = navItems.filter((item) =>
-    item.roles.some((role) => roles.includes(role))
+    item.roles.some((role) => roles.includes(role)),
   );
 
   // Group items by role for multi-role users
   const studentItems = filteredItems.filter((item) =>
-    item.roles.includes('STUDENT')
+    item.roles.includes('STUDENT'),
   );
   const teacherItems = filteredItems.filter((item) =>
-    item.roles.includes('TEACHER')
+    item.roles.includes('TEACHER'),
   );
   const adminItems = filteredItems.filter((item) =>
-    item.roles.includes('ADMIN')
+    item.roles.includes('ADMIN'),
   );
 
   const renderNavItems = (items: NavItem[], title?: string) => {
@@ -183,7 +182,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   'flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-2 transition-colors',
                   isActive
                     ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    : 'text-gray-700 hover:bg-gray-100',
                 )
               }
             >
@@ -211,7 +210,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         className={cn(
           'fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out',
           'lg:translate-x-0',
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Logo */}
@@ -231,23 +230,36 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Navigation */}
         <div className="py-4 overflow-y-auto h-[calc(100%-4rem)]">
           {/* Show sections based on roles */}
-          {hasAnyRole(['ADMIN']) && adminItems.length > 0 && (
-            renderNavItems(adminItems, roles.length > 1 ? 'Administración' : undefined)
-          )}
-          {hasAnyRole(['TEACHER']) && !hasAnyRole(['ADMIN']) && teacherItems.length > 0 && (
-            renderNavItems(teacherItems, roles.length > 1 ? 'Profesor' : undefined)
-          )}
-          {hasAnyRole(['STUDENT']) && !hasAnyRole(['ADMIN', 'TEACHER']) && studentItems.length > 0 && (
-            renderNavItems(studentItems, roles.length > 1 ? 'Estudiante' : undefined)
-          )}
+          {hasAnyRole(['ADMIN']) &&
+            adminItems.length > 0 &&
+            renderNavItems(
+              adminItems,
+              roles.length > 1 ? 'Administración' : undefined,
+            )}
+          {hasAnyRole(['TEACHER']) &&
+            !hasAnyRole(['ADMIN']) &&
+            teacherItems.length > 0 &&
+            renderNavItems(
+              teacherItems,
+              roles.length > 1 ? 'Profesor' : undefined,
+            )}
+          {hasAnyRole(['STUDENT']) &&
+            !hasAnyRole(['ADMIN', 'TEACHER']) &&
+            studentItems.length > 0 &&
+            renderNavItems(
+              studentItems,
+              roles.length > 1 ? 'Estudiante' : undefined,
+            )}
 
           {/* For users with multiple roles (excluding admin who sees all) */}
-          {hasAnyRole(['TEACHER']) && hasAnyRole(['STUDENT']) && !hasAnyRole(['ADMIN']) && (
-            <>
-              {renderNavItems(teacherItems, 'Profesor')}
-              {renderNavItems(studentItems, 'Estudiante')}
-            </>
-          )}
+          {hasAnyRole(['TEACHER']) &&
+            hasAnyRole(['STUDENT']) &&
+            !hasAnyRole(['ADMIN']) && (
+              <>
+                {renderNavItems(teacherItems, 'Profesor')}
+                {renderNavItems(studentItems, 'Estudiante')}
+              </>
+            )}
         </div>
       </aside>
     </>

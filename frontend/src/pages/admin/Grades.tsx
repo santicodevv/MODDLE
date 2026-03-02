@@ -1,5 +1,5 @@
 // Admin Grades Page - View and manage student grades by period
-import { useState, Fragment } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gradesApi, periodsApi } from '@/api';
 import {
@@ -38,11 +38,13 @@ interface CourseWithGrades {
 
 export default function AdminGrades() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
-  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
+  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(
+    new Set(),
+  );
   const [editingGrades, setEditingGrades] = useState<
     Map<string, { totalGrade: number | null; comment: string | null }>
   >(new Map());
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   // Fetch periods
   const { data: periods, isLoading: periodsLoading } = useQuery({
@@ -62,7 +64,8 @@ export default function AdminGrades() {
   });
 
   // Calculate statistics
-  const totalStudents = courses?.reduce((sum, c) => sum + c.studentCount, 0) || 0;
+  const totalStudents =
+    courses?.reduce((sum, c) => sum + c.studentCount, 0) || 0;
   const totalGraded = courses?.reduce((sum, c) => sum + c.gradedCount, 0) || 0;
 
   const toggleCourse = (courseMoodleId: number) => {
@@ -95,7 +98,9 @@ export default function AdminGrades() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Calificaciones por Período</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Calificaciones por Período
+        </h1>
         <p className="text-gray-600 mt-1">
           Gestiona las calificaciones finales de los estudiantes
         </p>
@@ -110,7 +115,9 @@ export default function AdminGrades() {
               <Label>Período Académico</Label>
               <Select
                 value={effectivePeriodId || ''}
-                onChange={(e) => handlePeriodChange(Number(e.target.value) || null)}
+                onChange={(e) =>
+                  handlePeriodChange(Number(e.target.value) || null)
+                }
                 className="mt-1"
               >
                 <option value="">-- Selecciona un período --</option>
@@ -136,7 +143,9 @@ export default function AdminGrades() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Cursos</p>
-                  <p className="text-xl font-bold text-purple-600">{courses.length}</p>
+                  <p className="text-xl font-bold text-purple-600">
+                    {courses.length}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -149,7 +158,9 @@ export default function AdminGrades() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Estudiantes</p>
-                  <p className="text-xl font-bold text-blue-600">{totalStudents}</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    {totalStudents}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -162,7 +173,9 @@ export default function AdminGrades() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Calificados</p>
-                  <p className="text-xl font-bold text-green-600">{totalGraded}</p>
+                  <p className="text-xl font-bold text-green-600">
+                    {totalGraded}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -213,7 +226,9 @@ export default function AdminGrades() {
             <Card>
               <CardContent className="py-12 text-center">
                 <ClipboardList className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500">No hay calificaciones registradas para este período</p>
+                <p className="text-gray-500">
+                  No hay calificaciones registradas para este período
+                </p>
               </CardContent>
             </Card>
           )}
@@ -224,7 +239,9 @@ export default function AdminGrades() {
         <Card>
           <CardContent className="py-12 text-center">
             <GraduationCap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Selecciona un período académico para ver las calificaciones</p>
+            <p className="text-gray-500">
+              Selecciona un período académico para ver las calificaciones
+            </p>
           </CardContent>
         </Card>
       )}
@@ -238,9 +255,14 @@ interface CourseGradeSectionProps {
   periodId: number;
   isExpanded: boolean;
   onToggle: () => void;
-  editingGrades: Map<string, { totalGrade: number | null; comment: string | null }>;
+  editingGrades: Map<
+    string,
+    { totalGrade: number | null; comment: string | null }
+  >;
   setEditingGrades: React.Dispatch<
-    React.SetStateAction<Map<string, { totalGrade: number | null; comment: string | null }>>
+    React.SetStateAction<
+      Map<string, { totalGrade: number | null; comment: string | null }>
+    >
   >;
 }
 
@@ -257,7 +279,8 @@ function CourseGradeSection({
   // Fetch grades when expanded
   const { data: grades, isLoading: gradesLoading } = useQuery({
     queryKey: ['course-grades-period', periodId, course.courseMoodleId],
-    queryFn: () => gradesApi.getGradesForPeriodAndCourse(periodId, course.courseMoodleId),
+    queryFn: () =>
+      gradesApi.getGradesForPeriodAndCourse(periodId, course.courseMoodleId),
     enabled: isExpanded,
   });
 
@@ -268,8 +291,17 @@ function CourseGradeSection({
       data,
     }: {
       studentId: number;
-      data: { totalGrade?: number | null; comment?: string | null };
-    }) => gradesApi.updateStudentGrade(course.courseMoodleId, studentId, periodId, data),
+      data: {
+        totalGrade?: number | null | undefined;
+        comment?: string | null | undefined;
+      };
+    }) =>
+      gradesApi.updateStudentGrade(
+        course.courseMoodleId,
+        studentId,
+        periodId,
+        data as any,
+      ),
     onSuccess: (_, variables) => {
       const key = `${course.courseMoodleId}-${variables.studentId}`;
       setEditingGrades((prev) => {
@@ -280,7 +312,9 @@ function CourseGradeSection({
       queryClient.invalidateQueries({
         queryKey: ['course-grades-period', periodId, course.courseMoodleId],
       });
-      queryClient.invalidateQueries({ queryKey: ['period-courses-grades', periodId] });
+      queryClient.invalidateQueries({
+        queryKey: ['period-courses-grades', periodId],
+      });
       toast.success('Calificación guardada');
     },
     onError: (error: any) => {
@@ -291,7 +325,7 @@ function CourseGradeSection({
   const handleGradeChange = (
     studentId: number,
     field: 'totalGrade' | 'comment',
-    value: string | number | null
+    value: string | number | null,
   ) => {
     const key = `${course.courseMoodleId}-${studentId}`;
     const currentGrade = grades?.find((g) => g.studentId === studentId);
@@ -359,13 +393,18 @@ function CourseGradeSection({
                 {course.courseShortname} - {course.courseName}
               </h3>
               <p className="text-sm text-gray-500">
-                {course.studentCount} estudiantes • {course.gradedCount} calificados
+                {course.studentCount} estudiantes • {course.gradedCount}{' '}
+                calificados
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge
-              variant={course.gradedCount === course.studentCount ? 'success' : 'secondary'}
+              variant={
+                course.gradedCount === course.studentCount
+                  ? 'success'
+                  : 'secondary'
+              }
             >
               {course.gradedCount}/{course.studentCount}
             </Badge>
@@ -408,7 +447,8 @@ function CourseGradeSection({
                     {grades.map((grade: StudentGradeWithDetails) => {
                       const key = `${course.courseMoodleId}-${grade.studentId}`;
                       const editData = editingGrades.get(key);
-                      const displayTotal = editData?.totalGrade ?? grade.totalGrade;
+                      const displayTotal =
+                        editData?.totalGrade ?? grade.totalGrade;
                       const displayComment = editData?.comment ?? grade.comment;
 
                       return (
@@ -443,7 +483,9 @@ function CourseGradeSection({
                                 handleGradeChange(
                                   grade.studentId,
                                   'totalGrade',
-                                  e.target.value ? Number(e.target.value) : null
+                                  e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
                                 )
                               }
                               className={`w-20 text-center ${getGradeColor(displayTotal)}`}
@@ -456,7 +498,11 @@ function CourseGradeSection({
                               <Input
                                 value={displayComment || ''}
                                 onChange={(e) =>
-                                  handleGradeChange(grade.studentId, 'comment', e.target.value)
+                                  handleGradeChange(
+                                    grade.studentId,
+                                    'comment',
+                                    e.target.value,
+                                  )
                                 }
                                 placeholder="Sin comentario"
                                 className="text-sm"
@@ -468,7 +514,10 @@ function CourseGradeSection({
                               size="sm"
                               variant="primary"
                               onClick={() => handleSave(grade.studentId)}
-                              disabled={!hasChanges(grade.studentId) || updateGradeMutation.isPending}
+                              disabled={
+                                !hasChanges(grade.studentId) ||
+                                updateGradeMutation.isPending
+                              }
                             >
                               <Save className="h-4 w-4" />
                             </Button>

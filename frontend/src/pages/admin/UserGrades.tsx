@@ -60,7 +60,9 @@ export default function UserGrades() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
+  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(
+    new Set(),
+  );
 
   // Debounce search query
   useEffect(() => {
@@ -90,7 +92,10 @@ export default function UserGrades() {
 
     const grouped = new Map<
       number | null,
-      { period: { id: number | null; name: string; code: string }; courses: CourseGrade[] }
+      {
+        period: { id: number | null; name: string; code: string };
+        courses: CourseGrade[];
+      }
     >();
 
     for (const course of userData.courses) {
@@ -108,15 +113,20 @@ export default function UserGrades() {
       grouped.get(periodKey)!.courses.push(course);
     }
 
-    return Array.from(grouped.values()).sort((a, b) => (b.period.id ?? 0) - (a.period.id ?? 0));
+    return Array.from(grouped.values()).sort(
+      (a, b) => (b.period.id ?? 0) - (a.period.id ?? 0),
+    );
   }, [userData?.courses]);
 
   // Calculate statistics
   const stats = useMemo(() => {
-    if (!userData?.courses) return { totalCourses: 0, gradedCourses: 0, avgGrade: null };
+    if (!userData?.courses)
+      return { totalCourses: 0, gradedCourses: 0, avgGrade: null };
 
     const totalCourses = userData.courses.length;
-    const gradedCourses = userData.courses.filter((c) => c.totalGrade !== null).length;
+    const gradedCourses = userData.courses.filter(
+      (c) => c.totalGrade !== null,
+    ).length;
     const avgGrade =
       gradedCourses > 0
         ? userData.courses
@@ -154,7 +164,7 @@ export default function UserGrades() {
     return 'text-red-600 bg-red-50';
   };
 
-  const getGradeLabel = (grade: number | null) => {
+  const _getGradeLabel = (grade: number | null) => {
     if (grade === null) return 'Pendiente';
     if (grade >= 90) return 'Excelente';
     if (grade >= 80) return 'Muy Bueno';
@@ -178,7 +188,9 @@ export default function UserGrades() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Calificaciones por Usuario</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Calificaciones por Usuario
+        </h1>
         <p className="text-gray-600 mt-1">
           Busca un usuario para ver todas sus calificaciones detalladas
         </p>
@@ -272,7 +284,9 @@ export default function UserGrades() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Total Cursos</p>
-                    <p className="text-xl font-bold text-purple-600">{stats.totalCourses}</p>
+                    <p className="text-xl font-bold text-purple-600">
+                      {stats.totalCourses}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -285,7 +299,9 @@ export default function UserGrades() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Calificados</p>
-                    <p className="text-xl font-bold text-green-600">{stats.gradedCourses}</p>
+                    <p className="text-xl font-bold text-green-600">
+                      {stats.gradedCourses}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -314,7 +330,9 @@ export default function UserGrades() {
                   <div>
                     <p className="text-sm text-gray-500">Promedio</p>
                     <p className="text-xl font-bold text-blue-600">
-                      {stats.avgGrade !== null ? stats.avgGrade.toFixed(1) : '-'}
+                      {stats.avgGrade !== null
+                        ? stats.avgGrade.toFixed(1)
+                        : '-'}
                     </p>
                   </div>
                 </div>
@@ -338,8 +356,12 @@ export default function UserGrades() {
                         <Calendar className="h-5 w-5 text-indigo-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{period.name}</h3>
-                        <p className="text-sm text-gray-500">{period.code || 'Sin codigo'}</p>
+                        <h3 className="font-semibold text-gray-900">
+                          {period.name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {period.code || 'Sin codigo'}
+                        </p>
                       </div>
                       <Badge variant="secondary" className="ml-auto">
                         {courses.length} cursos
@@ -349,13 +371,17 @@ export default function UserGrades() {
                     {/* Courses List */}
                     <div className="divide-y">
                       {courses.map((course) => {
-                        const isExpanded = expandedCourses.has(course.courseMoodleId);
+                        const isExpanded = expandedCourses.has(
+                          course.courseMoodleId,
+                        );
                         return (
                           <div key={course.courseMoodleId}>
                             {/* Course Header - Clickable */}
                             <div
                               className="flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                              onClick={() => toggleCourse(course.courseMoodleId)}
+                              onClick={() =>
+                                toggleCourse(course.courseMoodleId)
+                              }
                             >
                               <div className="flex items-center gap-2">
                                 {isExpanded ? (
@@ -369,12 +395,16 @@ export default function UserGrades() {
                                 <p className="font-medium text-gray-900 truncate">
                                   {course.courseName}
                                 </p>
-                                <p className="text-xs text-gray-500">{course.courseShortname}</p>
+                                <p className="text-xs text-gray-500">
+                                  {course.courseShortname}
+                                </p>
                               </div>
                               <div className="flex items-center gap-4">
                                 {/* Acumulado */}
                                 <div className="text-center">
-                                  <p className="text-xs text-gray-500">Acumulado</p>
+                                  <p className="text-xs text-gray-500">
+                                    Acumulado
+                                  </p>
                                   <p className="font-semibold text-gray-700">
                                     {course.moodleSumGrade !== null
                                       ? `${course.moodleSumGrade.toFixed(2)}/${course.moodleSumMax?.toFixed(2)}`
@@ -384,12 +414,14 @@ export default function UserGrades() {
                                 {/* Nota Final */}
                                 <div
                                   className={`text-center px-3 py-1 rounded-lg ${getGradeColor(
-                                    course.totalGrade
+                                    course.totalGrade,
                                   )}`}
                                 >
                                   <p className="text-xs">Total</p>
                                   <p className="font-bold">
-                                    {course.totalGrade !== null ? course.totalGrade : '-'}
+                                    {course.totalGrade !== null
+                                      ? course.totalGrade
+                                      : '-'}
                                   </p>
                                 </div>
                                 {/* Items count */}
@@ -423,7 +455,10 @@ export default function UserGrades() {
                                       </thead>
                                       <tbody className="divide-y divide-gray-200">
                                         {course.gradeItems.map((item) => (
-                                          <tr key={item.itemMoodleId} className="hover:bg-gray-50">
+                                          <tr
+                                            key={item.itemMoodleId}
+                                            className="hover:bg-gray-50"
+                                          >
                                             <td className="px-4 py-2">
                                               <div className="flex items-center gap-2">
                                                 <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -434,7 +469,9 @@ export default function UserGrades() {
                                             </td>
                                             <td className="px-4 py-2">
                                               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                {getItemTypeLabel(item.itemType)}
+                                                {getItemTypeLabel(
+                                                  item.itemType,
+                                                )}
                                               </span>
                                             </td>
                                             <td className="px-4 py-2 text-center">
@@ -445,11 +482,15 @@ export default function UserGrades() {
                                                     : 'text-gray-400'
                                                 }`}
                                               >
-                                                {item.grade !== null ? item.grade.toFixed(2) : '-'}
+                                                {item.grade !== null
+                                                  ? item.grade.toFixed(2)
+                                                  : '-'}
                                               </span>
                                             </td>
                                             <td className="px-4 py-2 text-center text-sm text-gray-500">
-                                              {item.gradeMax !== null ? item.gradeMax.toFixed(2) : '-'}
+                                              {item.gradeMax !== null
+                                                ? item.gradeMax.toFixed(2)
+                                                : '-'}
                                             </td>
                                           </tr>
                                         ))}
@@ -468,7 +509,9 @@ export default function UserGrades() {
                                     {course.comment && (
                                       <div className="flex items-start gap-2 mb-2">
                                         <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5" />
-                                        <p className="text-sm text-gray-600">{course.comment}</p>
+                                        <p className="text-sm text-gray-600">
+                                          {course.comment}
+                                        </p>
                                       </div>
                                     )}
                                     {course.teacherName && (
@@ -492,7 +535,9 @@ export default function UserGrades() {
             <Card>
               <CardContent className="py-12 text-center">
                 <GraduationCap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500">Este usuario no tiene calificaciones registradas</p>
+                <p className="text-gray-500">
+                  Este usuario no tiene calificaciones registradas
+                </p>
               </CardContent>
             </Card>
           )}
@@ -504,7 +549,9 @@ export default function UserGrades() {
         <Card>
           <CardContent className="py-12 text-center">
             <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Busca un usuario para ver sus calificaciones</p>
+            <p className="text-gray-500">
+              Busca un usuario para ver sus calificaciones
+            </p>
             <p className="text-sm text-gray-400 mt-1">
               Escribe al menos 2 caracteres para comenzar la busqueda
             </p>

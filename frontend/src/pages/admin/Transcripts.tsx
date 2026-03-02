@@ -17,7 +17,6 @@ import {
   Search,
   Download,
   Plus,
-  Eye,
   XCircle,
   CheckCircle,
   Clock,
@@ -63,10 +62,7 @@ interface Period {
   name: string;
 }
 
-interface TranscriptsResponse {
-  transcripts: Transcript[];
-  total: number;
-}
+// TranscriptsResponse type used inline
 
 export default function AdminTranscripts() {
   const [search, setSearch] = useState('');
@@ -74,7 +70,8 @@ export default function AdminTranscripts() {
   const [page, setPage] = useState(1);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
-  const [selectedTranscript, setSelectedTranscript] = useState<Transcript | null>(null);
+  const [selectedTranscript, setSelectedTranscript] =
+    useState<Transcript | null>(null);
   const [revokeReason, setRevokeReason] = useState('');
   const [generateForm, setGenerateForm] = useState({
     studentId: '',
@@ -176,7 +173,9 @@ export default function AdminTranscripts() {
     }
     generateMutation.mutate({
       studentId: parseInt(generateForm.studentId),
-      periodId: generateForm.periodId ? parseInt(generateForm.periodId) : undefined,
+      periodId: generateForm.periodId
+        ? parseInt(generateForm.periodId)
+        : undefined,
     });
   };
 
@@ -216,7 +215,8 @@ export default function AdminTranscripts() {
               <div>
                 <p className="text-sm text-gray-500">Constancias Activas</p>
                 <p className="text-xl font-bold text-green-600">
-                  {data?.transcripts.filter((t) => t.status === 'generated').length ?? 0}
+                  {data?.transcripts.filter((t) => t.status === 'generated')
+                    .length ?? 0}
                 </p>
               </div>
             </div>
@@ -232,7 +232,8 @@ export default function AdminTranscripts() {
               <div>
                 <p className="text-sm text-gray-500">Revocadas</p>
                 <p className="text-xl font-bold text-red-600">
-                  {data?.transcripts.filter((t) => t.status === 'revoked').length ?? 0}
+                  {data?.transcripts.filter((t) => t.status === 'revoked')
+                    .length ?? 0}
                 </p>
               </div>
             </div>
@@ -356,7 +357,11 @@ export default function AdminTranscripts() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <Badge
-                            variant={transcript.status === 'generated' ? 'success' : 'destructive'}
+                            variant={
+                              transcript.status === 'generated'
+                                ? 'success'
+                                : 'danger'
+                            }
                           >
                             {transcript.status === 'generated' ? (
                               <>
@@ -374,7 +379,9 @@ export default function AdminTranscripts() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Clock className="h-4 w-4" />
-                            {new Date(transcript.generatedAt).toLocaleDateString()}
+                            {new Date(
+                              transcript.generatedAt,
+                            ).toLocaleDateString()}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -442,7 +449,9 @@ export default function AdminTranscripts() {
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <FileText className="h-12 w-12 mb-4 text-gray-300" />
               <p>No hay constancias generadas</p>
-              <p className="text-sm">Genera una nueva constancia para un estudiante</p>
+              <p className="text-sm">
+                Genera una nueva constancia para un estudiante
+              </p>
             </div>
           )}
         </CardContent>
@@ -497,7 +506,10 @@ export default function AdminTranscripts() {
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setShowGenerateModal(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowGenerateModal(false)}
+            >
               Cancelar
             </Button>
             <Button
@@ -534,8 +546,9 @@ export default function AdminTranscripts() {
                   Esta acción no se puede deshacer
                 </p>
                 <p className="text-sm text-yellow-700">
-                  La constancia {selectedTranscript?.transcriptNumber} será marcada como
-                  revocada y no podrá ser utilizada como documento oficial.
+                  La constancia {selectedTranscript?.transcriptNumber} será
+                  marcada como revocada y no podrá ser utilizada como documento
+                  oficial.
                 </p>
               </div>
             </div>
@@ -566,7 +579,7 @@ export default function AdminTranscripts() {
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={handleRevoke}
               disabled={revokeMutation.isPending}
             >

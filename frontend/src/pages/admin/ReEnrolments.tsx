@@ -40,9 +40,12 @@ type ViewMode = 'list' | 'detail';
 export default function AdminReEnrolments() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedRequest, setSelectedRequest] = useState<ReEnrolmentRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] =
+    useState<ReEnrolmentRequest | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ReEnrolmentStatus | 'all'>('submitted');
+  const [statusFilter, setStatusFilter] = useState<ReEnrolmentStatus | 'all'>(
+    'submitted',
+  );
   const [periodFilter, setPeriodFilter] = useState<number | 'all'>('all');
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -58,7 +61,10 @@ export default function AdminReEnrolments() {
   // Fetch stats
   const { data: stats } = useQuery({
     queryKey: ['reenrolment-stats', periodFilter],
-    queryFn: () => reenrolmentsApi.getStats(periodFilter !== 'all' ? periodFilter : undefined),
+    queryFn: () =>
+      reenrolmentsApi.getStats(
+        periodFilter !== 'all' ? periodFilter : undefined,
+      ),
   });
 
   // Fetch requests
@@ -77,20 +83,21 @@ export default function AdminReEnrolments() {
 
       // Filter by status if not 'all' and not already filtered by pending
       if (statusFilter !== 'all' && statusFilter !== 'submitted') {
-        data = data.filter(r => r.status === statusFilter);
+        data = data.filter((r) => r.status === statusFilter);
       } else if (statusFilter === 'all') {
         // Show all except drafts for admin
-        data = data.filter(r => r.status !== 'draft');
+        data = data.filter((r) => r.status !== 'draft');
       }
 
       // Filter by search
       if (search) {
         const searchLower = search.toLowerCase();
-        data = data.filter(r =>
-          r.student?.displayName?.toLowerCase().includes(searchLower) ||
-          r.student?.email?.toLowerCase().includes(searchLower) ||
-          r.period?.name?.toLowerCase().includes(searchLower) ||
-          r.period?.code?.toLowerCase().includes(searchLower)
+        data = data.filter(
+          (r) =>
+            r.student?.displayName?.toLowerCase().includes(searchLower) ||
+            r.student?.email?.toLowerCase().includes(searchLower) ||
+            r.period?.name?.toLowerCase().includes(searchLower) ||
+            r.period?.code?.toLowerCase().includes(searchLower),
         );
       }
 
@@ -111,7 +118,9 @@ export default function AdminReEnrolments() {
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al aprobar la solicitud');
+      toast.error(
+        error.response?.data?.message || 'Error al aprobar la solicitud',
+      );
     },
   });
 
@@ -134,7 +143,7 @@ export default function AdminReEnrolments() {
     },
   });
 
-  const applyMutation = useMutation({
+  const _applyMutation = useMutation({
     mutationFn: (id: number) => reenrolmentsApi.applyToMoodle(id),
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
@@ -174,8 +183,13 @@ export default function AdminReEnrolments() {
   });
 
   const adminAddCoursesMutation = useMutation({
-    mutationFn: ({ id, courses }: { id: number; courses: { courseMoodleId: number }[] }) =>
-      reenrolmentsApi.adminAddCourses(id, courses),
+    mutationFn: ({
+      id,
+      courses,
+    }: {
+      id: number;
+      courses: { courseMoodleId: number }[];
+    }) => reenrolmentsApi.adminAddCourses(id, courses),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
       toast.success('Cursos agregados correctamente');
@@ -189,8 +203,13 @@ export default function AdminReEnrolments() {
   });
 
   const adminRemoveCoursesMutation = useMutation({
-    mutationFn: ({ id, courseMoodleIds }: { id: number; courseMoodleIds: number[] }) =>
-      reenrolmentsApi.adminRemoveCourses(id, courseMoodleIds),
+    mutationFn: ({
+      id,
+      courseMoodleIds,
+    }: {
+      id: number;
+      courseMoodleIds: number[];
+    }) => reenrolmentsApi.adminRemoveCourses(id, courseMoodleIds),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
       toast.success('Curso eliminado correctamente');
@@ -295,11 +314,15 @@ export default function AdminReEnrolments() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500">Nombre</p>
-                    <p className="font-medium">{selectedRequest.student?.displayName || 'N/A'}</p>
+                    <p className="font-medium">
+                      {selectedRequest.student?.displayName || 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-medium">{selectedRequest.student?.email || 'N/A'}</p>
+                    <p className="font-medium">
+                      {selectedRequest.student?.email || 'N/A'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -325,7 +348,8 @@ export default function AdminReEnrolments() {
                           </div>
                           <div>
                             <p className="font-medium">
-                              {line.courseName || `Curso ID: ${line.courseMoodleId}`}
+                              {line.courseName ||
+                                `Curso ID: ${line.courseMoodleId}`}
                             </p>
                             <p className="text-sm text-gray-500">
                               Moodle ID: {line.courseMoodleId}
@@ -360,8 +384,12 @@ export default function AdminReEnrolments() {
             {selectedRequest.notes && (
               <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-lg font-semibold mb-4">Notas del Estudiante</h2>
-                  <p className="text-gray-700 whitespace-pre-wrap">{selectedRequest.notes}</p>
+                  <h2 className="text-lg font-semibold mb-4">
+                    Notas del Estudiante
+                  </h2>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {selectedRequest.notes}
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -390,11 +418,15 @@ export default function AdminReEnrolments() {
                       </Button>
                       <Button
                         className="w-full"
-                        onClick={() => approveMutation.mutate(selectedRequest.id)}
+                        onClick={() =>
+                          approveMutation.mutate(selectedRequest.id)
+                        }
                         disabled={approveMutation.isPending}
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        {approveMutation.isPending ? 'Aprobando...' : 'Aprobar y Aplicar'}
+                        {approveMutation.isPending
+                          ? 'Aprobando...'
+                          : 'Aprobar y Aplicar'}
                       </Button>
                       <Button
                         variant="outline"
@@ -413,7 +445,11 @@ export default function AdminReEnrolments() {
                       variant="danger"
                       className="w-full"
                       onClick={() => {
-                        if (confirm('¿Eliminar esta solicitud? Esta accion no se puede deshacer.')) {
+                        if (
+                          confirm(
+                            '¿Eliminar esta solicitud? Esta accion no se puede deshacer.',
+                          )
+                        ) {
                           deleteMutation.mutate(selectedRequest.id);
                         }
                       }}
@@ -435,7 +471,9 @@ export default function AdminReEnrolments() {
                   Período
                 </h2>
                 <div className="space-y-2">
-                  <p className="font-medium">{selectedRequest.period?.name || 'N/A'}</p>
+                  <p className="font-medium">
+                    {selectedRequest.period?.name || 'N/A'}
+                  </p>
                   <p className="text-sm text-gray-500">
                     Código: {selectedRequest.period?.code || 'N/A'}
                   </p>
@@ -450,18 +488,24 @@ export default function AdminReEnrolments() {
                 <div className="space-y-3 text-sm">
                   <div>
                     <p className="text-gray-500">Creada</p>
-                    <p>{new Date(selectedRequest.createdAt).toLocaleString()}</p>
+                    <p>
+                      {new Date(selectedRequest.createdAt).toLocaleString()}
+                    </p>
                   </div>
                   {selectedRequest.submittedAt && (
                     <div>
                       <p className="text-gray-500">Enviada</p>
-                      <p>{new Date(selectedRequest.submittedAt).toLocaleString()}</p>
+                      <p>
+                        {new Date(selectedRequest.submittedAt).toLocaleString()}
+                      </p>
                     </div>
                   )}
                   {selectedRequest.decidedAt && (
                     <div>
                       <p className="text-gray-500">Procesada</p>
-                      <p>{new Date(selectedRequest.decidedAt).toLocaleString()}</p>
+                      <p>
+                        {new Date(selectedRequest.decidedAt).toLocaleString()}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -524,7 +568,9 @@ export default function AdminReEnrolments() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Editar Cursos de la Solicitud</h3>
+                <h3 className="text-lg font-semibold">
+                  Editar Cursos de la Solicitud
+                </h3>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -552,7 +598,8 @@ export default function AdminReEnrolments() {
                           </div>
                           <div>
                             <p className="font-medium text-sm">
-                              {line.courseName || `Curso ID: ${line.courseMoodleId}`}
+                              {line.courseName ||
+                                `Curso ID: ${line.courseMoodleId}`}
                             </p>
                             <p className="text-xs text-gray-500">
                               ID: {line.courseMoodleId}
@@ -595,8 +642,9 @@ export default function AdminReEnrolments() {
                         (course) =>
                           !selectedRequest.lines?.some(
                             (line) =>
-                              Number(line.courseMoodleId) === Number(course.courseMoodleId)
-                          )
+                              Number(line.courseMoodleId) ===
+                              Number(course.courseMoodleId),
+                          ),
                       )
                       .map((course) => (
                         <div
@@ -608,7 +656,9 @@ export default function AdminReEnrolments() {
                               <BookOpen className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
-                              <p className="font-medium text-sm">{course.courseName}</p>
+                              <p className="font-medium text-sm">
+                                {course.courseName}
+                              </p>
                               <p className="text-xs text-gray-500">
                                 ID: {course.courseMoodleId}
                               </p>
@@ -621,7 +671,13 @@ export default function AdminReEnrolments() {
                             onClick={() =>
                               adminAddCoursesMutation.mutate({
                                 id: selectedRequest.id,
-                                courses: [{ courseMoodleId: Number(course.courseMoodleId) }],
+                                courses: [
+                                  {
+                                    courseMoodleId: Number(
+                                      course.courseMoodleId,
+                                    ),
+                                  },
+                                ],
                               })
                             }
                             disabled={adminAddCoursesMutation.isPending}
@@ -634,8 +690,9 @@ export default function AdminReEnrolments() {
                       (course) =>
                         !selectedRequest.lines?.some(
                           (line) =>
-                            Number(line.courseMoodleId) === Number(course.courseMoodleId)
-                        )
+                            Number(line.courseMoodleId) ===
+                            Number(course.courseMoodleId),
+                        ),
                     ).length === 0 && (
                       <p className="text-sm text-gray-500 text-center py-4">
                         Todos los cursos disponibles ya están en la solicitud
@@ -650,7 +707,10 @@ export default function AdminReEnrolments() {
               </div>
 
               <div className="flex justify-end mt-6">
-                <Button variant="outline" onClick={() => setEditCoursesModalOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditCoursesModalOpen(false)}
+                >
                   Cerrar
                 </Button>
               </div>
@@ -682,7 +742,9 @@ export default function AdminReEnrolments() {
               <div className="flex items-center justify-center mb-2">
                 <Clock className="h-5 w-5 text-yellow-600" />
               </div>
-              <p className="text-2xl font-bold text-yellow-600">{stats.submitted || 0}</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {stats.submitted || 0}
+              </p>
               <p className="text-sm text-gray-500">Pendientes</p>
             </CardContent>
           </Card>
@@ -691,7 +753,9 @@ export default function AdminReEnrolments() {
               <div className="flex items-center justify-center mb-2">
                 <CheckCircle className="h-5 w-5 text-blue-600" />
               </div>
-              <p className="text-2xl font-bold text-blue-600">{stats.approved || 0}</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {stats.approved || 0}
+              </p>
               <p className="text-sm text-gray-500">Aprobadas</p>
             </CardContent>
           </Card>
@@ -700,7 +764,9 @@ export default function AdminReEnrolments() {
               <div className="flex items-center justify-center mb-2">
                 <XCircle className="h-5 w-5 text-red-600" />
               </div>
-              <p className="text-2xl font-bold text-red-600">{stats.rejected || 0}</p>
+              <p className="text-2xl font-bold text-red-600">
+                {stats.rejected || 0}
+              </p>
               <p className="text-sm text-gray-500">Rechazadas</p>
             </CardContent>
           </Card>
@@ -709,7 +775,9 @@ export default function AdminReEnrolments() {
               <div className="flex items-center justify-center mb-2">
                 <Send className="h-5 w-5 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-green-600">{stats.applied || 0}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats.applied || 0}
+              </p>
               <p className="text-sm text-gray-500">Aplicadas</p>
             </CardContent>
           </Card>
@@ -719,7 +787,10 @@ export default function AdminReEnrolments() {
                 <BarChart3 className="h-5 w-5 text-gray-600" />
               </div>
               <p className="text-2xl font-bold text-gray-600">
-                {(stats.submitted || 0) + (stats.approved || 0) + (stats.rejected || 0) + (stats.applied || 0)}
+                {(stats.submitted || 0) +
+                  (stats.approved || 0) +
+                  (stats.rejected || 0) +
+                  (stats.applied || 0)}
               </p>
               <p className="text-sm text-gray-500">Total</p>
             </CardContent>
@@ -746,7 +817,11 @@ export default function AdminReEnrolments() {
                 <select
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={periodFilter}
-                  onChange={(e) => setPeriodFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  onChange={(e) =>
+                    setPeriodFilter(
+                      e.target.value === 'all' ? 'all' : Number(e.target.value),
+                    )
+                  }
                 >
                   <option value="all">Todos los períodos</option>
                   {periods?.map((period) => (
@@ -758,7 +833,9 @@ export default function AdminReEnrolments() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {(['all', 'submitted', 'approved', 'rejected', 'applied'] as const).map((status) => (
+              {(
+                ['all', 'submitted', 'approved', 'rejected', 'applied'] as const
+              ).map((status) => (
                 <Button
                   key={status}
                   variant={statusFilter === status ? 'primary' : 'outline'}
@@ -785,7 +862,10 @@ export default function AdminReEnrolments() {
       ) : requests && requests.length > 0 ? (
         <div className="space-y-4">
           {requests.map((request) => (
-            <Card key={request.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={request.id}
+              className="hover:shadow-md transition-shadow"
+            >
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div className="flex-1 space-y-3">
@@ -796,7 +876,8 @@ export default function AdminReEnrolments() {
                       </span>
                       {request.submittedAt && (
                         <span className="text-sm text-gray-500">
-                          Enviada: {new Date(request.submittedAt).toLocaleString()}
+                          Enviada:{' '}
+                          {new Date(request.submittedAt).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -847,7 +928,10 @@ export default function AdminReEnrolments() {
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" onClick={() => viewDetail(request)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => viewDetail(request)}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       Ver Detalle
                     </Button>
@@ -858,7 +942,9 @@ export default function AdminReEnrolments() {
                           disabled={approveMutation.isPending}
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
-                          {approveMutation.isPending ? 'Aplicando...' : 'Aprobar'}
+                          {approveMutation.isPending
+                            ? 'Aplicando...'
+                            : 'Aprobar'}
                         </Button>
                         <Button
                           variant="outline"

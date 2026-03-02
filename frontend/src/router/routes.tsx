@@ -17,7 +17,7 @@ const StudentDashboard = lazy(() => import('@/pages/student/Dashboard'));
 const StudentGrades = lazy(() => import('@/pages/student/Grades'));
 const StudentCourses = lazy(() => import('@/pages/student/Courses'));
 const StudentReEnrolment = lazy(() => import('@/pages/student/ReEnrolment'));
-const StudentTranscripts = lazy(() => import('@/pages/student/Transcripts'));
+// const StudentTranscripts = lazy(() => import('@/pages/student/Transcripts'));
 
 // Teacher pages
 const TeacherDashboard = lazy(() => import('@/pages/teacher/Dashboard'));
@@ -34,7 +34,7 @@ const AdminGrades = lazy(() => import('@/pages/admin/Grades'));
 const AdminUserGrades = lazy(() => import('@/pages/admin/UserGrades'));
 const AdminPeriods = lazy(() => import('@/pages/admin/Periods'));
 const AdminReEnrolments = lazy(() => import('@/pages/admin/ReEnrolments'));
-const AdminTranscripts = lazy(() => import('@/pages/admin/Transcripts'));
+// const AdminTranscripts = lazy(() => import('@/pages/admin/Transcripts'));
 const AdminSync = lazy(() => import('@/pages/admin/Sync'));
 const AdminAudit = lazy(() => import('@/pages/admin/Audit'));
 const AdminCreateCourse = lazy(() => import('@/pages/admin/CreateCourse'));

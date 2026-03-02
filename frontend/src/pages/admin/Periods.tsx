@@ -29,7 +29,7 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { AcademicPeriod, PeriodAvailableCourse } from '@/types';
+import type { AcademicPeriod } from '@/types';
 
 type ViewMode = 'list' | 'detail' | 'courses';
 

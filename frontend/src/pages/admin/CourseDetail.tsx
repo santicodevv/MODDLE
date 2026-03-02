@@ -70,9 +70,9 @@ export default function AdminCourseDetail() {
 
   // Filter available teachers (not already assigned)
   const availableTeachers =
-    allTeachers?.users?.filter((user) => {
+    (allTeachers as any)?.users?.filter((user: any) => {
       // Check if user has TEACHER role
-      const hasTeacherRole = user.roles?.some((r) => r.code === 'TEACHER');
+      const hasTeacherRole = user.roles?.some((r: any) => r.code === 'TEACHER');
       if (!hasTeacherRole) return false;
 
       // Check if already assigned
@@ -423,14 +423,14 @@ export default function AdminCourseDetail() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant={roleFilter === 'all' ? 'default' : 'outline'}
+                  variant={roleFilter === 'all' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setRoleFilter('all')}
                 >
                   Todos
                 </Button>
                 <Button
-                  variant={roleFilter === 'student' ? 'default' : 'outline'}
+                  variant={roleFilter === 'student' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setRoleFilter('student')}
                 >
@@ -438,7 +438,7 @@ export default function AdminCourseDetail() {
                   Estudiantes ({students.length})
                 </Button>
                 <Button
-                  variant={roleFilter === 'teacher' ? 'default' : 'outline'}
+                  variant={roleFilter === 'teacher' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setRoleFilter('teacher')}
                 >
@@ -695,7 +695,7 @@ export default function AdminCourseDetail() {
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {availableTeachers.length > 0 ? (
-                availableTeachers.map((teacher) => (
+                availableTeachers.map((teacher: any) => (
                   <div
                     key={teacher.id}
                     className="flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 cursor-pointer"

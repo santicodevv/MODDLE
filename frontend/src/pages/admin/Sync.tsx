@@ -2,13 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib';
-import {
-  Card,
-  CardContent,
-  Badge,
-  Spinner,
-  Button,
-} from '@/components/ui';
+import { Card, CardContent, Badge, Spinner, Button } from '@/components/ui';
 import {
   Database,
   RefreshCw,
@@ -74,17 +68,46 @@ interface ReconcileResult {
   completedAt: string;
 }
 
-const entityConfig: Record<string, { label: string; icon: typeof Users; color: string; bgColor: string }> = {
-  users: { label: 'Usuarios', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  courses: { label: 'Cursos', icon: BookOpen, color: 'text-green-600', bgColor: 'bg-green-100' },
-  enrolments: { label: 'Inscripciones', icon: UserPlus, color: 'text-purple-600', bgColor: 'bg-purple-100' },
-  grade_items: { label: 'Items Calificación', icon: ClipboardList, color: 'text-orange-600', bgColor: 'bg-orange-100' },
-  grades: { label: 'Calificaciones', icon: ClipboardList, color: 'text-red-600', bgColor: 'bg-red-100' },
+const entityConfig: Record<
+  string,
+  { label: string; icon: typeof Users; color: string; bgColor: string }
+> = {
+  users: {
+    label: 'Usuarios',
+    icon: Users,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
+  },
+  courses: {
+    label: 'Cursos',
+    icon: BookOpen,
+    color: 'text-green-600',
+    bgColor: 'bg-green-100',
+  },
+  enrolments: {
+    label: 'Inscripciones',
+    icon: UserPlus,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
+  },
+  grade_items: {
+    label: 'Items Calificación',
+    icon: ClipboardList,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100',
+  },
+  grades: {
+    label: 'Calificaciones',
+    icon: ClipboardList,
+    color: 'text-red-600',
+    bgColor: 'bg-red-100',
+  },
 };
 
 export default function AdminSync() {
   const queryClient = useQueryClient();
-  const [showReconcileResult, setShowReconcileResult] = useState<ReconcileResult | null>(null);
+  const [showReconcileResult, setShowReconcileResult] =
+    useState<ReconcileResult | null>(null);
 
   // Fetch sync status
   const { data: syncStatus, isLoading: syncLoading } = useQuery({
@@ -100,7 +123,9 @@ export default function AdminSync() {
   const { data: healthStatus, isLoading: healthLoading } = useQuery({
     queryKey: ['moodle-health'],
     queryFn: async () => {
-      const response = await api.get<HealthStatus>('/integrations/moodle/health');
+      const response = await api.get<HealthStatus>(
+        '/integrations/moodle/health',
+      );
       return response.data;
     },
     refetchInterval: 30000, // Check every 30 seconds
@@ -110,7 +135,9 @@ export default function AdminSync() {
   const { data: integrationStatus, isLoading: integrationLoading } = useQuery({
     queryKey: ['integration-status'],
     queryFn: async () => {
-      const response = await api.get<IntegrationStatus>('/integrations/moodle/status');
+      const response = await api.get<IntegrationStatus>(
+        '/integrations/moodle/status',
+      );
       return response.data;
     },
     refetchInterval: 10000,
@@ -141,7 +168,9 @@ export default function AdminSync() {
     onSuccess: (_, entity) => {
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
       queryClient.invalidateQueries({ queryKey: ['integration-status'] });
-      toast.success(`Sincronización de ${entityConfig[entity]?.label || entity} iniciada`);
+      toast.success(
+        `Sincronización de ${entityConfig[entity]?.label || entity} iniciada`,
+      );
     },
     onError: () => {
       toast.error('Error al iniciar sincronización');
@@ -157,7 +186,9 @@ export default function AdminSync() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
       queryClient.invalidateQueries({ queryKey: ['integration-status'] });
-      toast.success(`Bootstrap completado: ${data.syncedCounts?.users || 0} usuarios, ${data.syncedCounts?.courses || 0} cursos`);
+      toast.success(
+        `Bootstrap completado: ${data.syncedCounts?.users || 0} usuarios, ${data.syncedCounts?.courses || 0} cursos`,
+      );
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Error en bootstrap');
@@ -167,7 +198,9 @@ export default function AdminSync() {
   // Reconcile sync
   const reconcileMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post<ReconcileResult>('/integrations/moodle/sync/reconcile');
+      const response = await api.post<ReconcileResult>(
+        '/integrations/moodle/sync/reconcile',
+      );
       return response.data;
     },
     onSuccess: (data) => {
@@ -228,7 +261,9 @@ export default function AdminSync() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-lg ${healthStatus?.moodleConnected ? 'bg-green-100' : 'bg-red-100'}`}>
+                <div
+                  className={`p-3 rounded-lg ${healthStatus?.moodleConnected ? 'bg-green-100' : 'bg-red-100'}`}
+                >
                   {healthLoading ? (
                     <Spinner size="sm" />
                   ) : healthStatus?.moodleConnected ? (
@@ -248,13 +283,18 @@ export default function AdminSync() {
                   </p>
                 </div>
               </div>
-              <Badge variant={healthStatus?.moodleConnected ? 'success' : 'destructive'}>
+              <Badge
+                variant={healthStatus?.moodleConnected ? 'success' : 'danger'}
+              >
                 {healthStatus?.moodleConnected ? 'Online' : 'Offline'}
               </Badge>
             </div>
             {healthStatus?.coursesAvailable !== undefined && (
               <p className="mt-3 text-sm text-gray-500">
-                Cursos disponibles en Moodle: <span className="font-semibold">{healthStatus.coursesAvailable}</span>
+                Cursos disponibles en Moodle:{' '}
+                <span className="font-semibold">
+                  {healthStatus.coursesAvailable}
+                </span>
               </p>
             )}
           </CardContent>
@@ -265,7 +305,9 @@ export default function AdminSync() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-lg ${syncStatus?.isRunning ? 'bg-yellow-100' : 'bg-green-100'}`}>
+                <div
+                  className={`p-3 rounded-lg ${syncStatus?.isRunning ? 'bg-yellow-100' : 'bg-green-100'}`}
+                >
                   {syncStatus?.isRunning ? (
                     <RefreshCw className="h-6 w-6 text-yellow-600 animate-spin" />
                   ) : (
@@ -277,7 +319,9 @@ export default function AdminSync() {
                     Estado del Sistema
                   </h3>
                   <p className="text-sm text-gray-500">
-                    {syncStatus?.isRunning ? 'Sincronización en progreso...' : 'Sistema sincronizado'}
+                    {syncStatus?.isRunning
+                      ? 'Sincronización en progreso...'
+                      : 'Sistema sincronizado'}
                   </p>
                 </div>
               </div>
@@ -305,32 +349,44 @@ export default function AdminSync() {
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <Server className="h-5 w-5 text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Datos en Mirror Local</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Datos en Mirror Local
+              </h3>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <Users className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-blue-600">{integrationStatus.mirror.users}</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {integrationStatus.mirror.users}
+                </p>
                 <p className="text-xs text-gray-500">Usuarios</p>
               </div>
               <div className="text-center p-3 bg-green-50 rounded-lg">
                 <BookOpen className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-green-600">{integrationStatus.mirror.courses}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {integrationStatus.mirror.courses}
+                </p>
                 <p className="text-xs text-gray-500">Cursos</p>
               </div>
               <div className="text-center p-3 bg-purple-50 rounded-lg">
                 <UserPlus className="h-6 w-6 text-purple-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-purple-600">{integrationStatus.mirror.enrolments}</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {integrationStatus.mirror.enrolments}
+                </p>
                 <p className="text-xs text-gray-500">Inscripciones</p>
               </div>
               <div className="text-center p-3 bg-orange-50 rounded-lg">
                 <ClipboardList className="h-6 w-6 text-orange-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-orange-600">{integrationStatus.mirror.gradeItems}</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {integrationStatus.mirror.gradeItems}
+                </p>
                 <p className="text-xs text-gray-500">Items Calif.</p>
               </div>
               <div className="text-center p-3 bg-red-50 rounded-lg">
                 <Activity className="h-6 w-6 text-red-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-red-600">{integrationStatus.mirror.grades}</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {integrationStatus.mirror.grades}
+                </p>
                 <p className="text-xs text-gray-500">Calificaciones</p>
               </div>
             </div>
@@ -343,7 +399,9 @@ export default function AdminSync() {
         <CardContent className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Zap className="h-5 w-5 text-gray-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Acciones de Sincronización</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Acciones de Sincronización
+            </h3>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -361,7 +419,11 @@ export default function AdminSync() {
             <Button
               variant="outline"
               onClick={() => bootstrapMutation.mutate()}
-              disabled={isAnyMutationPending || syncStatus?.isRunning || !healthStatus?.moodleConnected}
+              disabled={
+                isAnyMutationPending ||
+                syncStatus?.isRunning ||
+                !healthStatus?.moodleConnected
+              }
             >
               {bootstrapMutation.isPending ? (
                 <Spinner size="sm" className="mr-2" />
@@ -374,7 +436,11 @@ export default function AdminSync() {
             <Button
               variant="outline"
               onClick={() => reconcileMutation.mutate()}
-              disabled={isAnyMutationPending || syncStatus?.isRunning || !healthStatus?.moodleConnected}
+              disabled={
+                isAnyMutationPending ||
+                syncStatus?.isRunning ||
+                !healthStatus?.moodleConnected
+              }
             >
               {reconcileMutation.isPending ? (
                 <Spinner size="sm" className="mr-2" />
@@ -385,8 +451,10 @@ export default function AdminSync() {
             </Button>
           </div>
           <p className="mt-3 text-sm text-gray-500">
-            <strong>Bootstrap:</strong> Reinicia y hace sync completo desde cero.
-            <strong className="ml-2">Reconciliar:</strong> Compara y repara diferencias entre Moodle y mirror local.
+            <strong>Bootstrap:</strong> Reinicia y hace sync completo desde
+            cero.
+            <strong className="ml-2">Reconciliar:</strong> Compara y repara
+            diferencias entre Moodle y mirror local.
           </p>
         </CardContent>
       </Card>
@@ -398,32 +466,55 @@ export default function AdminSync() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Resultado de Reconciliación</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Resultado de Reconciliación
+                </h3>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setShowReconcileResult(null)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowReconcileResult(null)}
+              >
                 Cerrar
               </Button>
             </div>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="font-medium text-gray-700 mb-2">Antes</p>
-                {Object.entries(showReconcileResult.before).map(([key, value]) => (
-                  <p key={key} className="text-gray-600">{key}: {value}</p>
-                ))}
+                {Object.entries(showReconcileResult.before).map(
+                  ([key, value]) => (
+                    <p key={key} className="text-gray-600">
+                      {key}: {value}
+                    </p>
+                  ),
+                )}
               </div>
               <div>
                 <p className="font-medium text-gray-700 mb-2">Después</p>
-                {Object.entries(showReconcileResult.after).map(([key, value]) => (
-                  <p key={key} className="text-gray-600">{key}: {value}</p>
-                ))}
+                {Object.entries(showReconcileResult.after).map(
+                  ([key, value]) => (
+                    <p key={key} className="text-gray-600">
+                      {key}: {value}
+                    </p>
+                  ),
+                )}
               </div>
               <div>
                 <p className="font-medium text-gray-700 mb-2">Diferencias</p>
-                {Object.entries(showReconcileResult.differences).map(([key, value]) => (
-                  <p key={key} className={value !== 0 ? 'text-green-600 font-medium' : 'text-gray-600'}>
-                    {key}: {value > 0 ? `+${value}` : value}
-                  </p>
-                ))}
+                {Object.entries(showReconcileResult.differences).map(
+                  ([key, value]) => (
+                    <p
+                      key={key}
+                      className={
+                        value !== 0
+                          ? 'text-green-600 font-medium'
+                          : 'text-gray-600'
+                      }
+                    >
+                      {key}: {value > 0 ? `+${value}` : value}
+                    </p>
+                  ),
+                )}
               </div>
             </div>
           </CardContent>
@@ -431,7 +522,9 @@ export default function AdminSync() {
       )}
 
       {/* Entity Sync Status */}
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado por Entidad</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        Estado por Entidad
+      </h3>
       {syncLoading ? (
         <div className="flex justify-center py-12">
           <Spinner />
@@ -440,7 +533,7 @@ export default function AdminSync() {
         <div className="grid gap-4">
           {Object.entries(entityConfig).map(([entity, config]) => {
             const state = integrationStatus?.syncStates?.find(
-              s => s.entity.toLowerCase() === entity.toLowerCase()
+              (s) => s.entity.toLowerCase() === entity.toLowerCase(),
             );
             const Icon = config.icon;
 
@@ -486,7 +579,10 @@ export default function AdminSync() {
                         variant="outline"
                         size="sm"
                         onClick={() => triggerEntityMutation.mutate(entity)}
-                        disabled={triggerEntityMutation.isPending || syncStatus?.isRunning}
+                        disabled={
+                          triggerEntityMutation.isPending ||
+                          syncStatus?.isRunning
+                        }
                       >
                         <Play className="h-4 w-4 mr-1" />
                         Sincronizar
@@ -506,12 +602,26 @@ export default function AdminSync() {
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
-              <h4 className="font-medium text-gray-900">Información de Sincronización</h4>
+              <h4 className="font-medium text-gray-900">
+                Información de Sincronización
+              </h4>
               <ul className="mt-2 text-sm text-gray-600 space-y-1">
-                <li><strong>Incremental:</strong> Se ejecuta automáticamente cada minuto (solo cambios recientes).</li>
-                <li><strong>Reconciliación:</strong> Se ejecuta diariamente a las 2:00 AM (sync completo).</li>
-                <li><strong>Bootstrap:</strong> Usa esto para la primera importación o para reiniciar desde cero.</li>
-                <li><strong>Watermarks:</strong> El sistema usa timestamps para sincronizar solo datos modificados.</li>
+                <li>
+                  <strong>Incremental:</strong> Se ejecuta automáticamente cada
+                  minuto (solo cambios recientes).
+                </li>
+                <li>
+                  <strong>Reconciliación:</strong> Se ejecuta diariamente a las
+                  2:00 AM (sync completo).
+                </li>
+                <li>
+                  <strong>Bootstrap:</strong> Usa esto para la primera
+                  importación o para reiniciar desde cero.
+                </li>
+                <li>
+                  <strong>Watermarks:</strong> El sistema usa timestamps para
+                  sincronizar solo datos modificados.
+                </li>
               </ul>
             </div>
           </div>

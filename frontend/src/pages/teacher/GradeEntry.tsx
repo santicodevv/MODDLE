@@ -349,7 +349,7 @@ export default function TeacherGradeEntry() {
                                   {hasLocalEdit && (
                                     <Button
                                       size="sm"
-                                      variant="default"
+                                      variant="primary"
                                       onClick={() =>
                                         handleSaveGrade(
                                           participant.studentMoodleId,

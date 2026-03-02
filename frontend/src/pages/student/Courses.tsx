@@ -15,6 +15,7 @@ interface CourseWithCounts {
   id: number;
   moodleId: number;
   fullname: string;
+  subjectName?: string;
   shortname: string;
   summary?: string;
   visible: boolean;

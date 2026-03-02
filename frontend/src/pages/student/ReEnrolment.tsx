@@ -2,13 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { periodsApi, reenrolmentsApi } from '@/api';
-import {
-  Card,
-  CardContent,
-  Button,
-  Spinner,
-  Badge,
-} from '@/components/ui';
+import { Card, CardContent, Button, Spinner, Badge } from '@/components/ui';
 import {
   RefreshCw,
   BookOpen,
@@ -23,14 +17,16 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { AcademicPeriod, PeriodAvailableCourse, ReEnrolmentRequest } from '@/types';
+import type { AcademicPeriod } from '@/types';
 
 type ViewMode = 'periods' | 'select-courses' | 'history';
 
 export default function StudentReEnrolment() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('periods');
-  const [selectedPeriod, setSelectedPeriod] = useState<AcademicPeriod | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<AcademicPeriod | null>(
+    null,
+  );
   const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
 
   // Períodos con reinscripción abierta
@@ -61,8 +57,10 @@ export default function StudentReEnrolment() {
 
   // Mutaciones
   const createMutation = useMutation({
-    mutationFn: (data: { periodId: number; courses: { courseMoodleId: number }[] }) =>
-      reenrolmentsApi.create({ ...data, notes: '' }),
+    mutationFn: (data: {
+      periodId: number;
+      courses: { courseMoodleId: number }[];
+    }) => reenrolmentsApi.create({ ...data, notes: '' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-reenrolments'] });
       queryClient.invalidateQueries({ queryKey: ['my-draft'] });
@@ -74,8 +72,13 @@ export default function StudentReEnrolment() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, courses }: { id: number; courses: { courseMoodleId: number }[] }) =>
-      reenrolmentsApi.update(id, { courses }),
+    mutationFn: ({
+      id,
+      courses,
+    }: {
+      id: number;
+      courses: { courseMoodleId: number }[];
+    }) => reenrolmentsApi.update(id, { courses }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-reenrolments'] });
       queryClient.invalidateQueries({ queryKey: ['my-draft'] });
@@ -167,13 +170,14 @@ export default function StudentReEnrolment() {
   };
 
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { variant: any; icon: any; label: string }> = {
-      draft: { variant: 'secondary', icon: Clock, label: 'Borrador' },
-      submitted: { variant: 'warning', icon: Clock, label: 'En revisión' },
-      approved: { variant: 'info', icon: CheckCircle, label: 'Aprobada' },
-      rejected: { variant: 'error', icon: XCircle, label: 'Rechazada' },
-      applied: { variant: 'success', icon: CheckCircle, label: 'Aplicada' },
-    };
+    const configs: Record<string, { variant: any; icon: any; label: string }> =
+      {
+        draft: { variant: 'secondary', icon: Clock, label: 'Borrador' },
+        submitted: { variant: 'warning', icon: Clock, label: 'En revisión' },
+        approved: { variant: 'info', icon: CheckCircle, label: 'Aprobada' },
+        rejected: { variant: 'error', icon: XCircle, label: 'Rechazada' },
+        applied: { variant: 'success', icon: CheckCircle, label: 'Aplicada' },
+      };
     const config = configs[status] || configs.draft;
     const Icon = config.icon;
     return (
@@ -185,8 +189,13 @@ export default function StudentReEnrolment() {
   };
 
   // Inicializar cursos seleccionados cuando se carga el borrador
-  if (existingDraft && selectedCourses.length === 0 && viewMode === 'select-courses') {
-    const draftCourseIds = existingDraft.lines?.map((l) => l.courseMoodleId) || [];
+  if (
+    existingDraft &&
+    selectedCourses.length === 0 &&
+    viewMode === 'select-courses'
+  ) {
+    const draftCourseIds =
+      existingDraft.lines?.map((l) => l.courseMoodleId) || [];
     if (draftCourseIds.length > 0) {
       setSelectedCourses(draftCourseIds);
     }
@@ -201,7 +210,7 @@ export default function StudentReEnrolment() {
       .filter(
         (r) =>
           r.periodId === selectedPeriod.id &&
-          ['submitted', 'approved', 'applied'].includes(r.status)
+          ['submitted', 'approved', 'applied'].includes(r.status),
       )
       .forEach((request) => {
         request.lines?.forEach((line) => {
@@ -290,7 +299,9 @@ export default function StudentReEnrolment() {
                             <p className="text-sm text-gray-500">
                               Reinscripción hasta:{' '}
                               {period.reenrolmentEndDate
-                                ? new Date(period.reenrolmentEndDate).toLocaleDateString()
+                                ? new Date(
+                                    period.reenrolmentEndDate,
+                                  ).toLocaleDateString()
                                 : 'Sin fecha límite'}
                             </p>
                           </div>
@@ -301,7 +312,9 @@ export default function StudentReEnrolment() {
                             <Badge variant="warning">Ya tienes solicitud</Badge>
                           )}
                           {hasDraft && !hasSubmitted && (
-                            <Badge variant="secondary">Borrador pendiente</Badge>
+                            <Badge variant="secondary">
+                              Borrador pendiente
+                            </Badge>
                           )}
                           {!hasSubmitted && (
                             <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -318,7 +331,9 @@ export default function StudentReEnrolment() {
               <CardContent className="p-12">
                 <div className="flex flex-col items-center justify-center text-gray-500">
                   <AlertCircle className="h-12 w-12 mb-4 text-gray-300" />
-                  <p className="text-lg font-medium">No hay períodos disponibles</p>
+                  <p className="text-lg font-medium">
+                    No hay períodos disponibles
+                  </p>
                   <p className="text-sm">
                     Actualmente no hay ningún período con reinscripción abierta
                   </p>
@@ -360,9 +375,7 @@ export default function StudentReEnrolment() {
                   </p>
                 </div>
                 {existingDraft && (
-                  <Badge variant="secondary">
-                    Borrador guardado
-                  </Badge>
+                  <Badge variant="secondary">Borrador guardado</Badge>
                 )}
               </div>
             </CardContent>
@@ -377,8 +390,12 @@ export default function StudentReEnrolment() {
             <>
               <div className="grid gap-3 mb-6">
                 {availableCourses.map((course) => {
-                  const isSelected = selectedCourses.includes(course.courseMoodleId);
-                  const isAlreadyRequested = alreadyRequestedCourses.has(Number(course.courseMoodleId));
+                  const isSelected = selectedCourses.includes(
+                    course.courseMoodleId,
+                  );
+                  const isAlreadyRequested = alreadyRequestedCourses.has(
+                    Number(course.courseMoodleId),
+                  );
                   const isDisabled = isAlreadyRequested;
 
                   return (
@@ -388,10 +405,12 @@ export default function StudentReEnrolment() {
                         isDisabled
                           ? 'opacity-60 cursor-not-allowed bg-gray-50'
                           : isSelected
-                          ? 'ring-2 ring-blue-500 bg-blue-50 cursor-pointer'
-                          : 'hover:shadow-md cursor-pointer'
+                            ? 'ring-2 ring-blue-500 bg-blue-50 cursor-pointer'
+                            : 'hover:shadow-md cursor-pointer'
                       }`}
-                      onClick={() => !isDisabled && handleToggleCourse(course.courseMoodleId)}
+                      onClick={() =>
+                        !isDisabled && handleToggleCourse(course.courseMoodleId)
+                      }
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
@@ -400,8 +419,8 @@ export default function StudentReEnrolment() {
                               isAlreadyRequested
                                 ? 'bg-green-600 border-green-600'
                                 : isSelected
-                                ? 'bg-blue-600 border-blue-600'
-                                : 'border-gray-300'
+                                  ? 'bg-blue-600 border-blue-600'
+                                  : 'border-gray-300'
                             }`}
                           >
                             {(isSelected || isAlreadyRequested) && (
@@ -411,8 +430,11 @@ export default function StudentReEnrolment() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <BookOpen className="h-4 w-4 text-gray-400" />
-                              <span className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}>
-                                {course.courseName || `Curso ${course.courseMoodleId}`}
+                              <span
+                                className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}
+                              >
+                                {course.courseName ||
+                                  `Curso ${course.courseMoodleId}`}
                               </span>
                               {isAlreadyRequested && (
                                 <Badge variant="success" className="ml-2">
@@ -428,7 +450,8 @@ export default function StudentReEnrolment() {
                           </div>
                           {course.maxStudents && (
                             <div className="text-sm text-gray-500">
-                              {course.enrolledCount}/{course.maxStudents} inscritos
+                              {course.enrolledCount}/{course.maxStudents}{' '}
+                              inscritos
                             </div>
                           )}
                         </div>
@@ -443,7 +466,9 @@ export default function StudentReEnrolment() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-500">Cursos seleccionados</p>
+                      <p className="text-sm text-gray-500">
+                        Cursos seleccionados
+                      </p>
                       <p className="text-2xl font-bold text-gray-900">
                         {selectedCourses.length}
                       </p>
@@ -452,7 +477,9 @@ export default function StudentReEnrolment() {
                       {existingDraft && (
                         <Button
                           variant="outline"
-                          onClick={() => deleteMutation.mutate(existingDraft.id)}
+                          onClick={() =>
+                            deleteMutation.mutate(existingDraft.id)
+                          }
                           disabled={deleteMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -492,7 +519,9 @@ export default function StudentReEnrolment() {
               <CardContent className="p-12">
                 <div className="flex flex-col items-center justify-center text-gray-500">
                   <AlertCircle className="h-12 w-12 mb-4 text-gray-300" />
-                  <p className="text-lg font-medium">No hay cursos disponibles</p>
+                  <p className="text-lg font-medium">
+                    No hay cursos disponibles
+                  </p>
                   <p className="text-sm">
                     No hay cursos habilitados para este período
                   </p>
@@ -520,13 +549,15 @@ export default function StudentReEnrolment() {
                         <div className="flex items-center gap-3">
                           {getStatusBadge(request.status)}
                           <span className="text-sm text-gray-500">
-                            Creada: {new Date(request.createdAt).toLocaleDateString()}
+                            Creada:{' '}
+                            {new Date(request.createdAt).toLocaleDateString()}
                           </span>
                         </div>
 
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {request.period?.name || `Período ${request.periodId}`}
+                            {request.period?.name ||
+                              `Período ${request.periodId}`}
                           </h3>
                           <p className="text-sm text-gray-500">
                             Código: {request.period?.code}
@@ -542,7 +573,8 @@ export default function StudentReEnrolment() {
                               {request.lines.map((line) => (
                                 <Badge key={line.id} variant="secondary">
                                   <BookOpen className="h-3 w-3 mr-1" />
-                                  {line.courseName || `Curso ${line.courseMoodleId}`}
+                                  {line.courseName ||
+                                    `Curso ${line.courseMoodleId}`}
                                 </Badge>
                               ))}
                             </div>
@@ -553,7 +585,8 @@ export default function StudentReEnrolment() {
                           <div className="mt-3 p-3 bg-red-50 rounded-lg">
                             <p className="text-sm text-red-700">
                               <strong>Motivo:</strong>{' '}
-                              {(request as any).rejectionReason || 'No especificado'}
+                              {(request as any).rejectionReason ||
+                                'No especificado'}
                             </p>
                           </div>
                         )}

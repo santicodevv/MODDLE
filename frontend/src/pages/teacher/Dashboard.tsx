@@ -16,6 +16,7 @@ interface TeacherCourse {
   id: number;
   moodleId: number;
   fullname: string;
+  subjectName?: string;
   shortname: string;
   enrolledCount?: number;
 }
