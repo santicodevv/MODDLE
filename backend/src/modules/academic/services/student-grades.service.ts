@@ -659,18 +659,18 @@ export class StudentGradesService {
         },
       });
 
-      // Get course name from cache or from moodle_courses
-      let courseName = ac.courseName || '';
+      // Always lookup course name from moodle_courses to get subjectName
+      let courseName = '';
       let courseShortname = ac.courseShortname || '';
 
-      if (!courseName) {
-        const course = await this.courseRepository.findOne({
-          where: { moodleId: ac.courseMoodleId },
-        });
-        if (course) {
-          courseName = course.subjectName || course.fullname;
-          courseShortname = course.shortname;
-        }
+      const course = await this.courseRepository.findOne({
+        where: { moodleId: ac.courseMoodleId },
+      });
+      if (course) {
+        courseName = course.subjectName || course.fullname;
+        courseShortname = course.shortname;
+      } else {
+        courseName = ac.courseName || '';
       }
 
       results.push({

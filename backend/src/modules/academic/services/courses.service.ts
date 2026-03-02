@@ -66,6 +66,7 @@ export class CoursesService {
       ? [
           { fullname: ILike(`%${search}%`) },
           { shortname: ILike(`%${search}%`) },
+          { subjectName: ILike(`%${search}%`) },
         ]
       : {};
 

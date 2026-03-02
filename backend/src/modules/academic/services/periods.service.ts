@@ -13,6 +13,7 @@ import {
 import { PeriodAvailableCourse } from '../entities/period-available-course.entity';
 import { ReEnrolmentRequest } from '../entities/re-enrolment-request.entity';
 import { ReEnrolmentLine } from '../entities/re-enrolment-line.entity';
+import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { CreatePeriodDto } from '../dto/create-period.dto';
 import {
   ReenrolmentConfigDto,
@@ -32,6 +33,8 @@ export class PeriodsService {
     private readonly reenrolmentRequestRepository: Repository<ReEnrolmentRequest>,
     @InjectRepository(ReEnrolmentLine)
     private readonly reenrolmentLineRepository: Repository<ReEnrolmentLine>,
+    @InjectRepository(MoodleCourse)
+    private readonly courseRepository: Repository<MoodleCourse>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -338,21 +341,37 @@ export class PeriodsService {
   // =====================
 
   async getAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
-    await this.findOne(periodId); // Verificar que el período existe
+    await this.findOne(periodId);
 
-    return this.availableCourseRepository.find({
+    const courses = await this.availableCourseRepository.find({
       where: { periodId, enabled: true },
       order: { courseName: 'ASC' },
     });
+
+    return this.enrichCoursesWithSubjectName(courses);
   }
 
   async getAllAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
     await this.findOne(periodId);
 
-    return this.availableCourseRepository.find({
+    const courses = await this.availableCourseRepository.find({
       where: { periodId },
       order: { courseName: 'ASC' },
     });
+
+    return this.enrichCoursesWithSubjectName(courses);
+  }
+
+  private async enrichCoursesWithSubjectName(courses: PeriodAvailableCourse[]): Promise<PeriodAvailableCourse[]> {
+    for (const ac of courses) {
+      const course = await this.courseRepository.findOne({
+        where: { moodleId: ac.courseMoodleId },
+      });
+      if (course && course.subjectName) {
+        ac.courseName = course.subjectName;
+      }
+    }
+    return courses;
   }
 
   async addAvailableCourses(

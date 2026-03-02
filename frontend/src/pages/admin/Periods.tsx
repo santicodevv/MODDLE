@@ -38,6 +38,7 @@ interface MoodleCourse {
   moodleId: number;
   shortname: string;
   fullname: string;
+  subjectName?: string;
   categoryId: number;
 }
 
@@ -49,6 +50,7 @@ export default function AdminPeriods() {
   );
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showReenrolmentConfig, setShowReenrolmentConfig] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
 
   // Form states
   const [newPeriod, setNewPeriod] = useState({
@@ -289,10 +291,20 @@ export default function AdminPeriods() {
     );
   };
 
-  // Filter courses that are not already added
-  const coursesToShow = moodleCourses?.filter(
-    (c) => !availableCourses?.some((ac) => ac.courseMoodleId === c.moodleId),
-  );
+  // Filter courses that are not already added and match search
+  const coursesToShow = moodleCourses
+    ?.filter(
+      (c) => !availableCourses?.some((ac) => ac.courseMoodleId === c.moodleId),
+    )
+    ?.filter((c) => {
+      if (!courseSearch) return true;
+      const q = courseSearch.toLowerCase();
+      return (
+        c.fullname.toLowerCase().includes(q) ||
+        c.shortname.toLowerCase().includes(q) ||
+        (c.subjectName && c.subjectName.toLowerCase().includes(q))
+      );
+    });
 
   return (
     <div>
@@ -808,6 +820,12 @@ export default function AdminPeriods() {
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">Agregar Cursos</h3>
+                <Input
+                  placeholder="Buscar curso..."
+                  value={courseSearch}
+                  onChange={(e) => setCourseSearch(e.target.value)}
+                  className="mb-4"
+                />
                 {loadingMoodleCourses ? (
                   <div className="flex justify-center py-8">
                     <Spinner />
