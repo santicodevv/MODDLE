@@ -164,15 +164,6 @@ export default function UserGrades() {
     return 'text-red-600 bg-red-50';
   };
 
-  const _getGradeLabel = (grade: number | null) => {
-    if (grade === null) return 'Pendiente';
-    if (grade >= 90) return 'Excelente';
-    if (grade >= 80) return 'Muy Bueno';
-    if (grade >= 70) return 'Bueno';
-    if (grade >= 60) return 'Aprobado';
-    return 'Reprobado';
-  };
-
   const getItemTypeLabel = (type: string | null) => {
     if (!type) return 'Item';
     const types: Record<string, string> = {

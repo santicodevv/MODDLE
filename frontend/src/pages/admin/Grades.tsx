@@ -44,7 +44,6 @@ export default function AdminGrades() {
   const [editingGrades, setEditingGrades] = useState<
     Map<string, { totalGrade: number | null; comment: string | null }>
   >(new Map());
-  const _queryClient = useQueryClient();
 
   // Fetch periods
   const { data: periods, isLoading: periodsLoading } = useQuery({

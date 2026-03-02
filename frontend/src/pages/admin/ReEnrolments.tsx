@@ -143,22 +143,6 @@ export default function AdminReEnrolments() {
     },
   });
 
-  const _applyMutation = useMutation({
-    mutationFn: (id: number) => reenrolmentsApi.applyToMoodle(id),
-    onSuccess: async (data) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
-      queryClient.invalidateQueries({ queryKey: ['reenrolment-stats'] });
-      toast.success('Inscripciones aplicadas a Moodle');
-      // Update with fresh data from server including line statuses
-      if (data) {
-        setSelectedRequest(data);
-      }
-    },
-    onError: () => {
-      toast.error('Error al aplicar en Moodle');
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: number) => reenrolmentsApi.adminDelete(id),
     onSuccess: () => {
