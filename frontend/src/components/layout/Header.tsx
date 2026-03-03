@@ -1,18 +1,42 @@
 // Header component
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context';
 import { cn } from '@/lib';
-import { Menu, User, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, User, LogOut, ChevronDown, Shield, GraduationCap, BookOpen } from 'lucide-react';
+import type { RoleCode } from '@/types';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
+// Dashboard config por rol
+const dashboardConfig: Record<RoleCode, { path: string; label: string; icon: typeof Shield }> = {
+  ADMIN: { path: '/admin', label: 'Panel Admin', icon: Shield },
+  TEACHER: { path: '/teacher', label: 'Panel Docente', icon: GraduationCap },
+  STUDENT: { path: '/student', label: 'Panel Estudiante', icon: BookOpen },
+};
+
 export function Header({ onMenuClick }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, roles } = useAuth();
+  const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Detectar dashboard actual basado en la ruta
+  const getCurrentDashboard = (): RoleCode | null => {
+    if (location.pathname.startsWith('/admin')) return 'ADMIN';
+    if (location.pathname.startsWith('/teacher')) return 'TEACHER';
+    if (location.pathname.startsWith('/student')) return 'STUDENT';
+    return null;
+  };
+
+  const currentDashboard = getCurrentDashboard();
+
+  // Obtener otros dashboards disponibles (excluyendo el actual)
+  const availableDashboards = roles.filter(
+    (role) => role !== currentDashboard
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,7 +91,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           {/* Dropdown menu */}
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
               <Link
                 to="/profile"
                 onClick={() => setIsDropdownOpen(false)}
@@ -76,6 +100,34 @@ export function Header({ onMenuClick }: HeaderProps) {
                 <User className="h-4 w-4" />
                 Mi Perfil
               </Link>
+
+              {/* Cambiar de dashboard - solo si tiene múltiples roles */}
+              {availableDashboards.length > 0 && (
+                <>
+                  <hr className="my-1 border-gray-200" />
+                  <div className="px-4 py-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase">
+                      Cambiar a
+                    </p>
+                  </div>
+                  {availableDashboards.map((role) => {
+                    const config = dashboardConfig[role];
+                    const Icon = config.icon;
+                    return (
+                      <Link
+                        key={role}
+                        to={config.path}
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {config.label}
+                      </Link>
+                    );
+                  })}
+                </>
+              )}
+
               <hr className="my-1 border-gray-200" />
               <button
                 onClick={() => {
