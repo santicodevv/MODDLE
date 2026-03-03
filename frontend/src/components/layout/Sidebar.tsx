@@ -1,7 +1,6 @@
 // Sidebar component
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib';
-import { useAuth } from '@/context';
 import {
   LayoutDashboard,
   BookOpen,
@@ -142,22 +141,21 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { roles, hasAnyRole } = useAuth();
+  const location = useLocation();
 
-  // Filter items based on user's roles
-  const filteredItems = navItems.filter((item) =>
-    item.roles.some((role) => roles.includes(role)),
-  );
+  // Detectar dashboard actual basado en la ruta
+  const getCurrentDashboard = (): RoleCode | null => {
+    if (location.pathname.startsWith('/admin')) return 'ADMIN';
+    if (location.pathname.startsWith('/teacher')) return 'TEACHER';
+    if (location.pathname.startsWith('/student')) return 'STUDENT';
+    return null;
+  };
 
-  // Group items by role for multi-role users
-  const studentItems = filteredItems.filter((item) =>
-    item.roles.includes('STUDENT'),
-  );
-  const teacherItems = filteredItems.filter((item) =>
-    item.roles.includes('TEACHER'),
-  );
-  const adminItems = filteredItems.filter((item) =>
-    item.roles.includes('ADMIN'),
+  const currentDashboard = getCurrentDashboard();
+
+  // Filtrar items según el dashboard actual (no según todos los roles)
+  const currentItems = navItems.filter((item) =>
+    currentDashboard ? item.roles.includes(currentDashboard) : false
   );
 
   const renderNavItems = (items: NavItem[], title?: string) => {
@@ -227,39 +225,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Solo muestra items del dashboard actual */}
         <div className="py-4 overflow-y-auto h-[calc(100%-4rem)]">
-          {/* Show sections based on roles */}
-          {hasAnyRole(['ADMIN']) &&
-            adminItems.length > 0 &&
-            renderNavItems(
-              adminItems,
-              roles.length > 1 ? 'Administración' : undefined,
-            )}
-          {hasAnyRole(['TEACHER']) &&
-            !hasAnyRole(['ADMIN']) &&
-            teacherItems.length > 0 &&
-            renderNavItems(
-              teacherItems,
-              roles.length > 1 ? 'Profesor' : undefined,
-            )}
-          {hasAnyRole(['STUDENT']) &&
-            !hasAnyRole(['ADMIN', 'TEACHER']) &&
-            studentItems.length > 0 &&
-            renderNavItems(
-              studentItems,
-              roles.length > 1 ? 'Estudiante' : undefined,
-            )}
-
-          {/* For users with multiple roles (excluding admin who sees all) */}
-          {hasAnyRole(['TEACHER']) &&
-            hasAnyRole(['STUDENT']) &&
-            !hasAnyRole(['ADMIN']) && (
-              <>
-                {renderNavItems(teacherItems, 'Profesor')}
-                {renderNavItems(studentItems, 'Estudiante')}
-              </>
-            )}
+          {renderNavItems(currentItems)}
         </div>
       </aside>
     </>
