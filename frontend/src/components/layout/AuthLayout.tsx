@@ -14,7 +14,15 @@ export function AuthLayout() {
           </div>
         </div>
 
-        <div className="space-y-6 flex">
+        <div className="space-y-6 flex flex-col">
+          <div className="ml-15">
+            <img
+              src="https://imgur.com/GJgsVZ6.png"
+              alt="Logo"
+              className="w-[250px]"
+            />
+          </div>
+
           <div>
             <h1 className="text-4xl font-bold leading-tight">
               Sistema de Gestión
@@ -25,14 +33,6 @@ export function AuthLayout() {
               Gestiona calificaciones, reinscripciones y constancias de forma
               sencilla e integrada con Moodle.
             </p>
-          </div>
-
-          <div className="ml-15">
-            <img
-              src="https://imgur.com/GJgsVZ6.png"
-              alt="Logo"
-              className="w-[250px]"
-            />
           </div>
         </div>
 
