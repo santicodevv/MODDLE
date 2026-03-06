@@ -14,12 +14,12 @@ export function AuthLayout() {
           </div>
         </div>
 
-        <div className="space-y-6 flex flex-col">
+        <div className="space-y-6 flex flex-col items-start">
           <div className="ml-15">
             <img
               src="https://imgur.com/BfhxWQH.png"
               alt="Logo"
-              className="w-[250px]"
+              className="w-[190px]"
             />
           </div>
 
