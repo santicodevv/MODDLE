@@ -37,7 +37,10 @@
       "Bash(npx tsc:*)",
       "Bash(PGPASSWORD=moddle_pass psql:*)",
       "Bash(docker ps:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: support DATABASE_URL for cloud DB connections with SSL\n\n- Add DATABASE_URL support in database.config.ts for Railway/Neon/Supabase\n- Enable SSL automatically when using DATABASE_URL\n- Make CORS origins configurable via CORS_ORIGINS env variable\n- Update .env.example with DATABASE_URL option\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

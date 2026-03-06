@@ -10,24 +10,31 @@ export function AuthLayout() {
         <div>
           <div className="flex items-center gap-3">
             <GraduationCap className="h-10 w-10" />
-            <span className="text-2xl font-bold">MODDLE</span>
+            <span className="text-2xl font-bold">KNOROOMS EDU</span>
           </div>
         </div>
 
         <div className="space-y-6">
-          <h1 className="text-4xl font-bold leading-tight">
-            Sistema de Gestión
-            <br />
-            Académica
-          </h1>
-          <p className="text-lg text-blue-100 max-w-md">
-            Gestiona calificaciones, reinscripciones y constancias de forma
-            sencilla e integrada con Moodle.
-          </p>
+          <div>
+            <h1 className="text-4xl font-bold leading-tight">
+              Sistema de Gestión
+              <br />
+              Académica
+            </h1>
+            <p className="text-lg text-blue-100 max-w-md">
+              Gestiona calificaciones, reinscripciones y constancias de forma
+              sencilla e integrada con Moodle.
+            </p>
+          </div>
+
+          <div>
+            <img src="/public/images/logo_login.png" alt="Logo" />
+          </div>
         </div>
 
         <div className="text-sm text-blue-200">
-          &copy; {new Date().getFullYear()} MODDLE. Todos los derechos reservados.
+          &copy; {new Date().getFullYear()} KNOROOMS. Todos los derechos
+          reservados.
         </div>
       </div>
 
