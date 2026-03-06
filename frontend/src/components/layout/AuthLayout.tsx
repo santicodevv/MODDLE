@@ -27,7 +27,7 @@ export function AuthLayout() {
             </p>
           </div>
 
-          <div>
+          <div className="ml-10">
             <img
               src="https://imgur.com/GJgsVZ6.png"
               alt="Logo"
