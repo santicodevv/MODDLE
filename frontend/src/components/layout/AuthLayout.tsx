@@ -1,7 +1,6 @@
 // Auth Layout component - Wraps login/register pages
 import { Outlet } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
-import logoLogin from '../../../public/images/logo_login.png';
 
 export function AuthLayout() {
   return (
@@ -29,7 +28,7 @@ export function AuthLayout() {
           </div>
 
           <div>
-            <img src={logoLogin} alt="Logo" />
+            <img src="../../../public/images/logo_login.png" alt="Logo" />
           </div>
         </div>
 
