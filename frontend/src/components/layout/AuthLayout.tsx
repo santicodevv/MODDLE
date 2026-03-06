@@ -17,7 +17,7 @@ export function AuthLayout() {
         <div className="space-y-6 flex flex-col">
           <div className="ml-15">
             <img
-              src="https://imgur.com/GJgsVZ6.png"
+              src="https://imgur.com/BfhxWQH.png"
               alt="Logo"
               className="w-[250px]"
             />
