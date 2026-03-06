@@ -28,7 +28,7 @@ export function AuthLayout() {
           </div>
 
           <div>
-            <img src="../../../public/images/logo_login.png" alt="Logo" />
+            <img src="https://imgur.com/GJgsVZ6.png" alt="Logo" />
           </div>
         </div>
 
