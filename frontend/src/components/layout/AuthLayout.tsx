@@ -24,12 +24,12 @@ export function AuthLayout() {
           </div>
 
           <div>
-            <h1 className="text-4xl font-bold leading-tight">
+            <h1 className="text-4xl font-bold leading-tight text-center">
               Sistema de Gestión
               <br />
               Académica
             </h1>
-            <p className="text-lg text-blue-100 max-w-md">
+            <p className="text-lg text-blue-100 max-w-md text-center">
               Gestiona calificaciones, reinscripciones y constancias de forma
               sencilla e integrada con Moodle.
             </p>
