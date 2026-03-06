@@ -14,7 +14,7 @@ export function AuthLayout() {
           </div>
         </div>
 
-        <div className="space-y-6 flex flex-col items-center">
+        <div className="space-y-6 flex">
           <div>
             <h1 className="text-4xl font-bold leading-tight">
               Sistema de Gestión
