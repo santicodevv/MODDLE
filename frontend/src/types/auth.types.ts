@@ -1,7 +1,7 @@
 // Auth request/response types
 
 export interface LoginRequest {
-  email: string;
+  identifier: string;
   password: string;
 }
 

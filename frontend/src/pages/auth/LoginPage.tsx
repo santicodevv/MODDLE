@@ -7,10 +7,10 @@ import { z } from 'zod';
 import { useAuth } from '@/context';
 import { getErrorMessage } from '@/lib';
 import { Button, Input, Alert, Card, CardContent } from '@/components/ui';
-import { Mail, Lock } from 'lucide-react';
+import { User, Lock } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().email('Ingresa un correo válido'),
+  identifier: z.string().min(1, 'El correo o usuario es requerido'),
   password: z.string().min(1, 'La contraseña es requerida'),
 });
 
@@ -60,13 +60,13 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Input
-            label="Correo electrónico"
-            type="email"
-            placeholder="tu@correo.com"
-            autoComplete="email"
-            leftIcon={<Mail className="h-5 w-5" />}
-            error={errors.email?.message}
-            {...register('email')}
+            label="Correo o usuario"
+            type="text"
+            placeholder="correo@ejemplo.com o usuario"
+            autoComplete="username"
+            leftIcon={<User className="h-5 w-5" />}
+            error={errors.identifier?.message}
+            {...register('identifier')}
           />
 
           <Input

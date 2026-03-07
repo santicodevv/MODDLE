@@ -111,6 +111,7 @@ export class MoodleSyncService {
       if (existingAppUser) {
         // Update existing app_user
         existingAppUser.email = moodleUser.email;
+        existingAppUser.username = moodleUser.username || existingAppUser.username;
         existingAppUser.displayName = displayName;
         existingAppUser.isActive = !moodleUser.suspended;
 
@@ -130,6 +131,7 @@ export class MoodleSyncService {
         if (existingByEmail) {
           // Link existing user to Moodle
           existingByEmail.moodleUserId = moodleUser.id;
+          existingByEmail.username = moodleUser.username || existingByEmail.username;
           existingByEmail.displayName = displayName;
           if (!existingByEmail.roles.some(r => r.code === roleCode)) {
             existingByEmail.roles.push(role);
@@ -141,6 +143,7 @@ export class MoodleSyncService {
 
           const newAppUser = this.appUserRepository.create({
             email: moodleUser.email,
+            username: moodleUser.username || null,
             passwordHash: defaultPassword,
             displayName,
             moodleUserId: moodleUser.id,

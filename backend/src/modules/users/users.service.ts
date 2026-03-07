@@ -60,6 +60,23 @@ export class UsersService {
     });
   }
 
+  async findByUsername(username: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { username },
+      relations: ['roles'],
+    });
+  }
+
+  async findByEmailOrUsername(identifier: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: [
+        { email: identifier },
+        { username: identifier },
+      ],
+      relations: ['roles'],
+    });
+  }
+
   async findById(id: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },

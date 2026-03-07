@@ -22,6 +22,9 @@ export class User {
   @Exclude()
   passwordHash: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
+  username: string;
+
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'display_name' })
   displayName: string;
 
