@@ -30,8 +30,7 @@ export function AuthLayout() {
               Académica
             </h1>
             <p className="text-lg text-blue-100 max-w-md text-center">
-              Gestiona calificaciones, reinscripciones y constancias de forma
-              sencilla e integrada con Moodle.
+              KNOROOMS un sistema que te acerca más a tu comunidad educativa.
             </p>
           </div>
         </div>
