@@ -712,6 +712,7 @@ export class StudentGradesService {
       email: string;
       displayName: string | null;
       moodleUserId: number | null;
+      isActive: boolean;
     }[]
   > {
     if (!query || query.length < 2) {
@@ -720,12 +721,11 @@ export class StudentGradesService {
 
     const users = await this.userRepository
       .createQueryBuilder('user')
-      .where('user.isActive = true')
-      .andWhere(
+      .where(
         '(LOWER(user.email) LIKE :query OR LOWER(user.displayName) LIKE :query)',
         { query: `%${query.toLowerCase()}%` },
       )
-      .select(['user.id', 'user.email', 'user.displayName', 'user.moodleUserId'])
+      .select(['user.id', 'user.email', 'user.displayName', 'user.moodleUserId', 'user.isActive'])
       .take(limit)
       .getMany();
 
@@ -734,6 +734,7 @@ export class StudentGradesService {
       email: u.email,
       displayName: u.displayName,
       moodleUserId: u.moodleUserId,
+      isActive: u.isActive,
     }));
   }
 
