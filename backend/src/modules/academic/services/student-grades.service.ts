@@ -836,7 +836,7 @@ export class StudentGradesService {
 
   /**
    * Get all grades for a specific user (Admin view)
-   * Shows all enrolled courses with their detailed Moodle grades (each item)
+   * Shows all courses where the student has grades in course_student_grades
    */
   async getAllGradesForUser(
     userId: number,
@@ -858,7 +858,6 @@ export class StudentGradesService {
       totalGrade: number | null;
       comment: string | null;
       teacherName: string | null;
-      // Detailed grades for each item in the course
       gradeItems: {
         itemMoodleId: number;
         itemName: string;
@@ -876,174 +875,55 @@ export class StudentGradesService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    if (!user.moodleUserId) {
-      // User is not linked to Moodle, return empty
-      return {
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-        },
-        courses: [],
-      };
-    }
-
-    // Get all enrollments for this user
-    const enrolments = await this.enrolmentRepository.find({
-      where: {
-        userMoodleId: user.moodleUserId,
-        roleCode: 'student',
-      },
-    });
-
-    if (enrolments.length === 0) {
-      return {
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-        },
-        courses: [],
-      };
-    }
-
-    // Get existing manual grades for this student
-    const existingGrades = await this.gradeRepository.find({
+    // Get all grades for this student directly from course_student_grades
+    const studentGrades = await this.gradeRepository.find({
       where: { studentId: userId },
       relations: ['period', 'teacher'],
     });
 
-    const gradeMap = new Map(
-      existingGrades.map((g) => [`${g.courseMoodleId}:${g.periodId}`, g]),
-    );
+    if (studentGrades.length === 0) {
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+        },
+        courses: [],
+      };
+    }
 
-    // Get course info for each enrollment
-    const courseMoodleIds = [...new Set(enrolments.map((e) => e.courseMoodleId))];
+    // Get course info for each grade
+    const courseMoodleIds = [...new Set(studentGrades.map((g) => g.courseMoodleId))];
     const courses = await this.courseRepository.find({
       where: { moodleId: In(courseMoodleIds) },
     });
     const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
 
-    // Get period info for each course from period_available_courses
-    const periodCourses = await this.periodCourseRepository.find({
-      where: { courseMoodleId: In(courseMoodleIds) },
-      relations: ['period'],
+    // Build results directly from grades
+    const results = studentGrades.map((grade) => {
+      const course = courseMap.get(grade.courseMoodleId);
+
+      return {
+        periodId: grade.periodId ?? null,
+        periodName: grade.period?.name ?? 'Sin período',
+        periodCode: grade.period?.code ?? '',
+        courseMoodleId: grade.courseMoodleId,
+        courseName: grade.courseName || course?.subjectName || course?.fullname || `Curso ${grade.courseMoodleId}`,
+        courseShortname: grade.courseShortname || course?.shortname || '',
+        moodleSumGrade: grade.moodleSumGrade ?? null,
+        moodleSumMax: grade.moodleSumMax ?? null,
+        totalGrade: grade.totalGrade ?? null,
+        comment: grade.comment ?? null,
+        teacherName: grade.teacher?.displayName ?? null,
+        gradeItems: [] as {
+          itemMoodleId: number;
+          itemName: string;
+          itemType: string | null;
+          grade: number | null;
+          gradeMax: number | null;
+        }[],
+      };
     });
-
-    // Get all grade items for all courses
-    const allGradeItems = await this.gradeItemRepository.find({
-      where: { courseMoodleId: In(courseMoodleIds) },
-    });
-
-    // Get all grades for this user across all courses
-    const allUserGrades = await this.moodleGradeRepository.find({
-      where: {
-        userMoodleId: user.moodleUserId,
-        courseMoodleId: In(courseMoodleIds),
-      },
-    });
-
-    // Map grades by course and item
-    const userGradeMap = new Map<string, MoodleGrade>();
-    for (const g of allUserGrades) {
-      userGradeMap.set(`${g.courseMoodleId}:${g.itemMoodleId}`, g);
-    }
-
-    const results: {
-      periodId: number | null;
-      periodName: string;
-      periodCode: string;
-      courseMoodleId: number;
-      courseName: string;
-      courseShortname: string;
-      moodleSumGrade: number | null;
-      moodleSumMax: number | null;
-      totalGrade: number | null;
-      comment: string | null;
-      teacherName: string | null;
-      gradeItems: {
-        itemMoodleId: number;
-        itemName: string;
-        itemType: string | null;
-        grade: number | null;
-        gradeMax: number | null;
-      }[];
-    }[] = [];
-
-    // Build results based on enrollments
-    for (const enrol of enrolments) {
-      const course = courseMap.get(enrol.courseMoodleId);
-
-      // Find period for this course
-      const periodCourse = periodCourses.find(
-        (pc) => pc.courseMoodleId === enrol.courseMoodleId,
-      );
-      const period = periodCourse?.period;
-
-      // Check if there's a manual grade for this course/period
-      const key = period ? `${enrol.courseMoodleId}:${period.id}` : null;
-      const manualGrade = key ? gradeMap.get(key) : null;
-
-      // Get grade items for this course, excluding 'course' type (that's the total)
-      const courseGradeItems = allGradeItems.filter(
-        (gi) => gi.courseMoodleId === enrol.courseMoodleId && gi.itemtype !== 'course',
-      );
-
-      // Build detailed grade items with student's grades
-      const gradeItems: {
-        itemMoodleId: number;
-        itemName: string;
-        itemType: string | null;
-        grade: number | null;
-        gradeMax: number | null;
-      }[] = [];
-
-      let sumGrade = 0;
-      let sumMax = 0;
-
-      for (const item of courseGradeItems) {
-        const userGrade = userGradeMap.get(
-          `${enrol.courseMoodleId}:${item.itemMoodleId}`,
-        );
-
-        const gradeValue = userGrade?.grade
-          ? parseFloat(String(userGrade.grade))
-          : null;
-        const gradeMaxValue = item.grademax
-          ? parseFloat(String(item.grademax))
-          : null;
-
-        if (gradeValue !== null) {
-          sumGrade += gradeValue;
-        }
-        if (gradeMaxValue !== null) {
-          sumMax += gradeMaxValue;
-        }
-
-        gradeItems.push({
-          itemMoodleId: item.itemMoodleId,
-          itemName: item.itemname || `Item ${item.itemMoodleId}`,
-          itemType: item.itemtype,
-          grade: gradeValue,
-          gradeMax: gradeMaxValue,
-        });
-      }
-
-      results.push({
-        periodId: period?.id ?? null,
-        periodName: period?.name ?? 'Sin período',
-        periodCode: period?.code ?? '',
-        courseMoodleId: enrol.courseMoodleId,
-        courseName: (course?.subjectName || course?.fullname) ?? `Curso ${enrol.courseMoodleId}`,
-        courseShortname: course?.shortname ?? '',
-        moodleSumGrade: sumGrade,
-        moodleSumMax: sumMax,
-        totalGrade: manualGrade?.totalGrade ?? null,
-        comment: manualGrade?.comment ?? null,
-        teacherName: manualGrade?.teacher?.displayName ?? null,
-        gradeItems,
-      });
-    }
 
     // Sort by period (nulls last) then by course name
     results.sort((a, b) => {
