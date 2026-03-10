@@ -32,6 +32,7 @@ const AdminCourses = lazy(() => import('@/pages/admin/Courses'));
 const AdminCourseDetail = lazy(() => import('@/pages/admin/CourseDetail'));
 const AdminGrades = lazy(() => import('@/pages/admin/Grades'));
 const AdminUserGrades = lazy(() => import('@/pages/admin/UserGrades'));
+const AdminGradeRecord = lazy(() => import('@/pages/admin/GradeRecord'));
 const AdminPeriods = lazy(() => import('@/pages/admin/Periods'));
 const AdminReEnrolments = lazy(() => import('@/pages/admin/ReEnrolments'));
 // const AdminTranscripts = lazy(() => import('@/pages/admin/Transcripts'));
@@ -113,6 +114,7 @@ export const routes: RouteObject[] = [
               { path: 'courses/:courseId', element: <AdminCourseDetail /> },
               { path: 'grades', element: <AdminGrades /> },
               { path: 'grades/user', element: <AdminUserGrades /> },
+              { path: 'grades/record', element: <AdminGradeRecord /> },
               { path: 'periods', element: <AdminPeriods /> },
               { path: 'reenrolments', element: <AdminReEnrolments /> },
               // { path: 'transcripts', element: <AdminTranscripts /> }, // Temporalmente oculto

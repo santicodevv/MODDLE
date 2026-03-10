@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Server,
   Activity,
+  UserCog,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -214,6 +215,25 @@ export default function AdminSync() {
     },
   });
 
+  // Fix teachers (roles + course_teachers)
+  const fixTeachersMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/sync/fix-teachers');
+      return response.data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['sync-status'] });
+      toast.success(
+        `Profesores corregidos: ${data.results?.teacherRolesAssigned || 0} roles, ${data.results?.courseTeachersCreated || 0} asignaciones`,
+      );
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || 'Error al corregir profesores',
+      );
+    },
+  });
+
   const formatLastSync = (dateStr?: string) => {
     if (!dateStr) return 'Nunca';
     const date = new Date(dateStr);
@@ -238,7 +258,8 @@ export default function AdminSync() {
   const isAnyMutationPending =
     triggerAllMutation.isPending ||
     bootstrapMutation.isPending ||
-    reconcileMutation.isPending;
+    reconcileMutation.isPending ||
+    fixTeachersMutation.isPending;
 
   return (
     <div>
@@ -449,12 +470,27 @@ export default function AdminSync() {
               )}
               Reconciliar
             </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => fixTeachersMutation.mutate()}
+              disabled={isAnyMutationPending || syncStatus?.isRunning}
+            >
+              {fixTeachersMutation.isPending ? (
+                <Spinner size="sm" className="mr-2" />
+              ) : (
+                <UserCog className="h-4 w-4 mr-2" />
+              )}
+              Corregir Profesores
+            </Button>
           </div>
           <p className="mt-3 text-sm text-gray-500">
             <strong>Bootstrap:</strong> Reinicia y hace sync completo desde
             cero.
             <strong className="ml-2">Reconciliar:</strong> Compara y repara
             diferencias entre Moodle y mirror local.
+            <strong className="ml-2">Corregir Profesores:</strong> Asigna roles
+            y cursos a profesores detectados en Moodle.
           </p>
         </CardContent>
       </Card>

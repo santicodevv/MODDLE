@@ -16,6 +16,7 @@ import {
   UserSearch,
   ChevronDown,
   ChevronRight,
+  FileText,
 } from 'lucide-react';
 import type { RoleCode } from '@/types';
 
@@ -110,6 +111,12 @@ const navItems: NavItem[] = [
         label: 'Por Usuario',
         href: '/admin/grades/user',
         icon: UserSearch,
+        roles: ['ADMIN'],
+      },
+      {
+        label: 'Record de Notas',
+        href: '/admin/grades/record',
+        icon: FileText,
         roles: ['ADMIN'],
       },
     ],

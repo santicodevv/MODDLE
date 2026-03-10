@@ -82,7 +82,8 @@ export class SyncController {
   @Roles(RoleCode.ADMIN)
   async triggerEntitySync(@Param('entity') entity: string) {
     try {
-      const syncEntity = entity.toUpperCase() as SyncEntity;
+      // Entity values in enum are lowercase (users, courses, etc.)
+      const syncEntity = entity.toLowerCase() as SyncEntity;
 
       // Validate entity
       const validEntities = Object.values(SyncEntity);
