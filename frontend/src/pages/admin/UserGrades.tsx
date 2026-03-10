@@ -55,24 +55,37 @@ export default function UserGrades() {
     enabled: !!selectedUserId,
   });
 
+  // Flatten courses from periods for easier table display
+  const allCourses = useMemo(() => {
+    if (!userData?.periods) return [];
+    return userData.periods.flatMap((period) =>
+      period.courses.map((course) => ({
+        ...course,
+        periodId: period.periodId,
+        periodName: period.periodName,
+        periodCode: period.periodCode,
+      }))
+    );
+  }, [userData?.periods]);
+
   // Calculate statistics
   const stats = useMemo(() => {
-    if (!userData?.courses)
+    if (allCourses.length === 0)
       return { totalCourses: 0, gradedCourses: 0, avgGrade: null };
 
-    const totalCourses = userData.courses.length;
-    const gradedCourses = userData.courses.filter(
+    const totalCourses = allCourses.length;
+    const gradedCourses = allCourses.filter(
       (c) => c.totalGrade !== null,
     ).length;
     const avgGrade =
       gradedCourses > 0
-        ? userData.courses
+        ? allCourses
             .filter((c) => c.totalGrade !== null)
             .reduce((sum, c) => sum + (c.totalGrade || 0), 0) / gradedCourses
         : null;
 
     return { totalCourses, gradedCourses, avgGrade };
-  }, [userData?.courses]);
+  }, [allCourses]);
 
   const handleSelectUser = (user: UserSearchResult) => {
     setSelectedUserId(user.id);
@@ -249,7 +262,7 @@ export default function UserGrades() {
             <div className="flex justify-center py-12">
               <Spinner />
             </div>
-          ) : userData.courses.length > 0 ? (
+          ) : allCourses.length > 0 ? (
             <Card>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -271,7 +284,7 @@ export default function UserGrades() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {userData.courses.map((course) => (
+                      {allCourses.map((course) => (
                         <tr
                           key={`${course.courseMoodleId}-${course.periodId}`}
                           className="hover:bg-gray-50"

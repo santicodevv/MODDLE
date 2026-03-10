@@ -1,5 +1,5 @@
 // Admin Grade Record Page - Generate grade records for users
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { gradesApi } from '@/api';
 import {
@@ -26,32 +26,23 @@ interface UserSearchResult {
   moodleUserId: number | null;
 }
 
-interface UserGradesResult {
-  user: {
-    id: number;
-    email: string;
-    displayName: string | null;
-  };
-  courses: {
-    periodId: number | null;
-    periodName: string;
-    periodCode: string;
-    courseMoodleId: number;
-    courseName: string;
-    courseShortname: string;
-    moodleSumGrade: number | null;
-    moodleSumMax: number | null;
-    totalGrade: number | null;
-    comment: string | null;
-    teacherName: string | null;
-    gradeItems: {
-      itemMoodleId: number;
-      itemName: string;
-      itemType: string | null;
-      grade: number | null;
-      gradeMax: number | null;
-    }[];
+interface CourseWithPeriod {
+  periodId: number | null;
+  periodName: string;
+  periodCode: string;
+  courseMoodleId: number;
+  courseName: string;
+  courseShortname: string;
+  totalGrade: number | null;
+  comment: string | null;
+  gradeItems: {
+    itemMoodleId: number;
+    itemName: string;
+    grade: number | null;
+    gradeMax: number | null;
   }[];
+  sumGrade: number;
+  sumMax: number;
 }
 
 // Convert grade to equivalence
@@ -66,7 +57,7 @@ const getEquivalence = (grade: number | null): string => {
 
 // Calculate cumulative index
 const calculateCumulativeIndex = (
-  courses: UserGradesResult['courses'],
+  courses: CourseWithPeriod[],
 ): number => {
   const gradedCourses = courses.filter((c) => c.totalGrade !== null);
   if (gradedCourses.length === 0) return 0;
@@ -93,6 +84,19 @@ export default function AdminGradeRecord() {
     queryFn: () => gradesApi.getAllGradesForUser(selectedUserId!),
     enabled: !!selectedUserId,
   });
+
+  // Flatten courses from periods for the grade record table
+  const allCourses = useMemo((): CourseWithPeriod[] => {
+    if (!userGrades?.periods) return [];
+    return userGrades.periods.flatMap((period) =>
+      period.courses.map((course) => ({
+        ...course,
+        periodId: period.periodId,
+        periodName: period.periodName,
+        periodCode: period.periodCode,
+      }))
+    );
+  }, [userGrades?.periods]);
 
   const handleSelectUser = (user: UserSearchResult) => {
     setSelectedUserId(user.id);
@@ -347,8 +351,8 @@ export default function AdminGradeRecord() {
                       </tr>
                     </thead>
                     <tbody>
-                      {userGrades.courses.length > 0 ? (
-                        userGrades.courses.map((course, idx) => (
+                      {allCourses.length > 0 ? (
+                        allCourses.map((course, idx) => (
                           <tr key={idx}>
                             <td className="border border-gray-300 px-4 py-2">
                               {course.courseShortname}
@@ -386,7 +390,7 @@ export default function AdminGradeRecord() {
                       <strong>Indice acumulado:</strong>
                     </p>
                     <p className="text-xl font-bold">
-                      {calculateCumulativeIndex(userGrades.courses)}
+                      {calculateCumulativeIndex(allCourses)}
                     </p>
                   </div>
 

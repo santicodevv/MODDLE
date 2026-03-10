@@ -324,32 +324,33 @@ export const gradesApi = {
 
   /**
    * Get all grades for a specific user (Admin)
-   * Returns courses with detailed grade items
+   * Returns grades grouped by period with detailed grade items
    */
   async getAllGradesForUser(userId: number): Promise<{
     user: {
       id: number;
       email: string;
       displayName: string | null;
+      moodleUserId: number | null;
     };
-    courses: {
+    periods: {
       periodId: number | null;
       periodName: string;
       periodCode: string;
-      courseMoodleId: number;
-      courseName: string;
-      courseShortname: string;
-      moodleSumGrade: number | null;
-      moodleSumMax: number | null;
-      totalGrade: number | null;
-      comment: string | null;
-      teacherName: string | null;
-      gradeItems: {
-        itemMoodleId: number;
-        itemName: string;
-        itemType: string | null;
-        grade: number | null;
-        gradeMax: number | null;
+      courses: {
+        courseMoodleId: number;
+        courseName: string;
+        courseShortname: string;
+        totalGrade: number | null;
+        comment: string | null;
+        gradeItems: {
+          itemMoodleId: number;
+          itemName: string;
+          grade: number | null;
+          gradeMax: number | null;
+        }[];
+        sumGrade: number;
+        sumMax: number;
       }[];
     }[];
   }> {
@@ -358,25 +359,26 @@ export const gradesApi = {
         id: number;
         email: string;
         displayName: string | null;
+        moodleUserId: number | null;
       };
-      courses: {
+      periods: {
         periodId: number | null;
         periodName: string;
         periodCode: string;
-        courseMoodleId: number;
-        courseName: string;
-        courseShortname: string;
-        moodleSumGrade: number | null;
-        moodleSumMax: number | null;
-        totalGrade: number | null;
-        comment: string | null;
-        teacherName: string | null;
-        gradeItems: {
-          itemMoodleId: number;
-          itemName: string;
-          itemType: string | null;
-          grade: number | null;
-          gradeMax: number | null;
+        courses: {
+          courseMoodleId: number;
+          courseName: string;
+          courseShortname: string;
+          totalGrade: number | null;
+          comment: string | null;
+          gradeItems: {
+            itemMoodleId: number;
+            itemName: string;
+            grade: number | null;
+            gradeMax: number | null;
+          }[];
+          sumGrade: number;
+          sumMax: number;
         }[];
       }[];
     }>(`/student-grades/user/${userId}/all`);
