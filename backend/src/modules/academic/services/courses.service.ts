@@ -597,13 +597,56 @@ export class CoursesService {
   }
 
   /**
-   * Get all courses where a teacher is assigned
+   * Get all courses where a teacher is assigned (with full course details)
    */
-  async getCoursesForTeacher(teacherId: number): Promise<CourseTeacher[]> {
-    return this.courseTeacherRepository.find({
+  async getCoursesForTeacher(teacherId: number): Promise<CourseWithCounts[]> {
+    // Get teacher's course assignments
+    const assignments = await this.courseTeacherRepository.find({
       where: { teacherId },
       order: { createdAt: 'DESC' },
     });
+
+    if (assignments.length === 0) {
+      return [];
+    }
+
+    // Get the courseMoodleIds
+    const courseMoodleIds = assignments.map((a) => a.courseMoodleId);
+
+    // Get full course details
+    const courses = await this.courseRepository.find({
+      where: { moodleId: In(courseMoodleIds) },
+    });
+
+    // Add counts for each course
+    const coursesWithCounts: CourseWithCounts[] = await Promise.all(
+      courses.map(async (course) => {
+        const [studentCount, teacherCount] = await Promise.all([
+          this.enrolmentRepository.count({
+            where: {
+              courseMoodleId: course.moodleId,
+              roleCode: 'student',
+              enrolStatus: 'active',
+            },
+          }),
+          this.enrolmentRepository.count({
+            where: {
+              courseMoodleId: course.moodleId,
+              roleCode: ILike('%teacher%'),
+              enrolStatus: 'active',
+            },
+          }),
+        ]);
+
+        return {
+          ...course,
+          studentCount,
+          teacherCount,
+        };
+      }),
+    );
+
+    return coursesWithCounts;
   }
 
   /**

@@ -18,7 +18,7 @@ interface TeacherCourse {
   fullname: string;
   subjectName?: string;
   shortname: string;
-  enrolledCount?: number;
+  studentCount?: number;
 }
 
 export default function TeacherDashboard() {
@@ -26,17 +26,13 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
 
   // Fetch teacher's courses
-  const { data: coursesData, isLoading } = useQuery({
-    queryKey: ['teacher-courses'],
-    queryFn: async () => {
-      const response = await coursesApi.getAll({ limit: 100 });
-      return response;
-    },
+  const { data: courses = [], isLoading } = useQuery({
+    queryKey: ['teacher-courses', user?.id],
+    queryFn: () => coursesApi.getCoursesForTeacher(user!.id),
+    enabled: !!user?.id,
   });
-
-  const courses = coursesData?.data || [];
   const totalStudents = courses.reduce(
-    (sum: number, c: TeacherCourse) => sum + (c.enrolledCount || 0),
+    (sum: number, c: TeacherCourse) => sum + (c.studentCount || 0),
     0,
   );
 

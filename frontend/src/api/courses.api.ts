@@ -176,10 +176,10 @@ export const coursesApi = {
   },
 
   /**
-   * Get courses where a teacher is assigned
+   * Get courses where a teacher is assigned (with full course details)
    */
-  async getCoursesForTeacher(teacherId: number): Promise<CourseTeacher[]> {
-    const response = await api.get<CourseTeacher[]>(
+  async getCoursesForTeacher(teacherId: number): Promise<CourseWithStats[]> {
+    const response = await api.get<CourseWithStats[]>(
       `/courses/teacher/${teacherId}/courses`,
     );
     return response.data;

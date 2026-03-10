@@ -1,29 +1,21 @@
 // Teacher Courses - List of courses the teacher can manage grades for
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context';
+import { coursesApi } from '@/api/courses.api';
 import { api } from '@/lib';
 import { Card, CardContent, Spinner, Button, Badge } from '@/components/ui';
 import { BookOpen, Users, ClipboardList, ChevronRight } from 'lucide-react';
 
-interface Course {
-  moodleId: number;
-  fullname: string;
-  shortname: string;
-  subjectName?: string;
-  visible: boolean;
-  categoryId: number;
-}
-
 export default function TeacherCourses() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Fetch courses
+  // Fetch teacher's courses
   const { data: courses, isLoading } = useQuery({
-    queryKey: ['teacher-courses'],
-    queryFn: async () => {
-      const response = await api.get<Course[]>('/grades/courses');
-      return response.data;
-    },
+    queryKey: ['teacher-courses', user?.id],
+    queryFn: () => coursesApi.getCoursesForTeacher(user!.id),
+    enabled: !!user?.id,
   });
 
   // Fetch edit session status
@@ -111,7 +103,7 @@ export default function TeacherCourses() {
                 <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    <span>Estudiantes</span>
+                    <span>{course.studentCount ?? 0} Estudiantes</span>
                   </div>
                   {!course.visible && <Badge variant="secondary">Oculto</Badge>}
                 </div>
