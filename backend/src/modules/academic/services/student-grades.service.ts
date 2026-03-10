@@ -837,6 +837,7 @@ export class StudentGradesService {
   /**
    * Get all grades for a specific user (Admin view)
    * Shows all courses where the student has grades in course_student_grades
+   * Includes detailed Moodle grades for each course
    */
   async getAllGradesForUser(
     userId: number,
@@ -845,25 +846,26 @@ export class StudentGradesService {
       id: number;
       email: string;
       displayName: string | null;
+      moodleUserId: number | null;
     };
-    courses: {
+    periods: {
       periodId: number | null;
       periodName: string;
       periodCode: string;
-      courseMoodleId: number;
-      courseName: string;
-      courseShortname: string;
-      moodleSumGrade: number | null;
-      moodleSumMax: number | null;
-      totalGrade: number | null;
-      comment: string | null;
-      teacherName: string | null;
-      gradeItems: {
-        itemMoodleId: number;
-        itemName: string;
-        itemType: string | null;
-        grade: number | null;
-        gradeMax: number | null;
+      courses: {
+        courseMoodleId: number;
+        courseName: string;
+        courseShortname: string;
+        totalGrade: number | null;
+        comment: string | null;
+        gradeItems: {
+          itemMoodleId: number;
+          itemName: string;
+          grade: number | null;
+          gradeMax: number | null;
+        }[];
+        sumGrade: number;
+        sumMax: number;
       }[];
     }[];
   }> {
@@ -887,8 +889,9 @@ export class StudentGradesService {
           id: user.id,
           email: user.email,
           displayName: user.displayName,
+          moodleUserId: user.moodleUserId,
         },
-        courses: [],
+        periods: [],
       };
     }
 
@@ -899,38 +902,126 @@ export class StudentGradesService {
     });
     const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
 
-    // Build results directly from grades
-    const results = studentGrades.map((grade) => {
-      const course = courseMap.get(grade.courseMoodleId);
+    // Get Moodle grade items for all courses (exclude 'course' type which is the total)
+    const allGradeItems = await this.gradeItemRepository.find({
+      where: { courseMoodleId: In(courseMoodleIds) },
+    });
+    const gradeItemsByCourse = new Map<number, typeof allGradeItems>();
+    for (const item of allGradeItems) {
+      if (item.itemtype === 'course') continue; // Skip course totals
+      const existing = gradeItemsByCourse.get(item.courseMoodleId) || [];
+      existing.push(item);
+      gradeItemsByCourse.set(item.courseMoodleId, existing);
+    }
 
-      return {
-        periodId: grade.periodId ?? null,
-        periodName: grade.period?.name ?? 'Sin período',
-        periodCode: grade.period?.code ?? '',
-        courseMoodleId: grade.courseMoodleId,
-        courseName: grade.courseName || course?.subjectName || course?.fullname || `Curso ${grade.courseMoodleId}`,
-        courseShortname: grade.courseShortname || course?.shortname || '',
-        moodleSumGrade: grade.moodleSumGrade ?? null,
-        moodleSumMax: grade.moodleSumMax ?? null,
-        totalGrade: grade.totalGrade ?? null,
-        comment: grade.comment ?? null,
-        teacherName: grade.teacher?.displayName ?? null,
-        gradeItems: [] as {
+    // Get Moodle grades for this user if they have moodleUserId
+    const userMoodleGrades = new Map<string, number>();
+    if (user.moodleUserId) {
+      const moodleGrades = await this.moodleGradeRepository.find({
+        where: {
+          userMoodleId: user.moodleUserId,
+          courseMoodleId: In(courseMoodleIds),
+        },
+      });
+      for (const mg of moodleGrades) {
+        userMoodleGrades.set(
+          `${mg.courseMoodleId}:${mg.itemMoodleId}`,
+          parseFloat(String(mg.grade || 0)),
+        );
+      }
+    }
+
+    // Group grades by period
+    const periodMap = new Map<number | null, typeof studentGrades>();
+    for (const grade of studentGrades) {
+      const periodId = grade.periodId ?? null;
+      const existing = periodMap.get(periodId) || [];
+      existing.push(grade);
+      periodMap.set(periodId, existing);
+    }
+
+    // Build results grouped by period
+    const periods: {
+      periodId: number | null;
+      periodName: string;
+      periodCode: string;
+      courses: {
+        courseMoodleId: number;
+        courseName: string;
+        courseShortname: string;
+        totalGrade: number | null;
+        comment: string | null;
+        gradeItems: {
           itemMoodleId: number;
           itemName: string;
-          itemType: string | null;
           grade: number | null;
           gradeMax: number | null;
-        }[],
-      };
-    });
+        }[];
+        sumGrade: number;
+        sumMax: number;
+      }[];
+    }[] = [];
 
-    // Sort by period (nulls last) then by course name
-    results.sort((a, b) => {
+    for (const [periodId, grades] of periodMap) {
+      const firstGrade = grades[0];
+      const periodCourses = grades.map((grade) => {
+        const course = courseMap.get(grade.courseMoodleId);
+        const courseGradeItems = gradeItemsByCourse.get(grade.courseMoodleId) || [];
+
+        // Build grade items with student's grades
+        let sumGrade = 0;
+        let sumMax = 0;
+        const gradeItems = courseGradeItems.map((item) => {
+          const gradeValue = userMoodleGrades.get(
+            `${grade.courseMoodleId}:${item.itemMoodleId}`,
+          );
+          const gradeMaxValue = parseFloat(String(item.grademax || 0));
+
+          if (gradeValue !== undefined) {
+            sumGrade += gradeValue;
+          }
+          sumMax += gradeMaxValue;
+
+          return {
+            itemMoodleId: item.itemMoodleId,
+            itemName: item.itemname || `Item ${item.itemMoodleId}`,
+            grade: gradeValue ?? null,
+            gradeMax: gradeMaxValue,
+          };
+        });
+
+        // Sort grade items by name
+        gradeItems.sort((a, b) => a.itemName.localeCompare(b.itemName));
+
+        return {
+          courseMoodleId: grade.courseMoodleId,
+          courseName: grade.courseName || course?.subjectName || course?.fullname || `Curso ${grade.courseMoodleId}`,
+          courseShortname: grade.courseShortname || course?.shortname || '',
+          totalGrade: grade.totalGrade ?? null,
+          comment: grade.comment ?? null,
+          gradeItems,
+          sumGrade: Math.round(sumGrade * 100) / 100,
+          sumMax: Math.round(sumMax * 100) / 100,
+        };
+      });
+
+      // Sort courses by name
+      periodCourses.sort((a, b) => a.courseName.localeCompare(b.courseName));
+
+      periods.push({
+        periodId,
+        periodName: firstGrade.period?.name ?? 'Sin período',
+        periodCode: firstGrade.period?.code ?? '',
+        courses: periodCourses,
+      });
+    }
+
+    // Sort periods (with period first, null last)
+    periods.sort((a, b) => {
       if (a.periodId === null && b.periodId !== null) return 1;
       if (a.periodId !== null && b.periodId === null) return -1;
       if (a.periodId !== b.periodId) return (b.periodId ?? 0) - (a.periodId ?? 0);
-      return a.courseName.localeCompare(b.courseName);
+      return 0;
     });
 
     return {
@@ -938,8 +1029,9 @@ export class StudentGradesService {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        moodleUserId: user.moodleUserId,
       },
-      courses: results,
+      periods,
     };
   }
 }

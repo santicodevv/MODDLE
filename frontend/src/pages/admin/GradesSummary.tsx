@@ -1,10 +1,12 @@
-// Admin Grades Summary - Simple table view of all grades for a user
+// Admin Grades Summary - Detailed view of all grades for a user grouped by period
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { gradesApi } from '@/api';
 import {
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
   Spinner,
   Input,
   Label,
@@ -14,10 +16,12 @@ import {
   Search,
   BookOpen,
   GraduationCap,
-  MessageSquare,
   TrendingUp,
   CheckCircle,
   TableIcon,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 interface UserSearchResult {
@@ -27,11 +31,47 @@ interface UserSearchResult {
   moodleUserId: number | null;
 }
 
+interface GradeItem {
+  itemMoodleId: number;
+  itemName: string;
+  grade: number | null;
+  gradeMax: number | null;
+}
+
+interface Course {
+  courseMoodleId: number;
+  courseName: string;
+  courseShortname: string;
+  totalGrade: number | null;
+  comment: string | null;
+  gradeItems: GradeItem[];
+  sumGrade: number;
+  sumMax: number;
+}
+
+interface Period {
+  periodId: number | null;
+  periodName: string;
+  periodCode: string;
+  courses: Course[];
+}
+
+interface UserGradesData {
+  user: {
+    id: number;
+    email: string;
+    displayName: string | null;
+    moodleUserId: number | null;
+  };
+  periods: Period[];
+}
+
 export default function GradesSummary() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 
   // Debounce search query
   useEffect(() => {
@@ -49,7 +89,7 @@ export default function GradesSummary() {
   });
 
   // Get user grades
-  const { data: userData, isLoading: gradesLoading } = useQuery({
+  const { data: userData, isLoading: gradesLoading } = useQuery<UserGradesData>({
     queryKey: ['user-all-grades-summary', selectedUserId],
     queryFn: () => gradesApi.getAllGradesForUser(selectedUserId!),
     enabled: !!selectedUserId,
@@ -57,35 +97,61 @@ export default function GradesSummary() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    if (!userData?.courses)
+    if (!userData?.periods)
       return { totalCourses: 0, gradedCourses: 0, avgGrade: null };
 
-    const totalCourses = userData.courses.length;
-    const gradedCourses = userData.courses.filter(
-      (c) => c.totalGrade !== null,
-    ).length;
-    const avgGrade =
-      gradedCourses > 0
-        ? userData.courses
-            .filter((c) => c.totalGrade !== null)
-            .reduce((sum, c) => sum + (c.totalGrade || 0), 0) / gradedCourses
-        : null;
+    let totalCourses = 0;
+    let gradedCourses = 0;
+    let totalGradeSum = 0;
 
+    for (const period of userData.periods) {
+      for (const course of period.courses) {
+        totalCourses++;
+        if (course.totalGrade !== null) {
+          gradedCourses++;
+          totalGradeSum += course.totalGrade;
+        }
+      }
+    }
+
+    const avgGrade = gradedCourses > 0 ? totalGradeSum / gradedCourses : null;
     return { totalCourses, gradedCourses, avgGrade };
-  }, [userData?.courses]);
+  }, [userData?.periods]);
 
   const handleSelectUser = (user: UserSearchResult) => {
     setSelectedUserId(user.id);
     setSearchQuery(user.displayName || user.email);
     setShowDropdown(false);
+    setExpandedCourses(new Set());
   };
 
-  const getGradeColor = (grade: number | null) => {
+  const toggleCourse = (courseKey: string) => {
+    setExpandedCourses((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(courseKey)) {
+        newSet.delete(courseKey);
+      } else {
+        newSet.add(courseKey);
+      }
+      return newSet;
+    });
+  };
+
+  const getGradeColor = (grade: number | null, max: number | null = 10) => {
     if (grade === null) return 'text-gray-400';
-    if (grade >= 90) return 'text-green-600 font-semibold';
-    if (grade >= 70) return 'text-blue-600 font-semibold';
-    if (grade >= 60) return 'text-yellow-600 font-semibold';
+    const percentage = max && max > 0 ? (grade / max) * 100 : grade;
+    if (percentage >= 90) return 'text-green-600 font-semibold';
+    if (percentage >= 70) return 'text-blue-600 font-semibold';
+    if (percentage >= 60) return 'text-yellow-600 font-semibold';
     return 'text-red-600 font-semibold';
+  };
+
+  const formatGrade = (grade: number | null, max: number | null) => {
+    if (grade === null) return '-';
+    if (max !== null && max > 0) {
+      return `${grade}/${max}`;
+    }
+    return String(grade);
   };
 
   return (
@@ -96,10 +162,10 @@ export default function GradesSummary() {
           <TableIcon className="h-7 w-7 text-indigo-600" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Resumen de Notas
+              Calificaciones por Usuario
             </h1>
             <p className="text-gray-600">
-              Vista rapida de todas las calificaciones de un usuario
+              Vista detallada de todas las calificaciones de un usuario
             </p>
           </div>
         </div>
@@ -163,13 +229,13 @@ export default function GradesSummary() {
         </CardContent>
       </Card>
 
-      {/* User Info and Table */}
+      {/* User Info and Tables */}
       {selectedUserId && userData && (
         <>
           {/* User Card */}
           <Card className="mb-6">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-100 rounded-full">
                     <User className="h-8 w-8 text-blue-600" />
@@ -192,13 +258,13 @@ export default function GradesSummary() {
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
                     <span className="text-sm text-gray-600">
-                      {stats.gradedCourses} calificados
+                      {stats.gradedCourses} con nota final
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-blue-500" />
                     <span className="text-sm text-gray-600">
-                      Promedio: {stats.avgGrade !== null ? stats.avgGrade.toFixed(1) : '-'}
+                      Promedio: {stats.avgGrade !== null ? stats.avgGrade.toFixed(2) : '-'}
                     </span>
                   </div>
                 </div>
@@ -206,82 +272,120 @@ export default function GradesSummary() {
             </CardContent>
           </Card>
 
-          {/* Grades Table */}
+          {/* Grades by Period */}
           {gradesLoading ? (
             <div className="flex justify-center py-12">
               <Spinner />
             </div>
-          ) : userData.courses.length > 0 ? (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Curso
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Periodo
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">
-                          Nota Total
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Comentario
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {userData.courses.map((course) => (
-                        <tr
-                          key={`${course.courseMoodleId}-${course.periodId}`}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-gray-900">
+          ) : userData.periods.length > 0 ? (
+            <div className="space-y-6">
+              {userData.periods.map((period) => (
+                <Card key={period.periodId ?? 'no-period'}>
+                  <CardHeader className="bg-gray-50 border-b">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Calendar className="h-5 w-5 text-indigo-600" />
+                      {period.periodName}
+                      {period.periodCode && (
+                        <span className="text-sm font-normal text-gray-500">
+                          ({period.periodCode})
+                        </span>
+                      )}
+                      <span className="ml-auto text-sm font-normal text-gray-500">
+                        {period.courses.length} curso{period.courses.length !== 1 ? 's' : ''}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-gray-200">
+                      {period.courses.map((course) => {
+                        const courseKey = `${period.periodId}-${course.courseMoodleId}`;
+                        const isExpanded = expandedCourses.has(courseKey);
+                        const hasGradeItems = course.gradeItems.length > 0;
+
+                        return (
+                          <div key={courseKey}>
+                            {/* Course Row */}
+                            <div
+                              className={`flex items-center gap-4 p-4 ${hasGradeItems ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                              onClick={() => hasGradeItems && toggleCourse(courseKey)}
+                            >
+                              {hasGradeItems ? (
+                                isExpanded ? (
+                                  <ChevronDown className="h-5 w-5 text-gray-400" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                                )
+                              ) : (
+                                <div className="w-5" />
+                              )}
+                              <BookOpen className="h-5 w-5 text-purple-500 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">
                                   {course.courseName}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {course.courseShortname}
                                 </p>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-sm text-gray-700">
-                              {course.periodName || '-'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={getGradeColor(course.totalGrade)}>
-                              {course.totalGrade !== null
-                                ? course.totalGrade
-                                : '-'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {course.comment ? (
-                              <div className="flex items-start gap-2">
-                                <MessageSquare className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-600">
-                                  {course.comment}
-                                </span>
+                              <div className="flex items-center gap-6 text-sm">
+                                <div className="text-center min-w-[80px]">
+                                  <p className="text-xs text-gray-500 uppercase">Acumulado</p>
+                                  <p className={getGradeColor(course.sumGrade, course.sumMax)}>
+                                    {course.sumGrade}/{course.sumMax}
+                                  </p>
+                                </div>
+                                <div className="text-center min-w-[80px]">
+                                  <p className="text-xs text-gray-500 uppercase">Total</p>
+                                  <p className={getGradeColor(course.totalGrade, 10)}>
+                                    {course.totalGrade !== null ? course.totalGrade : '0'}
+                                  </p>
+                                </div>
+                                {course.comment && (
+                                  <div className="max-w-[200px]">
+                                    <p className="text-xs text-gray-500 uppercase">Comentario</p>
+                                    <p className="text-gray-600 truncate" title={course.comment}>
+                                      {course.comment}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">-</span>
+                            </div>
+
+                            {/* Grade Items (expanded) */}
+                            {isExpanded && hasGradeItems && (
+                              <div className="bg-gray-50 px-4 pb-4">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="text-left text-xs text-gray-500 uppercase">
+                                      <th className="py-2 pl-10">Item</th>
+                                      <th className="py-2 text-right pr-4">Nota</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {course.gradeItems.map((item) => (
+                                      <tr key={item.itemMoodleId} className="bg-white">
+                                        <td className="py-2 pl-10 text-gray-700">
+                                          {item.itemName}
+                                        </td>
+                                        <td className="py-2 text-right pr-4">
+                                          <span className={getGradeColor(item.grade, item.gradeMax)}>
+                                            {formatGrade(item.grade, item.gradeMax)}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           ) : (
             <Card>
               <CardContent className="py-12 text-center">
