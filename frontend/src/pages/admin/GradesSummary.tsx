@@ -20,8 +20,6 @@ import {
   CheckCircle,
   TableIcon,
   Calendar,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 
 interface UserSearchResult {
@@ -71,7 +69,6 @@ export default function GradesSummary() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 
   // Debounce search query
   useEffect(() => {
@@ -122,19 +119,6 @@ export default function GradesSummary() {
     setSelectedUserId(user.id);
     setSearchQuery(user.displayName || user.email);
     setShowDropdown(false);
-    setExpandedCourses(new Set());
-  };
-
-  const toggleCourse = (courseKey: string) => {
-    setExpandedCourses((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(courseKey)) {
-        newSet.delete(courseKey);
-      } else {
-        newSet.add(courseKey);
-      }
-      return newSet;
-    });
   };
 
   const getGradeColor = (grade: number | null, max: number | null = 10) => {
@@ -295,93 +279,96 @@ export default function GradesSummary() {
                       </span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="divide-y divide-gray-200">
-                      {period.courses.map((course) => {
-                        const courseKey = `${period.periodId}-${course.courseMoodleId}`;
-                        const isExpanded = expandedCourses.has(courseKey);
-                        const hasGradeItems = course.gradeItems.length > 0;
+                  <CardContent className="p-4 space-y-4">
+                    {/* One table per course */}
+                    {period.courses.map((course) => (
+                      <div
+                        key={`${period.periodId}-${course.courseMoodleId}`}
+                        className="border rounded-lg overflow-hidden"
+                      >
+                        {/* Course Header */}
+                        <div className="bg-purple-50 px-4 py-2 border-b flex items-center gap-2">
+                          <BookOpen className="h-4 w-4 text-purple-600" />
+                          <span className="font-medium text-gray-900">
+                            {course.courseName}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({course.courseShortname})
+                          </span>
+                        </div>
 
-                        return (
-                          <div key={courseKey}>
-                            {/* Course Row */}
-                            <div
-                              className={`flex items-center gap-4 p-4 ${hasGradeItems ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-                              onClick={() => hasGradeItems && toggleCourse(courseKey)}
-                            >
-                              {hasGradeItems ? (
-                                isExpanded ? (
-                                  <ChevronDown className="h-5 w-5 text-gray-400" />
-                                ) : (
-                                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                                )
-                              ) : (
-                                <div className="w-5" />
-                              )}
-                              <BookOpen className="h-5 w-5 text-purple-500 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">
-                                  {course.courseName}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {course.courseShortname}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-6 text-sm">
-                                <div className="text-center min-w-[80px]">
-                                  <p className="text-xs text-gray-500 uppercase">Acumulado</p>
-                                  <p className={getGradeColor(course.sumGrade, course.sumMax)}>
+                        {/* Course Grades Table with horizontal scroll */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                {/* Dynamic columns for each grade item */}
+                                {course.gradeItems.map((item) => (
+                                  <th
+                                    key={item.itemMoodleId}
+                                    className="px-3 py-2 text-center text-xs font-medium text-gray-600 whitespace-nowrap border-r min-w-[100px]"
+                                    title={item.itemName}
+                                  >
+                                    {item.itemName.length > 15
+                                      ? item.itemName.substring(0, 15) + '...'
+                                      : item.itemName}
+                                  </th>
+                                ))}
+                                {/* Fixed columns at the end */}
+                                <th className="px-3 py-2 text-center text-xs font-medium text-gray-600 whitespace-nowrap border-r bg-blue-50 min-w-[80px]">
+                                  Acumulado
+                                </th>
+                                <th className="px-3 py-2 text-center text-xs font-medium text-gray-600 whitespace-nowrap bg-green-50 min-w-[60px]">
+                                  Total
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="bg-white">
+                                {/* Grade item values */}
+                                {course.gradeItems.map((item) => (
+                                  <td
+                                    key={item.itemMoodleId}
+                                    className="px-3 py-2 text-center border-r whitespace-nowrap"
+                                  >
+                                    <span className={getGradeColor(item.grade, item.gradeMax)}>
+                                      {formatGrade(item.grade, item.gradeMax)}
+                                    </span>
+                                  </td>
+                                ))}
+                                {/* Accumulated */}
+                                <td className="px-3 py-2 text-center border-r bg-blue-50 whitespace-nowrap">
+                                  <span className={getGradeColor(course.sumGrade, course.sumMax)}>
                                     {course.sumGrade}/{course.sumMax}
-                                  </p>
-                                </div>
-                                <div className="text-center min-w-[80px]">
-                                  <p className="text-xs text-gray-500 uppercase">Total</p>
-                                  <p className={getGradeColor(course.totalGrade, 10)}>
+                                  </span>
+                                </td>
+                                {/* Total */}
+                                <td className="px-3 py-2 text-center bg-green-50 whitespace-nowrap">
+                                  <span className={getGradeColor(course.totalGrade, 10)}>
                                     {course.totalGrade !== null ? course.totalGrade : '0'}
-                                  </p>
-                                </div>
-                                {course.comment && (
-                                  <div className="max-w-[200px]">
-                                    <p className="text-xs text-gray-500 uppercase">Comentario</p>
-                                    <p className="text-gray-600 truncate" title={course.comment}>
-                                      {course.comment}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                                  </span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
 
-                            {/* Grade Items (expanded) */}
-                            {isExpanded && hasGradeItems && (
-                              <div className="bg-gray-50 px-4 pb-4">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="text-left text-xs text-gray-500 uppercase">
-                                      <th className="py-2 pl-10">Item</th>
-                                      <th className="py-2 text-right pr-4">Nota</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-gray-200">
-                                    {course.gradeItems.map((item) => (
-                                      <tr key={item.itemMoodleId} className="bg-white">
-                                        <td className="py-2 pl-10 text-gray-700">
-                                          {item.itemName}
-                                        </td>
-                                        <td className="py-2 text-right pr-4">
-                                          <span className={getGradeColor(item.grade, item.gradeMax)}>
-                                            {formatGrade(item.grade, item.gradeMax)}
-                                          </span>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
+                        {/* Comment if exists */}
+                        {course.comment && (
+                          <div className="px-4 py-2 bg-yellow-50 border-t text-sm">
+                            <span className="font-medium text-gray-600">Comentario: </span>
+                            <span className="text-gray-700">{course.comment}</span>
                           </div>
-                        );
-                      })}
-                    </div>
+                        )}
+
+                        {/* Empty state if no grade items */}
+                        {course.gradeItems.length === 0 && (
+                          <div className="px-4 py-3 text-center text-gray-500 text-sm">
+                            No hay items de calificación registrados en Moodle para este curso
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
               ))}
