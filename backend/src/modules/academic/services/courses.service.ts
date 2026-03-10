@@ -56,7 +56,7 @@ export class CoursesService {
   ) {}
 
   /**
-   * Get all courses with pagination and search
+   * Get all courses with pagination and searchs
    */
   async findAll(params: CoursesQueryParams) {
     const { page = 1, limit = 20, search } = params;
