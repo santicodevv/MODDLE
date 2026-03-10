@@ -59,10 +59,14 @@ const getEquivalence = (grade: number | null): string => {
 const calculateCumulativeIndex = (
   courses: CourseWithPeriod[],
 ): number => {
-  const gradedCourses = courses.filter((c) => c.totalGrade !== null);
+  const gradedCourses = courses.filter((c) => c.totalGrade !== null && c.totalGrade !== undefined);
   if (gradedCourses.length === 0) return 0;
-  const sum = gradedCourses.reduce((acc, c) => acc + (c.totalGrade || 0), 0);
-  return Math.round((sum / gradedCourses.length) * 10) / 10;
+  const sum = gradedCourses.reduce((acc, c) => {
+    const grade = parseFloat(String(c.totalGrade || 0));
+    return acc + (isNaN(grade) ? 0 : grade);
+  }, 0);
+  const avg = sum / gradedCourses.length;
+  return isNaN(avg) ? 0 : Math.round(avg * 10) / 10;
 };
 
 export default function AdminGradeRecord() {
