@@ -28,9 +28,6 @@ import {
   Star,
   Trash2,
   ClipboardList,
-  ChevronDown,
-  ChevronRight,
-  TrendingUp,
 } from 'lucide-react';
 import type { EnrolledUserWithDetails, CourseTeacher } from '@/types';
 import { gradesApi } from '@/api';
