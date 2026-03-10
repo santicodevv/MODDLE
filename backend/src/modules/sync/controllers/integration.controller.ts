@@ -277,4 +277,63 @@ export class IntegrationController {
       );
     }
   }
+
+  /**
+   * Fix teacher role assignments and course_teachers records
+   * POST /integrations/moodle/sync/fix-teachers
+   */
+  @Post('sync/fix-teachers')
+  @Roles(RoleCode.ADMIN)
+  async fixTeachers() {
+    try {
+      await this.auditService.log({
+        action: 'sync.fix-teachers.started',
+        entity: 'integration',
+        entityKey: 'moodle',
+        source: 'admin',
+      });
+
+      // Fix teacher roles in app_users
+      const rolesFixed = await this.moodleSyncService.fixTeacherRoles();
+
+      // Fix course_teachers records
+      const courseTeachersFixed =
+        await this.moodleSyncService.fixCourseTeachers();
+
+      await this.auditService.log({
+        action: 'sync.fix-teachers.completed',
+        entity: 'integration',
+        entityKey: 'moodle',
+        afterData: { rolesFixed, courseTeachersFixed },
+        source: 'admin',
+      });
+
+      return {
+        success: true,
+        message: 'Teacher fix completed successfully',
+        results: {
+          teacherRolesAssigned: rolesFixed,
+          courseTeachersCreated: courseTeachersFixed,
+        },
+        completedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      await this.auditService.log({
+        action: 'sync.fix-teachers.failed',
+        entity: 'integration',
+        entityKey: 'moodle',
+        afterData: { error: error.message },
+        source: 'admin',
+      });
+
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Teacher fix failed',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

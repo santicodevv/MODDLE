@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
+import * as qs from 'qs';
 
 @Injectable()
 export class MoodleClientService {
@@ -13,14 +14,34 @@ export class MoodleClientService {
     this.moodleUrl = this.configService.get<string>('MOODLE_URL') || '';
     this.moodleToken = this.configService.get<string>('MOODLE_TOKEN') || '';
 
+    if (!this.moodleUrl || !this.moodleToken) {
+      this.logger.warn(
+        'MOODLE_URL or MOODLE_TOKEN not configured. Moodle integration will not work.',
+      );
+    }
+
     this.axiosInstance = axios.create({
       baseURL: `${this.moodleUrl}/webservice/rest`,
       timeout: 30000,
+      // Use qs to serialize nested objects/arrays correctly for Moodle API
+      paramsSerializer: {
+        serialize: (params) =>
+          qs.stringify(params, { arrayFormat: 'indices', encode: false }),
+      },
     });
   }
 
   async callFunction(wsfunction: string, params: any = {}): Promise<any> {
+    // Check configuration before making request
+    if (!this.moodleUrl || !this.moodleToken) {
+      throw new Error(
+        'Moodle no está configurado. Verifique MOODLE_URL y MOODLE_TOKEN en las variables de entorno.',
+      );
+    }
+
     try {
+      this.logger.debug(`Calling Moodle function: ${wsfunction}`);
+
       const response = await this.axiosInstance.get('/server.php', {
         params: {
           wstoken: this.moodleToken,
@@ -31,11 +52,31 @@ export class MoodleClientService {
       });
 
       if (response.data.exception) {
-        throw new Error(`Moodle error: ${response.data.message}`);
+        const errorMessage = response.data.message || response.data.exception;
+        this.logger.error(
+          `Moodle API error in ${wsfunction}: ${errorMessage}`,
+        );
+        throw new Error(`Moodle error: ${errorMessage}`);
       }
 
       return response.data;
     } catch (error) {
+      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        this.logger.error(
+          `Cannot connect to Moodle at ${this.moodleUrl}: ${error.message}`,
+        );
+        throw new Error(
+          `No se puede conectar con Moodle. Verifique que la URL sea correcta: ${this.moodleUrl}`,
+        );
+      }
+
+      if (error.code === 'ETIMEDOUT') {
+        this.logger.error(`Moodle request timeout for ${wsfunction}`);
+        throw new Error(
+          'La solicitud a Moodle ha excedido el tiempo de espera.',
+        );
+      }
+
       this.logger.error(
         `Error calling Moodle function ${wsfunction}: ${error.message}`,
       );

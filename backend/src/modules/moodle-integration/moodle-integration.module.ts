@@ -11,6 +11,7 @@ import { MoodleGrade } from './entities/moodle-grade.entity';
 import { MoodleCategory } from './entities/moodle-category.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../users/entities/role.entity';
+import { CourseTeacher } from '../academic/entities/course-teacher.entity';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Role } from '../users/entities/role.entity';
       MoodleCategory,
       User,
       Role,
+      CourseTeacher,
     ]),
     BullModule.registerQueue({ name: 'moodle-inbound' }),
   ],

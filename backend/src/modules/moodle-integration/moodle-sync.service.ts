@@ -10,6 +10,7 @@ import { MoodleGradeItem } from './entities/moodle-grade-item.entity';
 import { MoodleGrade } from './entities/moodle-grade.entity';
 import { User } from '../users/entities/user.entity';
 import { Role, RoleCode } from '../users/entities/role.entity';
+import { CourseTeacher } from '../academic/entities/course-teacher.entity';
 
 @Injectable()
 export class MoodleSyncService {
@@ -31,6 +32,8 @@ export class MoodleSyncService {
     private readonly appUserRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
+    @InjectRepository(CourseTeacher)
+    private readonly courseTeacherRepository: Repository<CourseTeacher>,
   ) {}
 
   async syncUsers(sinceTimestamp?: number): Promise<void> {
@@ -252,9 +255,10 @@ export class MoodleSyncService {
             await this.moodleEnrolmentRepository.save(enrolmentData);
           }
 
-          // Auto-assign TEACHER role if enrolled as teacher/editingteacher
+          // Auto-assign TEACHER role and create course_teacher record if enrolled as teacher/editingteacher
           if (role.shortname === 'teacher' || role.shortname === 'editingteacher') {
             await this.ensureTeacherRole(enrollment.id);
+            await this.ensureCourseTeacher(courseMoodleId, enrollment.id);
           }
         }
       }
@@ -297,6 +301,66 @@ export class MoodleSyncService {
       this.logger.log(`Auto-assigned TEACHER role (removed STUDENT) to user ${appUser.email} (moodleId: ${moodleUserId})`);
     } catch (error) {
       this.logger.warn(`Failed to auto-assign TEACHER role for moodleId ${moodleUserId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create a course_teacher record linking a teacher to a course
+   * This allows teachers to see their assigned courses in the app
+   */
+  private async ensureCourseTeacher(
+    courseMoodleId: number,
+    moodleUserId: number,
+  ): Promise<void> {
+    try {
+      // Find the app user for this moodle user
+      const appUser = await this.appUserRepository.findOne({
+        where: { moodleUserId },
+      });
+
+      if (!appUser) {
+        this.logger.debug(
+          `No app_user found for moodleId ${moodleUserId}, skipping course_teacher creation`,
+        );
+        return;
+      }
+
+      // Check if course_teacher record already exists
+      const existingCourseTeacher = await this.courseTeacherRepository.findOne({
+        where: {
+          courseMoodleId,
+          teacherId: appUser.id,
+        },
+      });
+
+      if (existingCourseTeacher) {
+        this.logger.debug(
+          `Course teacher already exists for course ${courseMoodleId} and teacher ${appUser.id}`,
+        );
+        return;
+      }
+
+      // Get course name from moodle_courses
+      const course = await this.moodleCourseRepository.findOne({
+        where: { moodleId: courseMoodleId },
+      });
+
+      // Create course_teacher record
+      const courseTeacher = this.courseTeacherRepository.create({
+        courseMoodleId,
+        teacherId: appUser.id,
+        courseName: course?.fullname || course?.shortname || null,
+        isPrimary: true,
+      });
+
+      await this.courseTeacherRepository.save(courseTeacher);
+      this.logger.log(
+        `Created course_teacher: course ${courseMoodleId} -> teacher ${appUser.email} (id: ${appUser.id})`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to create course_teacher for course ${courseMoodleId} and moodleId ${moodleUserId}: ${error.message}`,
+      );
     }
   }
 
@@ -352,6 +416,77 @@ export class MoodleSyncService {
 
     this.logger.log(`Teacher role fix complete. Assigned ${assignedCount} new TEACHER roles.`);
     return assignedCount;
+  }
+
+  /**
+   * Scan ALL existing moodle_enrolments for teacher/editingteacher roles
+   * and create course_teachers records to link teachers with their courses.
+   * This ensures teachers can see their courses in the app.
+   */
+  async fixCourseTeachers(): Promise<number> {
+    this.logger.log('Scanning enrolments to fix course_teachers...');
+
+    // Get all enrolments with teacher roles
+    const teacherEnrolments = await this.moodleEnrolmentRepository
+      .createQueryBuilder('e')
+      .select(['e.courseMoodleId', 'e.userMoodleId'])
+      .where('e.roleCode IN (:...roles)', {
+        roles: ['teacher', 'editingteacher'],
+      })
+      .getRawMany();
+
+    if (teacherEnrolments.length === 0) {
+      this.logger.log('No teacher enrolments found.');
+      return 0;
+    }
+
+    let createdCount = 0;
+
+    for (const enrolment of teacherEnrolments) {
+      const courseMoodleId = Number(enrolment.e_course_moodle_id);
+      const userMoodleId = Number(enrolment.e_user_moodle_id);
+
+      // Find the app user for this moodle user
+      const appUser = await this.appUserRepository.findOne({
+        where: { moodleUserId: userMoodleId },
+      });
+
+      if (!appUser) continue;
+
+      // Check if course_teacher record already exists
+      const existingCourseTeacher = await this.courseTeacherRepository.findOne({
+        where: {
+          courseMoodleId,
+          teacherId: appUser.id,
+        },
+      });
+
+      if (existingCourseTeacher) continue;
+
+      // Get course name from moodle_courses
+      const course = await this.moodleCourseRepository.findOne({
+        where: { moodleId: courseMoodleId },
+      });
+
+      // Create course_teacher record
+      const courseTeacher = this.courseTeacherRepository.create({
+        courseMoodleId,
+        teacherId: appUser.id,
+        courseName: course?.fullname || course?.shortname || null,
+        isPrimary: true,
+      });
+
+      await this.courseTeacherRepository.save(courseTeacher);
+      createdCount++;
+      this.logger.log(
+        `Fixed: created course_teacher for course ${courseMoodleId} -> teacher ${appUser.email}`,
+      );
+    }
+
+    this.logger.log(
+      `Course teachers fix complete. Created ${createdCount} new course_teacher records.`,
+    );
+    return createdCount;
   }
 
   async syncAllEnrolments(): Promise<number> {

@@ -60,6 +60,17 @@ export class StudentGradesController {
   }
 
   /**
+   * Get all grades for a course across all periods (Admin)
+   */
+  @Roles(RoleCode.ADMIN)
+  @Get('course/:courseMoodleId/all-periods')
+  async getCourseGradesAllPeriods(
+    @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
+  ) {
+    return this.studentGradesService.getCourseGradesAllPeriods(courseMoodleId);
+  }
+
+  /**
    * Sync Moodle grade sums for all students in a course (Admin)
    */
   @Roles(RoleCode.ADMIN)

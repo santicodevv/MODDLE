@@ -259,6 +259,40 @@ export const gradesApi = {
     return response.data;
   },
 
+  /**
+   * Get all grades for a course across all periods (Admin)
+   */
+  async getCourseGradesAllPeriods(
+    courseMoodleId: number
+  ): Promise<
+    {
+      studentId: number;
+      studentName: string;
+      studentEmail: string;
+      periodId: number | null;
+      periodName: string | null;
+      moodleSumGrade: number | null;
+      moodleSumMax: number | null;
+      totalGrade: number | null;
+      comment: string | null;
+    }[]
+  > {
+    const response = await api.get<
+      {
+        studentId: number;
+        studentName: string;
+        studentEmail: string;
+        periodId: number | null;
+        periodName: string | null;
+        moodleSumGrade: number | null;
+        moodleSumMax: number | null;
+        totalGrade: number | null;
+        comment: string | null;
+      }[]
+    >(`/student-grades/course/${courseMoodleId}/all-periods`);
+    return response.data;
+  },
+
   // ================================
   // Admin: Grades by User
   // ================================

@@ -87,4 +87,26 @@ export const syncApi = {
     const response = await api.patch<{ success: boolean }>('/sync/config', data);
     return response.data;
   },
+
+  /**
+   * Fix teacher assignments (roles and course_teachers)
+   */
+  async fixTeachers(): Promise<{
+    success: boolean;
+    message: string;
+    results: {
+      teacherRolesAssigned: number;
+      courseTeachersCreated: number;
+    };
+  }> {
+    const response = await api.post<{
+      success: boolean;
+      message: string;
+      results: {
+        teacherRolesAssigned: number;
+        courseTeachersCreated: number;
+      };
+    }>('/sync/fix-teachers');
+    return response.data;
+  },
 };

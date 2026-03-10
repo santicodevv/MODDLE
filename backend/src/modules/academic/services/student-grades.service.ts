@@ -696,6 +696,102 @@ export class StudentGradesService {
     return this.getGradesByCourse(courseMoodleId, periodId);
   }
 
+  /**
+   * Get all grades for a course across all periods (Admin view)
+   * Used in CourseDetail to show all students with their grades
+   */
+  async getCourseGradesAllPeriods(
+    courseMoodleId: number,
+  ): Promise<
+    {
+      studentId: number;
+      studentName: string;
+      studentEmail: string;
+      periodId: number | null;
+      periodName: string | null;
+      moodleSumGrade: number | null;
+      moodleSumMax: number | null;
+      totalGrade: number | null;
+      comment: string | null;
+    }[]
+  > {
+    // Get all grades for this course from any period
+    const grades = await this.gradeRepository.find({
+      where: { courseMoodleId },
+      relations: ['period'],
+    });
+
+    if (grades.length === 0) {
+      // No manual grades yet, try to get students from enrolments
+      const enrolments = await this.enrolmentRepository.find({
+        where: {
+          courseMoodleId,
+          roleCode: 'student',
+          enrolStatus: 'active',
+        },
+      });
+
+      if (enrolments.length === 0) {
+        return [];
+      }
+
+      // Get student info
+      const studentMoodleIds = enrolments.map((e) => e.userMoodleId);
+      const students = await this.userRepository
+        .createQueryBuilder('user')
+        .where('user.moodleUserId IN (:...ids)', { ids: studentMoodleIds })
+        .getMany();
+
+      const studentMap = new Map(students.map((s) => [s.moodleUserId, s]));
+
+      // Calculate Moodle sums
+      const moodleSums = await this.calculateMoodleSums(
+        courseMoodleId,
+        studentMoodleIds,
+      );
+
+      return enrolments.map((e) => {
+        const student = studentMap.get(e.userMoodleId);
+        const moodleSum = moodleSums.get(e.userMoodleId);
+
+        return {
+          studentId: student?.id ?? 0,
+          studentName: student?.displayName || student?.email || 'Unknown',
+          studentEmail: student?.email || '',
+          periodId: null,
+          periodName: null,
+          moodleSumGrade: moodleSum?.sum ?? null,
+          moodleSumMax: moodleSum?.max ?? null,
+          totalGrade: null,
+          comment: null,
+        };
+      });
+    }
+
+    // Get student info
+    const studentIds = [...new Set(grades.map((g) => g.studentId))];
+    const students = await this.userRepository.find({
+      where: { id: In(studentIds) },
+    });
+    const studentMap = new Map(students.map((s) => [s.id, s]));
+
+    return grades.map((g) => {
+      const student = studentMap.get(g.studentId);
+
+      return {
+        studentId: g.studentId,
+        studentName: student?.displayName || student?.email || 'Unknown',
+        studentEmail: student?.email || '',
+        periodId: g.periodId ?? null,
+        periodName: g.period?.name ?? null,
+        moodleSumGrade: g.moodleSumGrade ?? null,
+        moodleSumMax: g.moodleSumMax ?? null,
+        totalGrade: g.totalGrade ?? null,
+        comment: g.comment ?? null,
+      };
+    });
+  }
+
   // =====================
   // ADMIN: Grades by User
   // =====================
