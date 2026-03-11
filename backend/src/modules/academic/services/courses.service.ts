@@ -644,8 +644,8 @@ export class CoursesService {
       return [];
     }
 
-    // Get the courseMoodleIds
-    const courseMoodleIds = assignments.map((a) => a.courseMoodleId);
+    // Get the courseMoodleIds (convert to numbers - bigint comes as string from PostgreSQL)
+    const courseMoodleIds = assignments.map((a) => Number(a.courseMoodleId));
 
     // Get full course details
     const courses = await this.courseRepository.find({
