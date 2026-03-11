@@ -634,15 +634,11 @@ export class CoursesService {
    * Get all courses where a teacher is assigned (with full course details)
    */
   async getCoursesForTeacher(teacherId: number): Promise<CourseWithCounts[]> {
-    this.logger.log(`[getCoursesForTeacher] Called with teacherId: ${teacherId}`);
-
     // Get teacher's course assignments
     const assignments = await this.courseTeacherRepository.find({
       where: { teacherId },
       order: { createdAt: 'DESC' },
     });
-
-    this.logger.log(`[getCoursesForTeacher] Found ${assignments.length} assignments`);
 
     if (assignments.length === 0) {
       return [];
@@ -650,13 +646,11 @@ export class CoursesService {
 
     // Get the courseMoodleIds (convert to numbers - bigint comes as string from PostgreSQL)
     const courseMoodleIds = assignments.map((a) => Number(a.courseMoodleId));
-    this.logger.log(`[getCoursesForTeacher] courseMoodleIds: ${JSON.stringify(courseMoodleIds)}`);
 
     // Get full course details
     const courses = await this.courseRepository.find({
       where: { moodleId: In(courseMoodleIds) },
     });
-    this.logger.log(`[getCoursesForTeacher] Found ${courses.length} courses`);
 
     // Add counts for each course
     const coursesWithCounts: CourseWithCounts[] = await Promise.all(
