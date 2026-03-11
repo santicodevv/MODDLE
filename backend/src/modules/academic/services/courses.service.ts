@@ -9,6 +9,7 @@ import { MoodleClientService } from '../../moodle-integration/moodle-client.serv
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CourseTeacher } from '../entities/course-teacher.entity';
 import { User } from '../../users/entities/user.entity';
+import { Role, RoleCode } from '../../users/entities/role.entity';
 import { AuditService } from '../../sync/services/audit.service';
 
 export interface CoursesQueryParams {
@@ -51,6 +52,8 @@ export class CoursesService {
     private readonly courseTeacherRepository: Repository<CourseTeacher>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
     private readonly moodleClient: MoodleClientService,
     private readonly auditService: AuditService,
   ) {}
@@ -536,6 +539,9 @@ export class CoursesService {
 
     const savedAssignments = await this.courseTeacherRepository.save(newAssignments);
 
+    // Ensure all assigned teachers have the TEACHER role
+    await this.ensureTeachersHaveRole(teachers);
+
     await this.auditService.log({
       actorUserId: adminUserId,
       action: 'course.teachers_assigned',
@@ -546,6 +552,34 @@ export class CoursesService {
     });
 
     return [...existingAssignments, ...savedAssignments];
+  }
+
+  /**
+   * Ensure all teachers have the TEACHER role assigned
+   * Removes STUDENT role and adds TEACHER role if not present
+   */
+  private async ensureTeachersHaveRole(teachers: User[]): Promise<void> {
+    const teacherRole = await this.roleRepository.findOne({
+      where: { code: RoleCode.TEACHER },
+    });
+
+    if (!teacherRole) {
+      this.logger.warn('TEACHER role not found in database');
+      return;
+    }
+
+    for (const teacher of teachers) {
+      // Check if user already has TEACHER role
+      if (teacher.roles.some((r) => r.code === RoleCode.TEACHER)) {
+        continue;
+      }
+
+      // Remove STUDENT role and add TEACHER role
+      teacher.roles = teacher.roles.filter((r) => r.code !== RoleCode.STUDENT);
+      teacher.roles.push(teacherRole);
+      await this.userRepository.save(teacher);
+      this.logger.log(`Assigned TEACHER role to user ${teacher.email} (id: ${teacher.id})`);
+    }
   }
 
   /**
