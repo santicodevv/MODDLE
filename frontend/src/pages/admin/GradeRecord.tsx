@@ -23,7 +23,7 @@ interface UserSearchResult {
   id: number;
   email: string;
   displayName: string | null;
-  username: string;
+  username: string | null;
   moodleUserId: number | null;
 }
 
@@ -34,8 +34,8 @@ interface CourseWithPeriod {
   courseMoodleId: number;
   courseName: string;
   courseShortname: string;
-  courseCode?: string;
-  courseSubjectName?: string;
+  courseCode: string | null;
+  courseSubjectName: string | null;
   totalGrade: number | null;
   comment: string | null;
   gradeItems: {
