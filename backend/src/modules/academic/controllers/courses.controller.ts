@@ -136,6 +136,18 @@ export class CoursesController {
     return this.coursesService.updateSubjectName(id, body.subjectName);
   }
 
+  /**
+   * Update course code (local only)
+   */
+  @Roles(RoleCode.ADMIN)
+  @Patch(':id/code')
+  async updateCode(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { code: string },
+  ) {
+    return this.coursesService.updateCode(id, body.code);
+  }
+
   // =====================
   // TEACHER ASSIGNMENT ENDPOINTS
   // =====================

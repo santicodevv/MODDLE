@@ -807,6 +807,7 @@ export class StudentGradesService {
       id: number;
       email: string;
       displayName: string | null;
+      username: string | null;
       moodleUserId: number | null;
       isActive: boolean;
     }[]
@@ -821,7 +822,7 @@ export class StudentGradesService {
         '(LOWER(user.email) LIKE :query OR LOWER(user.displayName) LIKE :query)',
         { query: `%${query.toLowerCase()}%` },
       )
-      .select(['user.id', 'user.email', 'user.displayName', 'user.moodleUserId', 'user.isActive'])
+      .select(['user.id', 'user.email', 'user.displayName', 'user.username', 'user.moodleUserId', 'user.isActive'])
       .take(limit)
       .getMany();
 
@@ -829,6 +830,7 @@ export class StudentGradesService {
       id: u.id,
       email: u.email,
       displayName: u.displayName,
+      username: u.username || null,
       moodleUserId: u.moodleUserId,
       isActive: u.isActive,
     }));
@@ -846,6 +848,7 @@ export class StudentGradesService {
       id: number;
       email: string;
       displayName: string | null;
+      username: string | null;
       moodleUserId: number | null;
     };
     periods: {
@@ -856,6 +859,8 @@ export class StudentGradesService {
         courseMoodleId: number;
         courseName: string;
         courseShortname: string;
+        courseCode: string | null;
+        courseSubjectName: string | null;
         totalGrade: number | null;
         comment: string | null;
         gradeItems: {
@@ -889,6 +894,7 @@ export class StudentGradesService {
           id: user.id,
           email: user.email,
           displayName: user.displayName,
+          username: user.username || null,
           moodleUserId: user.moodleUserId,
         },
         periods: [],
@@ -949,6 +955,8 @@ export class StudentGradesService {
         courseMoodleId: number;
         courseName: string;
         courseShortname: string;
+        courseCode: string | null;
+        courseSubjectName: string | null;
         totalGrade: number | null;
         comment: string | null;
         gradeItems: {
@@ -997,6 +1005,8 @@ export class StudentGradesService {
           courseMoodleId: grade.courseMoodleId,
           courseName: grade.courseName || course?.subjectName || course?.fullname || `Curso ${grade.courseMoodleId}`,
           courseShortname: grade.courseShortname || course?.shortname || '',
+          courseCode: course?.code || null,
+          courseSubjectName: course?.subjectName || null,
           totalGrade: grade.totalGrade ?? null,
           comment: grade.comment ?? null,
           gradeItems,
@@ -1029,6 +1039,7 @@ export class StudentGradesService {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        username: user.username || null,
         moodleUserId: user.moodleUserId,
       },
       periods,

@@ -34,6 +34,9 @@ export class MoodleCourse {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'subject_name' })
   subjectName: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  code: string;
+
   @Column({ type: 'boolean', default: true })
   visible: boolean;
 

@@ -271,7 +271,7 @@ export default function AdminCourseDetail() {
                 <Hash className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase">Código</p>
+                <p className="text-xs text-gray-500 uppercase">Grupo</p>
                 <p className="font-mono font-medium">{course.shortname}</p>
               </div>
             </div>
@@ -343,7 +343,14 @@ export default function AdminCourseDetail() {
 
               <div>
                 <p className="text-xs text-gray-500 uppercase">
-                  Nombre Corto (C&oacute;digo)
+                  Código
+                </p>
+                <p className="font-mono">{course.code || <span className="text-gray-400 italic">Sin asignar</span>}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 uppercase">
+                  Grupo
                 </p>
                 <p className="font-mono">{course.shortname}</p>
               </div>

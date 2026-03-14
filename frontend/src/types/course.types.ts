@@ -12,6 +12,7 @@ export interface MoodleCourse {
   startdate?: string;
   enddate?: string;
   subjectName?: string;
+  code?: string;
   timemodified?: string;
   lastSyncedAt?: string;
 }
@@ -80,6 +81,7 @@ export interface CreateCourseDto {
   enddate?: string;
   periodId?: number; // Optional: assign to academic period
   subjectName?: string;
+  code?: string;
 }
 
 // Enrolled user with details

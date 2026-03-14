@@ -130,10 +130,10 @@ export default function TeacherDashboard() {
                   >
                     <div>
                       <p className="font-medium text-gray-900">
-                        {course.shortname}
+                        {course.subjectName || course.fullname}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {course.subjectName || course.fullname}
+                        {course.shortname}
                       </p>
                     </div>
                     <Button variant="outline" size="sm">

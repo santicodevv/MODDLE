@@ -105,6 +105,14 @@ export const coursesApi = {
   },
 
   /**
+   * Update course code
+   */
+  async updateCode(courseId: number, code: string): Promise<MoodleCourse> {
+    const response = await api.patch<MoodleCourse>(`/courses/${courseId}/code`, { code });
+    return response.data;
+  },
+
+  /**
    * Get enrolled users with details for a course
    */
   async getEnrolledUsersWithDetails(courseId: number): Promise<EnrolledUserWithDetails[]> {

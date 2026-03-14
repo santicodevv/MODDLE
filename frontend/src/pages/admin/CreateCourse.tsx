@@ -238,10 +238,27 @@ export default function CreateCoursePage() {
                 </p>
               </div>
 
-              {/* Nombre corto */}
+              {/* Código (manual) */}
+              <div>
+                <Label htmlFor="code">
+                  Código (opcional)
+                </Label>
+                <Input
+                  id="code"
+                  name="code"
+                  value={formData.code || ''}
+                  onChange={handleInputChange}
+                  placeholder="Ej: TEO101"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Código que se mostrará en el record de notas
+                </p>
+              </div>
+
+              {/* Grupo (shortname) */}
               <div>
                 <Label htmlFor="shortname">
-                  Nombre corto del curso <span className="text-red-500">*</span>
+                  Grupo <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="shortname"
@@ -252,7 +269,7 @@ export default function CreateCoursePage() {
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Código único para identificar el curso
+                  Identificador del grupo (viene del sync de Moodle)
                 </p>
               </div>
 

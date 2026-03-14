@@ -1,4 +1,4 @@
-// Admin Grade Record Page - Generate grade records for users
+// Admin Grade Record Page - Generate grade records for users (SEBTI Format)
 import { useState, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { gradesApi } from '@/api';
@@ -23,6 +23,7 @@ interface UserSearchResult {
   id: number;
   email: string;
   displayName: string | null;
+  username: string;
   moodleUserId: number | null;
 }
 
@@ -33,6 +34,8 @@ interface CourseWithPeriod {
   courseMoodleId: number;
   courseName: string;
   courseShortname: string;
+  courseCode?: string;
+  courseSubjectName?: string;
   totalGrade: number | null;
   comment: string | null;
   gradeItems: {
@@ -69,11 +72,20 @@ const calculateCumulativeIndex = (
   return isNaN(avg) ? 0 : Math.round(avg * 10) / 10;
 };
 
+// Generate document number
+const generateDocNumber = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const seq = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+  return `SEBTI - ${seq}`;
+};
+
 export default function AdminGradeRecord() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showSearch, setShowSearch] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
+  const [docNumber] = useState(generateDocNumber());
 
   // Search users
   const { data: searchResults, isLoading: searchLoading } = useQuery({
@@ -117,26 +129,128 @@ export default function AdminGradeRecord() {
 
     const styles = `
       <style>
-        @page { size: letter; margin: 1in; }
-        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { font-size: 18pt; font-weight: bold; margin: 0; }
-        .header h2 { font-size: 12pt; font-weight: normal; font-style: italic; margin: 5px 0; }
-        .header h3 { font-size: 14pt; font-weight: bold; margin-top: 20px; text-decoration: underline; }
-        .info { margin: 20px 0; }
-        .info p { margin: 5px 0; }
-        .info span { font-weight: normal; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-        th { background-color: #f0f0f0; font-weight: bold; }
-        td.center { text-align: center; }
-        .cumulative { text-align: right; margin: 20px 0; font-weight: bold; }
-        .footer { margin-top: 60px; text-align: center; }
-        .footer .signature { margin-top: 40px; }
-        .footer .line { border-top: 1px solid #333; width: 200px; margin: 0 auto; }
-        .footer p { margin: 5px 0; }
-        .page-note { text-align: center; margin: 20px 0; font-style: italic; }
-        .doc-id { position: fixed; bottom: 20px; right: 20px; font-size: 10pt; }
+        @page { size: letter; margin: 0.75in; }
+        * { box-sizing: border-box; }
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 11pt;
+          margin: 0;
+          padding: 0;
+          color: #333;
+        }
+        .container {
+          max-width: 100%;
+          margin: 0 auto;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .header img {
+          max-width: 280px;
+          height: auto;
+          margin-bottom: 10px;
+        }
+        .student-info {
+          margin: 15px 0 20px 0;
+        }
+        .student-info p {
+          margin: 4px 0;
+          font-size: 11pt;
+        }
+        .student-info strong {
+          font-weight: bold;
+        }
+        .date-line {
+          text-align: right;
+          margin-bottom: 15px;
+        }
+        .title-bar {
+          background-color: #0d7377;
+          color: white;
+          padding: 10px 20px;
+          text-align: center;
+          font-size: 16pt;
+          font-weight: bold;
+          font-style: italic;
+          margin: 20px 0;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 15px 0;
+        }
+        th {
+          background-color: #f5f5f5;
+          border: 1px solid #ddd;
+          padding: 8px 10px;
+          text-align: left;
+          font-weight: bold;
+          font-size: 10pt;
+        }
+        td {
+          border: 1px solid #ddd;
+          padding: 6px 10px;
+          font-size: 10pt;
+        }
+        td.center, th.center {
+          text-align: center;
+        }
+        .cumulative-bar {
+          background-color: #d4a017;
+          color: white;
+          padding: 8px 20px;
+          text-align: center;
+          font-size: 12pt;
+          font-weight: bold;
+          margin: 20px 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .footer {
+          margin-top: 40px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+        }
+        .footer-left {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+        .footer-seal img {
+          width: 80px;
+          height: 80px;
+          opacity: 0.8;
+          border-radius: 50%;
+        }
+        .footer-signature {
+          text-align: center;
+        }
+        .footer-signature p {
+          margin: 2px 0;
+        }
+        .footer-signature .name {
+          font-weight: bold;
+          font-size: 11pt;
+        }
+        .footer-signature .title {
+          font-weight: bold;
+          font-size: 10pt;
+        }
+        .footer-right {
+          text-align: right;
+        }
+        .page-note {
+          font-style: italic;
+          font-size: 9pt;
+          margin-top: 15px;
+        }
+        .doc-id {
+          font-size: 11pt;
+          font-weight: bold;
+        }
       </style>
     `;
 
@@ -159,14 +273,14 @@ export default function AdminGradeRecord() {
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 250);
+    }, 500);
   };
 
   const today = new Date().toLocaleDateString('es-ES', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).replace(/\//g, '_');
+  });
 
   return (
     <div className="p-6">
@@ -297,135 +411,155 @@ export default function AdminGradeRecord() {
                   </Button>
                 </div>
 
-                {/* Print Content */}
+                {/* Print Content - SEBTI Format */}
                 <div
                   ref={printRef}
                   className="bg-white p-8 border rounded-lg"
-                  style={{ fontFamily: "'Times New Roman', Times, serif" }}
+                  style={{ fontFamily: "Arial, sans-serif" }}
                 >
-                  {/* Header */}
-                  <div className="header text-center mb-8">
-                    <h1 className="text-xl font-bold">
-                      ESCUELA DE FORMACION BIBLICA
-                    </h1>
-                    <h2 className="text-sm italic">
-                      Formando lideres para la obra de Dios
-                    </h2>
-                    <h3 className="text-lg font-bold mt-6 underline">
+                  <div className="container">
+                    {/* Header with Logo */}
+                    <div className="header text-center mb-6">
+                      <img
+                        src="https://i.imgur.com/BfhxWQH.png"
+                        alt="SEBTI Logo"
+                        style={{ maxWidth: '280px', height: 'auto', margin: '0 auto' }}
+                      />
+                    </div>
+
+                    {/* Student Info */}
+                    <div className="student-info mb-4">
+                      <p>
+                        <strong>Nombres y apellidos:</strong>{' '}
+                        {userGrades.user.displayName || userGrades.user.email}
+                      </p>
+                      <p>
+                        <strong>Documento Nacional de Identidad:</strong>{' '}
+                        {userGrades.user.username || userGrades.user.email.split('@')[0]}
+                      </p>
+                    </div>
+
+                    {/* Date */}
+                    <div className="date-line text-right mb-4">
+                      <p><strong>Fecha de expedición:</strong> {today}</p>
+                    </div>
+
+                    {/* Title Bar */}
+                    <div
+                      className="title-bar text-center py-3 mb-4"
+                      style={{
+                        backgroundColor: '#0d7377',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontStyle: 'italic',
+                        fontSize: '18px'
+                      }}
+                    >
                       RECORD DE NOTAS
-                    </h3>
-                    <p className="text-sm mt-2">TEOLOGIA</p>
-                  </div>
+                    </div>
 
-                  {/* Student Info */}
-                  <div className="info mb-6">
-                    <p>
-                      <strong>Nombres y Apellidos:</strong>{' '}
-                      <span>{userGrades.user.displayName || userGrades.user.email}</span>
-                    </p>
-                    <p>
-                      <strong>Cedula de identidad:</strong>{' '}
-                      <span>{userGrades.user.email.split('@')[0]}</span>
-                    </p>
-                    <p>
-                      <strong>Fecha de Expedicion:</strong>{' '}
-                      <span>{today}</span>
-                    </p>
-                  </div>
-
-                  {/* Grades Table */}
-                  <table className="w-full border-collapse mb-6">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-4 py-2 text-left">
-                          Clave
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left">
-                          Nombre Asignatura
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-center">
-                          Ciclo
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-center">
-                          NF
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-center">
-                          EQ
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allCourses.length > 0 ? (
-                        allCourses.map((course, idx) => (
-                          <tr key={idx}>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {course.courseShortname}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {course.courseName}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2 text-center">
-                              {course.periodCode || '-'}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                              {course.totalGrade !== null ? course.totalGrade : 0}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2 text-center">
-                              {getEquivalence(course.totalGrade)}
+                    {/* Grades Table */}
+                    <table className="w-full border-collapse mb-6">
+                      <thead>
+                        <tr style={{ backgroundColor: '#f5f5f5' }}>
+                          <th className="border border-gray-300 px-4 py-2 text-left font-bold">
+                            Clave
+                          </th>
+                          <th className="border border-gray-300 px-4 py-2 text-left font-bold">
+                            Nombre asignatura
+                          </th>
+                          <th className="border border-gray-300 px-4 py-2 text-center font-bold">
+                            Ciclo
+                          </th>
+                          <th className="border border-gray-300 px-4 py-2 text-center font-bold">
+                            NF
+                          </th>
+                          <th className="border border-gray-300 px-4 py-2 text-center font-bold">
+                            EQ
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allCourses.length > 0 ? (
+                          allCourses.map((course, idx) => (
+                            <tr key={idx}>
+                              <td className="border border-gray-300 px-4 py-2">
+                                {course.courseCode || course.courseShortname}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2">
+                                {course.courseSubjectName || course.courseName}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 text-center">
+                                {course.periodCode || '-'}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 text-center font-semibold">
+                                {course.totalGrade !== null ? course.totalGrade : 0}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 text-center">
+                                {getEquivalence(course.totalGrade)}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={5}
+                              className="border border-gray-300 px-4 py-8 text-center text-gray-500"
+                            >
+                              No hay cursos registrados
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={5}
-                            className="border border-gray-300 px-4 py-8 text-center text-gray-500"
-                          >
-                            No hay cursos registrados
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
 
-                  {/* Cumulative Index */}
-                  <div className="cumulative text-right mb-8">
-                    <p>
-                      <strong>Indice acumulado:</strong>
-                    </p>
-                    <p className="text-xl font-bold">
-                      {calculateCumulativeIndex(allCourses)}
-                    </p>
-                  </div>
+                    {/* Cumulative Index Bar */}
+                    <div
+                      className="cumulative-bar flex justify-between items-center px-4 py-2 mb-8"
+                      style={{
+                        backgroundColor: '#d4a017',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      <span></span>
+                      <span>Índice acumulado</span>
+                      <span style={{ fontSize: '16px' }}>{calculateCumulativeIndex(allCourses)}</span>
+                    </div>
 
-                  {/* Page Note */}
-                  <p className="page-note text-center italic text-sm mb-8">
-                    Este record consta de una pagina
-                  </p>
+                    {/* Footer */}
+                    <div className="footer flex justify-between items-end mt-12">
+                      {/* Left side - Seal and Signature */}
+                      <div className="footer-left flex items-center gap-4">
+                        <div className="footer-seal">
+                          <img
+                            src="https://i.imgur.com/BfhxWQH.png"
+                            alt="Sello SEBTI"
+                            style={{
+                              width: '70px',
+                              height: '70px',
+                              opacity: 0.7,
+                              borderRadius: '50%'
+                            }}
+                          />
+                        </div>
+                        <div className="footer-signature text-center">
+                          <p className="font-bold">Juan Carlos Hernández</p>
+                          <p className="font-bold text-sm">Departamento de Registro</p>
+                        </div>
+                      </div>
 
-                  {/* Footer/Signature */}
-                  <div className="footer text-center mt-16">
-                    <div className="signature">
-                      <div
-                        className="line"
-                        style={{
-                          borderTop: '1px solid #333',
-                          width: '200px',
-                          margin: '0 auto',
-                        }}
-                      ></div>
-                      <p className="font-semibold mt-2">Grace Heredia</p>
-                      <p className="text-sm">Directora de Registro</p>
+                      {/* Right side - Page note and Doc ID */}
+                      <div className="footer-right text-right">
+                        <p className="page-note text-sm italic mb-2">
+                          Este récord consta de una página
+                        </p>
+                        <p className="doc-id font-bold">
+                          {docNumber}
+                        </p>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Document ID */}
-                  <p
-                    className="doc-id text-right text-xs text-gray-500 mt-8"
-                    style={{ fontSize: '10pt' }}
-                  >
-                    EFB {Date.now().toString().slice(-10)}
-                  </p>
                 </div>
               </CardContent>
             </Card>

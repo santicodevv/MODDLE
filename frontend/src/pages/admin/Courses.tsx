@@ -41,6 +41,7 @@ interface Course {
   studentCount?: number;
   teacherCount?: number;
   subjectName?: string;
+  code?: string;
   lastSyncedAt: string;
 }
 
@@ -59,6 +60,8 @@ export default function AdminCourses() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [editingSubjectName, setEditingSubjectName] = useState(false);
   const [subjectNameValue, setSubjectNameValue] = useState('');
+  const [editingCode, setEditingCode] = useState(false);
+  const [codeValue, setCodeValue] = useState('');
   const limit = 20;
 
   const updateSubjectNameMutation = useMutation({
@@ -74,6 +77,23 @@ export default function AdminCourses() {
       }
       setEditingSubjectName(false);
       toast.success('Nombre de asignatura actualizado');
+    },
+    onError: () => toast.error('Error al actualizar'),
+  });
+
+  const updateCodeMutation = useMutation({
+    mutationFn: ({ id, code }: { id: number; code: string }) =>
+      coursesApi.updateCode(id, code),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      if (selectedCourse) {
+        setSelectedCourse({
+          ...selectedCourse,
+          code: updated.code,
+        });
+      }
+      setEditingCode(false);
+      toast.success('Código actualizado');
     },
     onError: () => toast.error('Error al actualizar'),
   });
@@ -134,7 +154,7 @@ export default function AdminCourses() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Buscar por nombre o código..."
+                placeholder="Buscar por nombre, grupo o código..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -166,7 +186,7 @@ export default function AdminCourses() {
                             Curso
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Código
+                            Grupo
                           </th>
                           <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                             Estudiantes
@@ -377,8 +397,67 @@ export default function AdminCourses() {
                       )}
                     </div>
 
+                    {/* Código - Editable */}
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Código</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500 uppercase">
+                          Código
+                        </p>
+                        {!editingCode && (
+                          <button
+                            onClick={() => {
+                              setCodeValue(
+                                selectedCourse.code || '',
+                              );
+                              setEditingCode(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      {editingCode ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Input
+                            value={codeValue}
+                            onChange={(e) =>
+                              setCodeValue(e.target.value)
+                            }
+                            placeholder="Código del curso"
+                            className="h-8 text-sm"
+                          />
+                          <button
+                            onClick={() =>
+                              updateCodeMutation.mutate({
+                                id: selectedCourse.id,
+                                code: codeValue,
+                              })
+                            }
+                            className="p-1 text-green-600 hover:text-green-700"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingCode(false)}
+                            className="p-1 text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="font-mono text-sm">
+                          {selectedCourse.code || (
+                            <span className="text-gray-400 italic">
+                              Sin asignar
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Grupo</p>
                       <p className="font-mono">{selectedCourse.shortname}</p>
                     </div>
 

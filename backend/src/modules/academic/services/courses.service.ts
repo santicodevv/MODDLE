@@ -70,6 +70,7 @@ export class CoursesService {
           { fullname: ILike(`%${search}%`) },
           { shortname: ILike(`%${search}%`) },
           { subjectName: ILike(`%${search}%`) },
+          { code: ILike(`%${search}%`) },
         ]
       : {};
 
@@ -262,6 +263,19 @@ export class CoursesService {
   }
 
   /**
+   * Update the code of a course (local only)
+   */
+  async updateCode(courseId: number, code: string) {
+    const course = await this.courseRepository.findOne({ where: { id: courseId } });
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
+    course.code = code;
+    await this.courseRepository.save(course);
+    return course;
+  }
+
+  /**
    * Create a new course in Moodle and save locally
    */
   async createCourse(data: CreateCourseDto) {
@@ -343,6 +357,9 @@ export class CoursesService {
     }
     if (data.subjectName) {
       course.subjectName = data.subjectName;
+    }
+    if (data.code) {
+      course.code = data.code;
     }
 
     await this.courseRepository.save(course);
