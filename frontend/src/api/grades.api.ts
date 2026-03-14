@@ -308,6 +308,7 @@ export const gradesApi = {
       id: number;
       email: string;
       displayName: string | null;
+      username: string | null;
       moodleUserId: number | null;
     }[]
   > {
@@ -316,6 +317,7 @@ export const gradesApi = {
         id: number;
         email: string;
         displayName: string | null;
+        username: string | null;
         moodleUserId: number | null;
       }[]
     >('/student-grades/search-users', { params: { q: query, limit } });
@@ -331,6 +333,7 @@ export const gradesApi = {
       id: number;
       email: string;
       displayName: string | null;
+      username: string | null;
       moodleUserId: number | null;
     };
     periods: {
@@ -341,6 +344,8 @@ export const gradesApi = {
         courseMoodleId: number;
         courseName: string;
         courseShortname: string;
+        courseCode: string | null;
+        courseSubjectName: string | null;
         totalGrade: number | null;
         comment: string | null;
         gradeItems: {
@@ -359,6 +364,7 @@ export const gradesApi = {
         id: number;
         email: string;
         displayName: string | null;
+        username: string | null;
         moodleUserId: number | null;
       };
       periods: {
@@ -369,6 +375,8 @@ export const gradesApi = {
           courseMoodleId: number;
           courseName: string;
           courseShortname: string;
+          courseCode: string | null;
+          courseSubjectName: string | null;
           totalGrade: number | null;
           comment: string | null;
           gradeItems: {

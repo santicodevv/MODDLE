@@ -74,8 +74,6 @@ const calculateCumulativeIndex = (
 
 // Generate document number
 const generateDocNumber = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
   const seq = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
   return `SEBTI - ${seq}`;
 };
