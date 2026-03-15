@@ -33,6 +33,26 @@ import type { EnrolledUserWithDetails, CourseTeacher } from '@/types';
 import { gradesApi } from '@/api';
 import toast from 'react-hot-toast';
 
+// Helper function to calculate days since last access and return status color
+const getAccessStatus = (lastAccess: string | null): { color: string; bgColor: string; label: string } => {
+  if (!lastAccess) {
+    return { color: 'bg-gray-400', bgColor: 'bg-gray-100', label: 'Nunca' };
+  }
+
+  const lastAccessDate = new Date(lastAccess);
+  const now = new Date();
+  const diffTime = now.getTime() - lastAccessDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 20) {
+    return { color: 'bg-red-500', bgColor: 'bg-red-50', label: 'Inactivo' };
+  } else if (diffDays >= 15) {
+    return { color: 'bg-yellow-500', bgColor: 'bg-yellow-50', label: 'Advertencia' };
+  } else {
+    return { color: 'bg-green-500', bgColor: 'bg-green-50', label: 'Activo' };
+  }
+};
+
 export default function AdminCourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -564,20 +584,28 @@ export default function AdminCourseDetail() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1 text-sm text-gray-600">
-                            <Clock className="h-3 w-3" />
-                            {user.lastCourseAccess
-                              ? new Date(
-                                  user.lastCourseAccess,
-                                ).toLocaleDateString('es-ES', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : 'Nunca'}
-                          </div>
+                          {(() => {
+                            const status = getAccessStatus(user.lastCourseAccess);
+                            return (
+                              <div className={`flex items-center justify-center gap-2 text-sm ${status.bgColor} rounded-lg px-2 py-1`}>
+                                <span
+                                  className={`w-3 h-3 rounded-full ${status.color}`}
+                                  title={status.label}
+                                />
+                                <span className="text-gray-700">
+                                  {user.lastCourseAccess
+                                    ? new Date(
+                                        user.lastCourseAccess,
+                                      ).toLocaleDateString('es-ES', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      })
+                                    : 'Nunca'}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <Badge

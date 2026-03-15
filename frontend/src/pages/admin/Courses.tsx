@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  EyeOff,
   GraduationCap,
   Plus,
   ExternalLink,
@@ -107,6 +108,29 @@ export default function AdminCourses() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Error al eliminar curso');
+    },
+  });
+
+  const toggleVisibilityMutation = useMutation({
+    mutationFn: (id: number) => coursesApi.toggleVisibility(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      if (selectedCourse && selectedCourse.id === updated.id) {
+        setSelectedCourse({
+          ...selectedCourse,
+          visible: updated.visible,
+        });
+      }
+      toast.success(
+        updated.visible
+          ? 'Curso habilitado en Moodle'
+          : 'Curso deshabilitado en Moodle',
+      );
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || 'Error al cambiar visibilidad',
+      );
     },
   });
 
@@ -258,11 +282,25 @@ export default function AdminCourses() {
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedCourse(course);
+                                    toggleVisibilityMutation.mutate(course.id);
                                   }}
-                                  title="Vista r&aacute;pida"
+                                  disabled={toggleVisibilityMutation.isPending}
+                                  title={
+                                    course.visible
+                                      ? 'Deshabilitar curso en Moodle'
+                                      : 'Habilitar curso en Moodle'
+                                  }
+                                  className={
+                                    course.visible
+                                      ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                  }
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  {course.visible ? (
+                                    <Eye className="h-4 w-4" />
+                                  ) : (
+                                    <EyeOff className="h-4 w-4" />
+                                  )}
                                 </Button>
                                 <Button
                                   variant="ghost"

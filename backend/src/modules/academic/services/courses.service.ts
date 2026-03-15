@@ -737,4 +737,76 @@ export class CoursesService {
 
     return updated;
   }
+
+  /**
+   * Toggle course visibility (local + Moodle sync)
+   */
+  async toggleVisibility(
+    courseId: number,
+    adminUserId: number,
+  ): Promise<CourseWithCounts> {
+    const course = await this.courseRepository.findOne({ where: { id: courseId } });
+
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
+
+    const previousVisibility = course.visible;
+    const newVisibility = !previousVisibility;
+
+    // Update in Moodle first
+    try {
+      await this.moodleClient.updateCourseVisibility(course.moodleId, newVisibility);
+      this.logger.log(
+        `Updated course visibility in Moodle: ${course.moodleId} -> ${newVisibility}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to update visibility in Moodle for course ${course.moodleId}: ${error.message}`,
+      );
+      throw new BadRequestException(
+        `Error al actualizar visibilidad en Moodle: ${error.message}`,
+      );
+    }
+
+    // Update locally
+    course.visible = newVisibility;
+    course.lastSyncedAt = new Date();
+    await this.courseRepository.save(course);
+
+    // Log audit
+    await this.auditService.log({
+      actorUserId: adminUserId,
+      action: 'course.visibility_toggled',
+      entity: 'moodle_courses',
+      entityKey: `${course.id}`,
+      beforeData: { visible: previousVisibility },
+      afterData: { visible: newVisibility },
+      source: 'app',
+    });
+
+    // Get counts for response
+    const [studentCount, teacherCount] = await Promise.all([
+      this.enrolmentRepository.count({
+        where: {
+          courseMoodleId: course.moodleId,
+          roleCode: 'student',
+          enrolStatus: 'active',
+        },
+      }),
+      this.enrolmentRepository.count({
+        where: {
+          courseMoodleId: course.moodleId,
+          roleCode: ILike('%teacher%'),
+          enrolStatus: 'active',
+        },
+      }),
+    ]);
+
+    return {
+      ...course,
+      studentCount,
+      teacherCount,
+    };
+  }
 }

@@ -128,6 +128,14 @@ export const coursesApi = {
     return response.data;
   },
 
+  /**
+   * Toggle course visibility (syncs with Moodle)
+   */
+  async toggleVisibility(courseId: number): Promise<CourseWithStats> {
+    const response = await api.patch<CourseWithStats>(`/courses/${courseId}/visibility`);
+    return response.data;
+  },
+
   // =====================
   // TEACHER ASSIGNMENT
   // =====================

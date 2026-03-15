@@ -239,4 +239,19 @@ export class MoodleClientService {
       ],
     });
   }
+
+  // Actualizar visibilidad de un curso en Moodle
+  async updateCourseVisibility(
+    moodleCourseId: number,
+    visible: boolean,
+  ): Promise<any> {
+    return this.callFunction('core_course_update_courses', {
+      courses: [
+        {
+          id: moodleCourseId,
+          visible: visible ? 1 : 0,
+        },
+      ],
+    });
+  }
 }

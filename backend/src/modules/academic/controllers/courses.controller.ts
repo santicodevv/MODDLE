@@ -148,6 +148,18 @@ export class CoursesController {
     return this.coursesService.updateCode(id, body.code);
   }
 
+  /**
+   * Toggle course visibility (syncs with Moodle)
+   */
+  @Roles(RoleCode.ADMIN)
+  @Patch(':id/visibility')
+  async toggleVisibility(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: User,
+  ) {
+    return this.coursesService.toggleVisibility(id, user.id);
+  }
+
   // =====================
   // TEACHER ASSIGNMENT ENDPOINTS
   // =====================

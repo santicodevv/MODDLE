@@ -185,7 +185,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Filtrar items según el dashboard actual (no según todos los roles)
   const currentItems = navItems.filter((item) =>
-    currentDashboard ? item.roles.includes(currentDashboard) : false
+    currentDashboard ? item.roles.includes(currentDashboard) : false,
   );
 
   const toggleMenu = (href: string) => {
@@ -314,7 +314,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">MODDLE</span>
+            <span className="text-xl font-bold text-gray-900">
+              KNOROOMS EDU
+            </span>
           </div>
           <button
             onClick={onClose}

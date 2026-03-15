@@ -380,7 +380,7 @@ export default function TeacherGrades() {
             Moodle (solo lectura).
             <br />
             <strong>Nota Final:</strong> La nota que usted asigna al estudiante
-            (0-100).
+            (0-10).
             <br />
             <strong>Comentario:</strong> Observaciones para el estudiante.
           </p>
