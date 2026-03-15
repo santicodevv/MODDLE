@@ -245,13 +245,47 @@ export class MoodleClientService {
     moodleCourseId: number,
     visible: boolean,
   ): Promise<any> {
-    return this.callFunction('core_course_update_courses', {
-      courses: [
+    // Use POST for course updates as Moodle handles complex arrays better with POST
+    if (!this.moodleUrl || !this.moodleToken) {
+      throw new Error(
+        'Moodle no está configurado. Verifique MOODLE_URL y MOODLE_TOKEN en las variables de entorno.',
+      );
+    }
+
+    try {
+      this.logger.debug(
+        `Updating course visibility in Moodle: courseId=${moodleCourseId}, visible=${visible}`,
+      );
+
+      const response = await this.axiosInstance.post(
+        '/server.php',
+        qs.stringify(
+          {
+            wstoken: this.moodleToken,
+            wsfunction: 'core_course_update_courses',
+            moodlewsrestformat: 'json',
+            'courses[0][id]': moodleCourseId,
+            'courses[0][visible]': visible ? 1 : 0,
+          },
+          { encode: false },
+        ),
         {
-          id: moodleCourseId,
-          visible: visible ? 1 : 0,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
         },
-      ],
-    });
+      );
+
+      if (response.data?.exception) {
+        const errorMessage = response.data.message || response.data.exception;
+        this.logger.error(`Moodle API error: ${errorMessage}`);
+        throw new Error(`Moodle error: ${errorMessage}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error updating course visibility: ${error.message}`);
+      throw error;
+    }
   }
 }
