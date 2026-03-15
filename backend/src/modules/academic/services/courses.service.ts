@@ -756,17 +756,17 @@ export class CoursesService {
 
     // Update in Moodle first
     try {
-      await this.moodleClient.updateCourseVisibility(course.moodleId, newVisibility);
+      const result = await this.moodleClient.updateCourseVisibility(course.moodleId, newVisibility);
       this.logger.log(
-        `Updated course visibility in Moodle: ${course.moodleId} -> ${newVisibility}`,
+        `Updated course visibility in Moodle: ${course.moodleId} -> ${newVisibility}. Result: ${JSON.stringify(result)}`,
       );
     } catch (error) {
       this.logger.error(
         `Failed to update visibility in Moodle for course ${course.moodleId}: ${error.message}`,
+        error.stack,
       );
-      throw new BadRequestException(
-        `Error al actualizar visibilidad en Moodle: ${error.message}`,
-      );
+      // Si Moodle falla, aún permitimos actualizar localmente pero avisamos
+      this.logger.warn('Continuing with local update only due to Moodle error');
     }
 
     // Update locally
