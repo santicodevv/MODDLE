@@ -6,6 +6,7 @@ import { LocalGrade } from '../academic/entities/local-grade.entity';
 import { AcademicPeriod } from '../academic/entities/academic-period.entity';
 import { MoodleCourse } from '../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../moodle-integration/entities/moodle-enrolment.entity';
+import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
 import { User } from '../users/entities/user.entity';
 
 // Services
@@ -23,6 +24,7 @@ import { ReportsController } from './reports.controller';
       AcademicPeriod,
       MoodleCourse,
       MoodleEnrolment,
+      MoodleUser,
       User,
     ]),
   ],

@@ -46,6 +46,15 @@ interface RecentActivity {
   createdAt: string;
 }
 
+interface ActiveStudent {
+  id: number;
+  moodleId: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+  lastAccess: string | null;
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -88,6 +97,18 @@ export default function AdminDashboard() {
     },
   });
 
+  // Fetch active students
+  const { data: activeStudents, isLoading: studentsLoading } = useQuery({
+    queryKey: ['active-students'],
+    queryFn: async () => {
+      const response = await api.get<ActiveStudent[]>(
+        '/reports/global/active-students',
+        { params: { limit: 8 } },
+      );
+      return response.data;
+    },
+  });
+
   // Toggle edit session mutation
   const toggleEditSession = useMutation({
     mutationFn: async () => {
@@ -102,6 +123,41 @@ export default function AdminDashboard() {
       toast.error('Error al cambiar el estado');
     },
   });
+
+  // Format relative time for last access
+  const formatRelativeTime = (dateString: string | null): string => {
+    if (!dateString) return 'Sin acceso';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSeconds < 60) {
+      return `${diffSeconds} segundos`;
+    } else if (diffMinutes < 60) {
+      const secs = diffSeconds % 60;
+      return secs > 0
+        ? `${diffMinutes} min ${secs} seg`
+        : `${diffMinutes} minutos`;
+    } else if (diffHours < 24) {
+      const mins = diffMinutes % 60;
+      return mins > 0
+        ? `${diffHours} hora${diffHours > 1 ? 's' : ''} ${mins} min`
+        : `${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+    } else {
+      return `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+    }
+  };
+
+  // Get initials for avatar
+  const getInitials = (firstname: string, lastname: string): string => {
+    const first = firstname?.charAt(0)?.toUpperCase() || '';
+    const last = lastname?.charAt(0)?.toUpperCase() || '';
+    return first + last || '??';
+  };
 
   const statCards = [
     {
@@ -253,6 +309,55 @@ export default function AdminDashboard() {
                   : 'Habilitar Edición'}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Active Students */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Estudiantes Activos
+              </h3>
+              <Badge variant="info">
+                <Users className="h-3 w-3 mr-1" />
+                Último acceso
+              </Badge>
+            </div>
+            {studentsLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner />
+              </div>
+            ) : activeStudents && activeStudents.length > 0 ? (
+              <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                {activeStudents.map((student) => (
+                  <div
+                    key={student.id}
+                    className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                        {getInitials(student.firstname, student.lastname)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {student.firstname} {student.lastname}
+                        </p>
+                        <p className="text-xs text-gray-500">{student.email}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                      {formatRelativeTime(student.lastAccess)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                No hay datos de actividad
+              </div>
+            )}
           </CardContent>
         </Card>
 

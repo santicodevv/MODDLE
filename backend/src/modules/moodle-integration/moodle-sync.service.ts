@@ -63,6 +63,7 @@ export class MoodleSyncService {
           userType,
           suspended: mUser.suspended || false,
           timemodified: mUser.timemodified ? new Date(mUser.timemodified * 1000) : undefined,
+          lastAccess: mUser.lastaccess ? new Date(mUser.lastaccess * 1000) : null,
           lastSyncedAt: new Date(),
         };
 

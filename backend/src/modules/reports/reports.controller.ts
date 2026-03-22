@@ -185,6 +185,18 @@ export class ReportsController {
   }
 
   /**
+   * GET /reports/global/active-students
+   * Estudiantes activos ordenados por último acceso
+   * Roles: ADMIN
+   */
+  @Get('global/active-students')
+  @Roles(RoleCode.ADMIN)
+  async getActiveStudents(@Query('limit') limit?: string) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    return this.reportsService.getActiveStudents(parsedLimit);
+  }
+
+  /**
    * GET /reports/my-grades
    * Reporte de calificaciones del estudiante autenticado
    * Roles: STUDENT

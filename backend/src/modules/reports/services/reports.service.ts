@@ -5,6 +5,7 @@ import { LocalGrade } from '../../academic/entities/local-grade.entity';
 import { AcademicPeriod, AcademicPeriodStatus } from '../../academic/entities/academic-period.entity';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
+import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
 import { User } from '../../users/entities/user.entity';
 import {
   StudentGradesFilterDto,
@@ -33,6 +34,8 @@ export class ReportsService {
     private readonly courseRepository: Repository<MoodleCourse>,
     @InjectRepository(MoodleEnrolment)
     private readonly enrolmentRepository: Repository<MoodleEnrolment>,
+    @InjectRepository(MoodleUser)
+    private readonly moodleUserRepository: Repository<MoodleUser>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
@@ -517,6 +520,36 @@ export class ReportsService {
       periodComparison,
       topPerformingCourses,
     };
+  }
+
+  /**
+   * Obtener estudiantes activos ordenados por último acceso
+   */
+  async getActiveStudents(limit: number = 10): Promise<{
+    id: number;
+    moodleId: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    lastAccess: Date | null;
+  }[]> {
+    const students = await this.moodleUserRepository
+      .createQueryBuilder('mu')
+      .where('mu.userType = :userType', { userType: 'student' })
+      .andWhere('mu.lastAccess IS NOT NULL')
+      .andWhere('mu.suspended = :suspended', { suspended: false })
+      .orderBy('mu.lastAccess', 'DESC')
+      .limit(limit)
+      .getMany();
+
+    return students.map((s) => ({
+      id: s.id,
+      moodleId: s.moodleId,
+      firstname: s.firstname,
+      lastname: s.lastname,
+      email: s.email,
+      lastAccess: s.lastAccess,
+    }));
   }
 
   /**

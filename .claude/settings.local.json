@@ -50,7 +50,9 @@
       "mcp__neon__run_sql",
       "mcp__neon__get_database_tables",
       "Bash(npm run migration:generate:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(xargs:*)",
+      "Bash(grep:*)"
     ]
   }
 }

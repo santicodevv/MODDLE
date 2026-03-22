@@ -37,6 +37,9 @@ export class MoodleUser {
   @Column({ type: 'timestamptz', nullable: true })
   timemodified: Date;
 
+  @Column({ type: 'timestamptz', nullable: true, name: 'last_access' })
+  lastAccess: Date | null;
+
   @Column({ type: 'timestamptz', nullable: true, name: 'last_synced_at' })
   lastSyncedAt: Date;
 
