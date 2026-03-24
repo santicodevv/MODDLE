@@ -524,6 +524,7 @@ export class ReportsService {
 
   /**
    * Obtener estudiantes activos ordenados por último acceso
+   * Usa moodle_enrolments para identificar estudiantes por role_code
    */
   async getActiveStudents(limit: number = 10): Promise<{
     id: number;
@@ -533,23 +534,55 @@ export class ReportsService {
     email: string;
     lastAccess: Date | null;
   }[]> {
-    const students = await this.moodleUserRepository
-      .createQueryBuilder('mu')
-      .where('mu.userType = :userType', { userType: 'student' })
-      .andWhere('mu.lastAccess IS NOT NULL')
-      .andWhere('mu.suspended = :suspended', { suspended: false })
-      .orderBy('mu.lastAccess', 'DESC')
-      .limit(limit)
-      .getMany();
+    try {
+      // Get students from enrolments with last_course_access
+      const enrolmentsWithAccess = await this.enrolmentRepository
+        .createQueryBuilder('e')
+        .select('DISTINCT e.user_moodle_id', 'userMoodleId')
+        .addSelect('MAX(e.last_course_access)', 'lastAccess')
+        .where('e.role_code = :roleCode', { roleCode: 'student' })
+        .andWhere('e.enrol_status = :status', { status: 'active' })
+        .andWhere('e.last_course_access IS NOT NULL')
+        .groupBy('e.user_moodle_id')
+        .orderBy('MAX(e.last_course_access)', 'DESC')
+        .limit(limit)
+        .getRawMany();
 
-    return students.map((s) => ({
-      id: s.id,
-      moodleId: s.moodleId,
-      firstname: s.firstname,
-      lastname: s.lastname,
-      email: s.email,
-      lastAccess: s.lastAccess,
-    }));
+      if (enrolmentsWithAccess.length === 0) {
+        return [];
+      }
+
+      // Get user details for these students
+      const userMoodleIds = enrolmentsWithAccess.map((e) => e.userMoodleId);
+      const users = await this.moodleUserRepository
+        .createQueryBuilder('u')
+        .where('u.moodle_id IN (:...ids)', { ids: userMoodleIds })
+        .andWhere('u.suspended = :suspended', { suspended: false })
+        .getMany();
+
+      // Create a map for quick lookup
+      const userMap = new Map(users.map((u) => [String(u.moodleId), u]));
+
+      // Combine enrolment access data with user details
+      return enrolmentsWithAccess
+        .map((e) => {
+          const user = userMap.get(String(e.userMoodleId));
+          if (!user) return null;
+          return {
+            id: user.id,
+            moodleId: Number(user.moodleId),
+            firstname: user.firstname || '',
+            lastname: user.lastname || '',
+            email: user.email || '',
+            lastAccess: e.lastAccess ? new Date(e.lastAccess) : null,
+          };
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null);
+    } catch (error) {
+      // Log error and return empty array
+      console.error('Error fetching active students:', error);
+      return [];
+    }
   }
 
   /**

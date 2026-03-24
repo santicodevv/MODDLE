@@ -449,7 +449,8 @@ export class CoursesService {
       },
     });
 
-    const userMoodleIds = enrolments.map((e) => e.userMoodleId);
+    // Convert bigint to string for consistent comparison (PostgreSQL bigint comes as string)
+    const userMoodleIds = enrolments.map((e) => String(e.userMoodleId));
 
     if (userMoodleIds.length === 0) {
       return [];
@@ -460,16 +461,17 @@ export class CoursesService {
       .where('user.moodleId IN (:...ids)', { ids: userMoodleIds })
       .getMany();
 
-    const userMap = new Map(users.map((u) => [u.moodleId, u]));
+    // Use string keys for consistent Map lookup with bigint values
+    const userMap = new Map(users.map((u) => [String(u.moodleId), u]));
 
     return enrolments
       .map((enrolment) => {
-        const user = userMap.get(enrolment.userMoodleId);
+        const user = userMap.get(String(enrolment.userMoodleId));
         if (!user) return null;
 
         return {
           id: user.id,
-          moodleId: user.moodleId,
+          moodleId: Number(user.moodleId),
           username: user.username,
           email: user.email,
           firstname: user.firstname,
