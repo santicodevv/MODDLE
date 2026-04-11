@@ -58,8 +58,8 @@ export class AuthController {
    * SSO: Callback desde Microsoft
    */
   @Public()
-  @UseGuards(AuthGuard('microsoft'))
   @Get('microsoft/callback')
+  @UseGuards(AuthGuard('microsoft'))
   async microsoftAuthRedirect(@Request() req, @Res() res: Response) {
     // req.user has been populated by the Microsoft Strategy validate function
     const { accessToken, user } = await this.authService.loginSSO(req.user);
