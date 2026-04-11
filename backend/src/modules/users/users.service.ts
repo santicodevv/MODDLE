@@ -264,4 +264,42 @@ export class UsersService {
       displayName: u.displayName,
     }));
   }
+
+  /**
+   * SSO: Find or create user from Microsoft Identity
+   */
+  async findOrCreateSSOUser(profile: { email: string; displayName: string; microsoftId: string }): Promise<User> {
+    const existingUser = await this.userRepository.findOne({
+      where: { email: profile.email },
+      relations: ['roles'],
+    });
+
+    if (existingUser) {
+      if (!existingUser.isActive) {
+        throw new ConflictException('User account is inactive');
+      }
+      return existingUser;
+    }
+
+    // Creating new user from SSO
+    this.logger.log(`Provisioning new SSO user: ${profile.email}`);
+
+    // Generate random dummy password hash for DB constraint safety
+    const dummyPasswordHash = await bcrypt.hash(profile.microsoftId + Date.now().toString(), 10);
+
+    const newUser = this.userRepository.create({
+      email: profile.email,
+      passwordHash: dummyPasswordHash,
+      displayName: profile.displayName,
+      isActive: true,
+    });
+
+    // Assign 'STUDENT' role by default
+    const studentRole = await this.roleRepository.findOne({ where: { code: RoleCode.STUDENT } });
+    if (studentRole) {
+      newUser.roles = [studentRole];
+    }
+
+    return this.userRepository.save(newUser);
+  }
 }

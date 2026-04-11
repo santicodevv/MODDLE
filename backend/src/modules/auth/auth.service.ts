@@ -55,4 +55,20 @@ export class AuthService {
   async validateUser(userId: number): Promise<User> {
     return this.usersService.findById(userId);
   }
+
+  async validateMicrosoftUser(profile: { email: string; displayName: string; microsoftId: string }): Promise<User> {
+    return this.usersService.findOrCreateSSOUser(profile);
+  }
+
+  async loginSSO(user: User): Promise<{ accessToken: string; user: User }> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      roles: user.roles?.map((role) => role.code) || [],
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    return { accessToken, user };
+  }
 }
