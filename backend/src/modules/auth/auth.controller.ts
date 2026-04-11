@@ -66,8 +66,8 @@ export class AuthController {
     
     // Configura la respuesta como quieras. Usualmente se redirige al frontend
     // pasando el token, por ejemplo como una cookie o en la query (solo en desarrollo)
-    // Redirige al frontend (ajusta la URL según tu puerto de Vite)
-    const frontendUrl = 'http://localhost:5173/auth/callback';
-    return res.redirect(`${frontendUrl}?token=${accessToken}`);
+    // Redirige al frontend dinámicamente según la variable de entorno
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
   }
 }
