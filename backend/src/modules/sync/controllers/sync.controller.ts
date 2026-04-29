@@ -58,66 +58,50 @@ export class SyncController {
   @Post('trigger')
   @Roles(RoleCode.ADMIN)
   async triggerSync() {
-    try {
-      this.logger.log('Triggering full sync...');
-      await this.syncSchedulerService.forceSync();
-      return {
-        success: true,
-        message: 'Sincronización completa iniciada correctamente',
-      };
-    } catch (error) {
-      this.logger.error(`Error triggering sync: ${error.message}`);
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error al iniciar la sincronización',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    this.logger.log('Triggering full sync in background...');
+
+    // Fire-and-forget: no esperamos a que termine para evitar timeout de HTTP
+    this.syncSchedulerService.forceSync().catch((error) => {
+      this.logger.error(`Background full sync failed: ${error.message}`);
+    });
+
+    return {
+      success: true,
+      message: 'Sincronización completa iniciada en segundo plano',
+    };
   }
 
   @Post('trigger/:entity')
   @Roles(RoleCode.ADMIN)
   async triggerEntitySync(@Param('entity') entity: string) {
-    try {
-      // Entity values in enum are lowercase (users, courses, etc.)
-      const syncEntity = entity.toLowerCase() as SyncEntity;
+    // Entity values in enum are lowercase (users, courses, etc.)
+    const syncEntity = entity.toLowerCase() as SyncEntity;
 
-      // Validate entity
-      const validEntities = Object.values(SyncEntity);
-      if (!validEntities.includes(syncEntity)) {
-        throw new HttpException(
-          {
-            success: false,
-            message: `Entidad inválida: ${entity}. Entidades válidas: ${validEntities.join(', ')}`,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      this.logger.log(`Triggering sync for entity: ${syncEntity}`);
-      await this.syncSchedulerService.forceSync(syncEntity);
-      return {
-        success: true,
-        message: `Sincronización de ${entity} iniciada correctamente`,
-      };
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      this.logger.error(`Error triggering ${entity} sync: ${error.message}`);
+    // Validate entity first (before launching background task)
+    const validEntities = Object.values(SyncEntity);
+    if (!validEntities.includes(syncEntity)) {
       throw new HttpException(
         {
           success: false,
-          message: `Error al sincronizar ${entity}`,
-          error: error.message,
+          message: `Entidad inválida: ${entity}. Entidades válidas: ${validEntities.join(', ')}`,
         },
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.BAD_REQUEST,
       );
     }
+
+    this.logger.log(`Triggering sync for entity: ${syncEntity} in background...`);
+
+    // Fire-and-forget
+    this.syncSchedulerService.forceSync(syncEntity).catch((error) => {
+      this.logger.error(`Background ${entity} sync failed: ${error.message}`);
+    });
+
+    return {
+      success: true,
+      message: `Sincronización de ${entity} iniciada en segundo plano`,
+    };
   }
+
 
   // Alias routes for frontend compatibility
   @Post('force')
