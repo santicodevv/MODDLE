@@ -23,10 +23,11 @@ export class MoodleClientService {
     this.axiosInstance = axios.create({
       baseURL: `${this.moodleUrl}/webservice/rest`,
       timeout: 30000,
-      // Use qs to serialize nested objects/arrays correctly for Moodle API
+      // encodeValuesOnly: true preserva los corchetes en las claves de arrays (courses[0][name])
+      // pero sí codifica los valores, evitando el error "unescaped characters" con tildes/ñ/etc.
       paramsSerializer: {
         serialize: (params) =>
-          qs.stringify(params, { arrayFormat: 'indices', encode: false }),
+          qs.stringify(params, { arrayFormat: 'indices', encodeValuesOnly: true }),
       },
     });
   }
