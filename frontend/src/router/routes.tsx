@@ -11,6 +11,7 @@ import { AuthLayout } from '@/components/layout';
 // Auth pages
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
+const SSOCallbackPage = lazy(() => import('@/pages/auth/SSOCallbackPage'));
 
 // Student pages
 const StudentDashboard = lazy(() => import('@/pages/student/Dashboard'));
@@ -131,6 +132,10 @@ export const routes: RouteObject[] = [
 
   // 404
   { path: '*', element: <NotFoundPage /> },
+
+  // SSO Callback — ruta pública especial, fuera de Guest/Protected guards
+  // El backend redirige aquí tras el login con Microsoft con el token en la URL
+  { path: '/auth/callback', element: <SSOCallbackPage /> },
 ];
 
 export default routes;
