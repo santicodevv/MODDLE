@@ -1,6 +1,6 @@
 // Login Page
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,9 +8,6 @@ import { useAuth } from '@/context';
 import { getErrorMessage } from '@/lib';
 import { Button, Input, Alert, Card, CardContent } from '@/components/ui';
 import { User, Lock } from 'lucide-react';
-
-// You might need an icon for Microsoft, or just use a generic one or none.
-// Adding a simple redirect function.
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'El correo o usuario es requerido'),
@@ -22,6 +19,20 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { login } = useAuth();
   const [error, setError] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Leer el error de SSO que el backend devuelve como query param
+  useEffect(() => {
+    const ssoError = searchParams.get('sso_error');
+    if (ssoError) {
+      setError(decodeURIComponent(ssoError));
+      // Limpiar el param de la URL sin recargar la página
+      setSearchParams((prev) => {
+        prev.delete('sso_error');
+        return prev;
+      }, { replace: true });
+    }
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
 
   const {

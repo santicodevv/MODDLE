@@ -4,8 +4,10 @@ import {
   Body,
   Get,
   Request,
+  Query,
   UseGuards,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
@@ -13,9 +15,12 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { MicrosoftCallbackGuard } from './guards/microsoft-auth.guard';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private readonly authService: AuthService) {}
 
   /**
@@ -45,29 +50,59 @@ export class AuthController {
   }
 
   /**
-   * SSO: Iniciar sesión con Microsoft
+   * SSO: Iniciar sesión con Microsoft (inicia el flujo OAuth)
    */
   @Public()
   @UseGuards(AuthGuard('microsoft'))
   @Get('microsoft')
   async microsoftAuth() {
-    // Passport redirects directly to Microsoft
+    // Passport redirige automáticamente a Microsoft
   }
 
   /**
-   * SSO: Callback desde Microsoft
+   * SSO: Callback desde Microsoft.
+   * 1. Intercepta errores que Microsoft devuelve como query params (ej: app mal configurada).
+   * 2. Usa MicrosoftCallbackGuard que captura errores del validate() y redirige al frontend.
    */
   @Public()
   @Get('microsoft/callback')
-  @UseGuards(AuthGuard('microsoft'))
-  async microsoftAuthRedirect(@Request() req, @Res() res: Response) {
-    // req.user has been populated by the Microsoft Strategy validate function
-    const { accessToken, user } = await this.authService.loginSSO(req.user);
-    
-    // Configura la respuesta como quieras. Usualmente se redirige al frontend
-    // pasando el token, por ejemplo como una cookie o en la query (solo en desarrollo)
-    // Redirige al frontend dinámicamente según la variable de entorno
+  @UseGuards(MicrosoftCallbackGuard)
+  async microsoftAuthRedirect(
+    @Request() req,
+    @Res() res: Response,
+    @Query('error') oauthError?: string,
+    @Query('error_description') oauthErrorDesc?: string,
+  ) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+
+    // Errores devueltos por Microsoft directamente en la URL (antes de llegar al guard)
+    if (oauthError) {
+      this.logger.error(`Microsoft OAuth error: ${oauthError} - ${oauthErrorDesc}`);
+
+      let userMessage = 'Error al iniciar sesión con tu cuenta institucional.';
+      if (oauthError === 'access_denied') {
+        userMessage = 'Cancelaste el inicio de sesión con Microsoft.';
+      }
+
+      return res.redirect(
+        `${frontendUrl}/login?sso_error=${encodeURIComponent(userMessage)}`,
+      );
+    }
+
+    // Si el guard redirigió (dominio inválido, etc.), req.user es null → no hacer nada
+    if (!req.user) {
+      return;
+    }
+
+    // Login exitoso: generar JWT y redirigir al frontend
+    try {
+      const { accessToken } = await this.authService.loginSSO(req.user);
+      return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+    } catch (err) {
+      this.logger.error(`loginSSO error: ${err.message}`);
+      return res.redirect(
+        `${frontendUrl}/login?sso_error=${encodeURIComponent('Error procesando tu cuenta. Intenta de nuevo.')}`,
+      );
+    }
   }
 }
