@@ -266,25 +266,67 @@ export class UsersService {
   }
 
   /**
-   * SSO: Find or create user from Microsoft Identity
+   * SSO: Find or create user from Microsoft Identity.
+   *
+   * Linking logic:
+   * 1. ¿Existe ya un usuario con este email institucional? → usarlo directamente.
+   * 2. ¿No? → Extraer el prefijo (ej: "welin1924" de welin1924@sebti.edu.do)
+   *    y buscar si hay un usuario con ese mismo prefijo pero otro dominio (ej: welin1924@gmail.com).
+   * 3. Si lo encuentra → VINCULAR: actualizar su email al institucional para que
+   *    todos sus datos (notas, cursos, etc.) queden accesibles.
+   * 4. Si no encuentra nada → crear cuenta nueva con rol STUDENT.
    */
   async findOrCreateSSOUser(profile: { email: string; displayName: string; microsoftId: string }): Promise<User> {
-    const existingUser = await this.userRepository.findOne({
+    // 1. Buscar por email institucional exacto
+    const existingByEmail = await this.userRepository.findOne({
       where: { email: profile.email },
       relations: ['roles'],
     });
 
-    if (existingUser) {
-      if (!existingUser.isActive) {
-        throw new ConflictException('User account is inactive');
+    if (existingByEmail) {
+      if (!existingByEmail.isActive) {
+        throw new ConflictException('La cuenta de usuario está inactiva');
       }
-      return existingUser;
+      this.logger.log(`SSO login: found existing user by email ${profile.email}`);
+      return existingByEmail;
     }
 
-    // Creating new user from SSO
-    this.logger.log(`Provisioning new SSO user: ${profile.email}`);
+    // 2. Extraer el prefijo del correo institucional (ej: "welin1924")
+    const usernamePart = profile.email.split('@')[0];
 
-    // Generate random dummy password hash for DB constraint safety
+    // 3. Buscar si existe un usuario con ese mismo prefijo en otro dominio
+    //    Usamos ILIKE para búsqueda insensible a mayúsculas
+    const linkedUser = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'roles')
+      .where('user.email ILIKE :pattern', { pattern: `${usernamePart}@%` })
+      .andWhere('user.email != :institutionalEmail', { institutionalEmail: profile.email })
+      .getOne();
+
+    if (linkedUser) {
+      if (!linkedUser.isActive) {
+        throw new ConflictException('La cuenta de usuario está inactiva');
+      }
+
+      // Vincular: actualizar el email al institucional para que el login SSO
+      // funcione directamente en el futuro y todos los datos se preserven
+      this.logger.log(
+        `SSO account linking: merging ${linkedUser.email} → ${profile.email} (prefix: "${usernamePart}")`,
+      );
+
+      linkedUser.email = profile.email;
+
+      // Actualizar displayName solo si el actual está vacío
+      if (!linkedUser.displayName && profile.displayName) {
+        linkedUser.displayName = profile.displayName;
+      }
+
+      return this.userRepository.save(linkedUser);
+    }
+
+    // 4. No hay cuenta previa → crear usuario nuevo con rol STUDENT
+    this.logger.log(`SSO provisioning new user: ${profile.email}`);
+
     const dummyPasswordHash = await bcrypt.hash(profile.microsoftId + Date.now().toString(), 10);
 
     const newUser = this.userRepository.create({
@@ -294,7 +336,6 @@ export class UsersService {
       isActive: true,
     });
 
-    // Assign 'STUDENT' role by default
     const studentRole = await this.roleRepository.findOne({ where: { code: RoleCode.STUDENT } });
     if (studentRole) {
       newUser.roles = [studentRole];
@@ -303,3 +344,4 @@ export class UsersService {
     return this.userRepository.save(newUser);
   }
 }
+
