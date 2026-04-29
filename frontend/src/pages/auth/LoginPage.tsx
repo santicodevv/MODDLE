@@ -120,7 +120,7 @@ export default function LoginPage() {
               <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
               <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
             </svg>
-            Continuar con Microsoft
+            Cuenta Institucional (Office 365)
           </Button>
         </div>
 

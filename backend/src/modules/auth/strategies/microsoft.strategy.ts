@@ -27,10 +27,22 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     const { id, emails, displayName } = profile;
 
     if (!emails || emails.length === 0) {
-      throw new UnauthorizedException('Microsoft account has no email associated');
+      throw new UnauthorizedException('La cuenta de Microsoft no tiene un correo asociado');
     }
 
     const email = emails[0].value;
+
+    // Obtener el dominio permitido desde las variables de entorno (opcional pero recomendado)
+    const allowedDomain = this.configService.get<string>('ALLOWED_EMAIL_DOMAIN');
+    
+    if (allowedDomain) {
+      const emailDomain = email.split('@')[1];
+      if (!emailDomain || emailDomain.toLowerCase() !== allowedDomain.toLowerCase()) {
+        throw new UnauthorizedException(
+          `Solo se permiten correos institucionales terminados en @${allowedDomain}`
+        );
+      }
+    }
 
     // Validate or create the user in our database via SSO and assign 'STUDENT' role by default
     const user = await this.authService.validateMicrosoftUser({
@@ -40,7 +52,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Authentication failed');
+      throw new UnauthorizedException('Error de autenticación con la cuenta institucional');
     }
 
     return user;
