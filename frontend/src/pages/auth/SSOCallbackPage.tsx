@@ -2,7 +2,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { storage, decodeToken } from '@/lib';
-import { authApi } from '@/api';
 import type { DecodedToken } from '@/types';
 
 export default function SSOCallbackPage() {
