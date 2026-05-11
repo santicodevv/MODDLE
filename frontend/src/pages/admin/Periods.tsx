@@ -130,7 +130,11 @@ export default function AdminPeriods() {
       toast.success('Configuración de reinscripción actualizada');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al configurar');
+      const msg =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'Error al guardar la configuración de reinscripción';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
     },
   });
 
@@ -610,12 +614,20 @@ export default function AdminPeriods() {
                     </div>
                     <div className="flex gap-2">
                       <Button
-                        onClick={() =>
+                        onClick={() => {
+                          const start = reenrolmentConfig.reenrolmentStartDate;
+                          const end = reenrolmentConfig.reenrolmentEndDate;
+                          if (start && end && start >= end) {
+                            toast.error(
+                              'La fecha de inicio de reinscripción debe ser anterior a la fecha de fin',
+                            );
+                            return;
+                          }
                           configReenrolmentMutation.mutate({
                             id: selectedPeriod.id,
                             data: reenrolmentConfig,
-                          })
-                        }
+                          });
+                        }}
                         disabled={configReenrolmentMutation.isPending}
                       >
                         <Save className="h-4 w-4 mr-2" />

@@ -244,7 +244,7 @@ export class PeriodsService {
     if (period.reenrolmentStartDate && period.reenrolmentEndDate) {
       if (period.reenrolmentEndDate <= period.reenrolmentStartDate) {
         throw new BadRequestException(
-          'Reenrolment end date must be after start date',
+          'La fecha de fin de reinscripción debe ser posterior a la fecha de inicio',
         );
       }
     }

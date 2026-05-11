@@ -32,7 +32,8 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig, redisConfig],
-      envFilePath: '../.env',
+      // Busca .env en backend/ primero, luego en la carpeta raíz del proyecto
+      envFilePath: ['.env', '../.env'],
     }),
 
     // TypeORM - PostgreSQL

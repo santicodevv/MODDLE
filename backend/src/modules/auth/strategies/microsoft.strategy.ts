@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Strategy } from 'passport-microsoft';
@@ -6,15 +6,29 @@ import { AuthService } from '../auth.service';
 
 @Injectable()
 export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
+  private static readonly logger = new Logger('MicrosoftStrategy');
+
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
   ) {
+    const clientID = configService.get<string>('MICROSOFT_CLIENT_ID');
+    const clientSecret = configService.get<string>('MICROSOFT_CLIENT_SECRET');
+    const callbackURL = configService.get<string>('MICROSOFT_CALLBACK_URL');
+    const tenant = configService.get<string>('MICROSOFT_TENANT_ID') || 'common';
+
+    if (!clientID || !clientSecret || !callbackURL) {
+      MicrosoftStrategy.logger.warn(
+        'Microsoft SSO no configurado: faltan MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET o MICROSOFT_CALLBACK_URL en el .env. ' +
+        'El login con Microsoft estará deshabilitado.',
+      );
+    }
+
     super({
-      clientID: configService.get<string>('MICROSOFT_CLIENT_ID') as string,
-      clientSecret: configService.get<string>('MICROSOFT_CLIENT_SECRET') as string,
-      callbackURL: configService.get<string>('MICROSOFT_CALLBACK_URL') as string,
-      tenant: configService.get<string>('MICROSOFT_TENANT_ID') || 'common',
+      clientID: clientID || 'PLACEHOLDER',
+      clientSecret: clientSecret || 'PLACEHOLDER',
+      callbackURL: callbackURL || 'http://localhost:3000/auth/microsoft/callback',
+      tenant,
       scope: ['user.read'],
     });
   }

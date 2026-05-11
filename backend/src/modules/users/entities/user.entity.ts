@@ -28,6 +28,9 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'display_name' })
   displayName: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  institution: string;
+
   @Column({ type: 'bigint', nullable: true, name: 'moodle_user_id' })
   moodleUserId: number;
 

@@ -20,9 +20,12 @@ export default registerAs(
     }
 
     // Fallback a variables individuales para desarrollo local
+    const host = process.env.DB_HOST || 'localhost';
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+
     return {
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
+      host,
       port: parseInt(process.env.DB_PORT || '5432', 10),
       username: process.env.DB_USER || 'moddle_user',
       password: process.env.DB_PASSWORD || 'moddle_pass',
@@ -30,7 +33,8 @@ export default registerAs(
       entities: entities,
       synchronize: !isProduction,
       logging: !isProduction,
-      ssl: false,
+      // Neon y otros proveedores cloud requieren SSL; localhost no
+      ssl: isLocalHost ? false : { rejectUnauthorized: false },
     };
   },
 );
