@@ -224,9 +224,8 @@ export class PeriodsService {
   ): Promise<AcademicPeriod> {
     const period = await this.findOne(id);
 
-    if (period.status === AcademicPeriodStatus.CLOSED) {
-      throw new ConflictException('Cannot configure reenrolment for a closed period');
-    }
+    // NOTE: Se permite configurar reinscripción en períodos CERRADOS,
+    // ya que la reinscripción ocurre justamente después de que el período cierra.
 
     const beforeData = { ...period };
 
