@@ -266,9 +266,8 @@ export class PeriodsService {
   async openReenrolment(id: number, actorUserId?: number): Promise<AcademicPeriod> {
     const period = await this.findOne(id);
 
-    if (period.status === AcademicPeriodStatus.CLOSED) {
-      throw new ConflictException('Cannot open reenrolment for a closed period');
-    }
+    // NOTE: Se permite abrir reinscripción en períodos CERRADOS.
+    // La reinscripción es un proceso post-cierre del período.
 
     if (period.reenrolmentOpen) {
       throw new ConflictException('Reenrolment is already open');
@@ -330,7 +329,6 @@ export class PeriodsService {
       .where('period.reenrolmentOpen = :open', { open: true })
       .andWhere('period.reenrolmentStartDate <= :now', { now })
       .andWhere('period.reenrolmentEndDate >= :now', { now })
-      .andWhere('period.status != :closed', { closed: AcademicPeriodStatus.CLOSED })
       .orderBy('period.startDate', 'DESC')
       .getMany();
   }
