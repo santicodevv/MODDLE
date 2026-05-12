@@ -378,9 +378,7 @@ export class PeriodsService {
   ): Promise<PeriodAvailableCourse[]> {
     const period = await this.findOne(periodId);
 
-    if (period.status === AcademicPeriodStatus.CLOSED) {
-      throw new ConflictException('Cannot add courses to a closed period');
-    }
+    // NOTE: Se permite agregar cursos en períodos CERRADOS para configurar reinscripción.
 
     const coursesToAdd: PeriodAvailableCourse[] = [];
 
