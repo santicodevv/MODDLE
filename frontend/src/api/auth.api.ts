@@ -35,6 +35,14 @@ export const authApi = {
   },
 
   /**
+   * Update current user profile
+   */
+  async updateProfile(data: { displayName?: string; password?: string }): Promise<AuthUser> {
+    const response = await api.patch<AuthUser>('/auth/me', data);
+    return response.data;
+  },
+
+  /**
    * Refresh access token
    */
   async refresh(): Promise<RefreshTokenResponse> {

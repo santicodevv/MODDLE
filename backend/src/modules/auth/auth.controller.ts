@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Body,
+  Patch,
   Get,
   Request,
   Query,
@@ -14,14 +15,21 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { UpdateProfileDto } from '../users/dto/update-profile.dto';
+import { UsersService } from '../users/users.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { MicrosoftCallbackGuard } from './guards/microsoft-auth.guard';
+import { TokenBlacklistService } from './services/token-blacklist.service';
 
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
+  ) {}
 
   /**
    * Registrar un nuevo usuario
@@ -47,6 +55,27 @@ export class AuthController {
   @Get('me')
   async getProfile(@Request() req) {
     return req.user;
+  }
+
+  /**
+   * Actualizar perfil del usuario autenticado
+   */
+  @Patch('me')
+  async updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.id, updateProfileDto);
+  }
+
+  /**
+   * Cerrar sesión en el servidor (invalidar token JWT)
+   */
+  @Post('logout')
+  async logout(@Request() req) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+      this.tokenBlacklistService.add(token);
+    }
+    return { success: true, message: 'Sesión invalidada en servidor' };
   }
 
   /**

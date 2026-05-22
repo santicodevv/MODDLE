@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 // Entities
 import { LocalGrade } from '../academic/entities/local-grade.entity';
 import { AcademicPeriod } from '../academic/entities/academic-period.entity';
+import { PeriodAvailableCourse } from '../academic/entities/period-available-course.entity';
 import { MoodleCourse } from '../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
@@ -22,6 +23,7 @@ import { ReportsController } from './reports.controller';
     TypeOrmModule.forFeature([
       LocalGrade,
       AcademicPeriod,
+      PeriodAvailableCourse,
       MoodleCourse,
       MoodleEnrolment,
       MoodleUser,

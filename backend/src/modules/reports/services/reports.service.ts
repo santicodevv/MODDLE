@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LocalGrade } from '../../academic/entities/local-grade.entity';
 import { AcademicPeriod, AcademicPeriodStatus } from '../../academic/entities/academic-period.entity';
+import { PeriodAvailableCourse } from '../../academic/entities/period-available-course.entity';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
@@ -38,6 +39,8 @@ export class ReportsService {
     private readonly moodleUserRepository: Repository<MoodleUser>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(PeriodAvailableCourse)
+    private readonly availableCourseRepository: Repository<PeriodAvailableCourse>,
   ) {}
 
   /**
@@ -366,17 +369,52 @@ export class ReportsService {
       endDate: Date;
     } | null;
   }> {
-    const [totalUsers, totalCourses, totalEnrolments, totalGrades, activePeriod] =
+    const [totalUsers, totalGrades, activePeriod] =
       await Promise.all([
         this.userRepository.count(),
-        this.courseRepository.count(),
-        this.enrolmentRepository.count(),
         this.gradeRepository.count(),
         this.periodRepository.findOne({
           where: { status: AcademicPeriodStatus.OPEN },
           order: { startDate: 'DESC' },
         }),
       ]);
+
+    let totalCourses = 0;
+    let totalEnrolments = 0;
+
+    if (activePeriod) {
+      // Obtener los course_moodle_id asignados explícitamente al período activo
+      const assignedCourses = await this.availableCourseRepository.find({
+        where: { periodId: activePeriod.id, enabled: true },
+        select: ['courseMoodleId'],
+      });
+
+      if (assignedCourses.length > 0) {
+        const moodleIds = assignedCourses.map((c) => Number(c.courseMoodleId));
+        totalCourses = moodleIds.length;
+
+        totalEnrolments = await this.enrolmentRepository
+          .createQueryBuilder('enrolment')
+          .where('enrolment.courseMoodleId IN (:...moodleIds)', { moodleIds })
+          .getCount();
+      } else {
+        // El período existe pero no tiene cursos asignados → fallback global
+        const [fallbackCourses, fallbackEnrolments] = await Promise.all([
+          this.courseRepository.count(),
+          this.enrolmentRepository.count(),
+        ]);
+        totalCourses = fallbackCourses;
+        totalEnrolments = fallbackEnrolments;
+      }
+    } else {
+      // No hay período activo → totales históricos globales
+      const [fallbackCourses, fallbackEnrolments] = await Promise.all([
+        this.courseRepository.count(),
+        this.enrolmentRepository.count(),
+      ]);
+      totalCourses = fallbackCourses;
+      totalEnrolments = fallbackEnrolments;
+    }
 
     return {
       totalUsers,

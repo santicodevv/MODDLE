@@ -11,6 +11,7 @@ import { User } from './entities/user.entity';
 import { Role, RoleCode } from './entities/role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { MoodleClientService } from '../moodle-integration/moodle-client.service';
 
 @Injectable()
@@ -68,10 +69,11 @@ export class UsersService {
   }
 
   async findByEmailOrUsername(identifier: string): Promise<User | null> {
+    const trimmed = identifier.trim();
     return this.userRepository.findOne({
       where: [
-        { email: identifier },
-        { username: identifier },
+        { email: ILike(trimmed) },
+        { username: ILike(trimmed) },
       ],
       relations: ['roles'],
     });
@@ -108,6 +110,8 @@ export class UsersService {
     page: number = 1,
     limit: number = 20,
     search?: string,
+    isActive?: boolean,
+    role?: string,
   ): Promise<{ users: User[]; total: number; page: number; limit: number }> {
     const qb = this.userRepository
       .createQueryBuilder('user')
@@ -125,11 +129,26 @@ export class UsersService {
         'roles.description',
       ]);
 
+    const conditions: string[] = [];
+    const params: Record<string, any> = {};
+
     if (search && search.trim()) {
-      qb.where(
-        '(user.email ILIKE :search OR user.displayName ILIKE :search)',
-        { search: `%${search.trim()}%` },
-      );
+      conditions.push('(user.email ILIKE :search OR user.displayName ILIKE :search)');
+      params.search = `%${search.trim()}%`;
+    }
+
+    if (isActive !== undefined) {
+      conditions.push('user.isActive = :isActive');
+      params.isActive = isActive;
+    }
+
+    if (role && role.trim()) {
+      conditions.push('roles.code = :role');
+      params.role = role.trim().toUpperCase();
+    }
+
+    if (conditions.length > 0) {
+      qb.where(conditions.join(' AND '), params);
     }
 
     qb.orderBy('user.id', 'ASC');
@@ -137,7 +156,7 @@ export class UsersService {
     const total = await qb.getCount();
     const users = await qb
       .skip((page - 1) * limit)
-      .take(limit)
+      .take(limit === 0 ? undefined : limit)
       .getMany();
 
     return { users, total, page, limit };
@@ -236,6 +255,38 @@ export class UsersService {
     const user = await this.findById(userId);
     user.roles = user.roles.filter((role) => role.code !== roleCode);
     return this.userRepository.save(user);
+  }
+
+  async updateProfile(userId: number, updateProfileDto: UpdateProfileDto): Promise<User> {
+    const user = await this.findById(userId);
+
+    if (updateProfileDto.displayName !== undefined) {
+      user.displayName = updateProfileDto.displayName;
+    }
+
+    if (updateProfileDto.password) {
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(updateProfileDto.password, salt);
+    }
+
+    const saved = await this.userRepository.save(user);
+
+    // Sync displayName to Moodle if moodleUserId exists
+    if (saved.moodleUserId && updateProfileDto.displayName !== undefined) {
+      try {
+        const parts = saved.displayName.split(' ');
+        const moodleData = {
+          firstname: parts[0] || '',
+          lastname: parts.slice(1).join(' ') || '',
+        };
+        await this.moodleClient.updateUser(saved.moodleUserId, moodleData);
+        this.logger.log(`Synced user profile ${userId} to Moodle`);
+      } catch (error) {
+        this.logger.error(`Failed to sync user profile ${userId} to Moodle: ${error.message}`);
+      }
+    }
+
+    return saved;
   }
 
   async validatePassword(

@@ -25,7 +25,7 @@ export class AuthService {
     const user = await this.usersService.findByEmailOrUsername(loginDto.identifier);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('User not registered');
     }
 
     const isPasswordValid = await this.usersService.validatePassword(

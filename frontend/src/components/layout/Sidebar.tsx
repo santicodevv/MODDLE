@@ -1,6 +1,7 @@
 // Sidebar component
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/context';
 import { cn } from '@/lib';
 import {
   LayoutDashboard,
@@ -168,6 +169,14 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
+  const { roles } = useAuth();
+  
+  const defaultRoute = roles.includes('ADMIN') 
+    ? '/admin' 
+    : roles.includes('TEACHER') 
+      ? '/teacher' 
+      : '/student';
+
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     // Auto-expand if we're on a child route
     '/admin/grades': location.pathname.startsWith('/admin/grades'),
@@ -312,12 +321,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
+          <Link to={defaultRoute} onClick={onClose} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <GraduationCap className="h-8 w-8 text-blue-600" />
             <span className="text-xl font-bold text-gray-900">
               KNOROOMS EDU
             </span>
-          </div>
+          </Link>
           <button
             onClick={onClose}
             className="lg:hidden p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100"

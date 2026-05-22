@@ -41,11 +41,17 @@ export class UsersController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('isActive') isActive?: string,
+    @Query('role') role?: string,
   ) {
+    const isActiveParsed =
+      isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     return this.usersService.findAllPaginated(
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
       search,
+      isActiveParsed,
+      role,
     );
   }
 
