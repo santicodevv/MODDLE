@@ -11,6 +11,8 @@ import {
   Button,
   Input,
   Label,
+  Modal,
+  ModalFooter,
 } from '@/components/ui';
 import {
   Calendar,
@@ -27,6 +29,7 @@ import {
   Trash2,
   Save,
   X,
+  Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { AcademicPeriod } from '@/types';
@@ -51,6 +54,15 @@ export default function AdminPeriods() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showReenrolmentConfig, setShowReenrolmentConfig] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editPeriodData, setEditPeriodData] = useState({
+    id: 0,
+    code: '',
+    name: '',
+    startDate: '',
+    endDate: '',
+    description: '',
+  });
 
   // Form states
   const [newPeriod, setNewPeriod] = useState({
@@ -236,6 +248,22 @@ export default function AdminPeriods() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Error');
+    },
+  });
+
+  const updatePeriodMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: typeof editPeriodData }) =>
+      periodsApi.update(id, data),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-periods'] });
+      setSelectedPeriod(updated);
+      setShowEditForm(false);
+      toast.success('Período actualizado con éxito');
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || 'Error al actualizar período',
+      );
     },
   });
 
@@ -531,12 +559,13 @@ export default function AdminPeriods() {
                       </p>
                     )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   {selectedPeriod.status === 'planned' && (
                     <Button
                       onClick={() =>
                         openPeriodMutation.mutate(selectedPeriod.id)
                       }
+                      className="w-full"
                     >
                       <Play className="h-4 w-4 mr-2" />
                       Abrir Período
@@ -548,11 +577,34 @@ export default function AdminPeriods() {
                       onClick={() =>
                         closePeriodMutation.mutate(selectedPeriod.id)
                       }
+                      className="w-full"
                     >
                       <Square className="h-4 w-4 mr-2" />
                       Cerrar Período
                     </Button>
                   )}
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setEditPeriodData({
+                        id: selectedPeriod.id,
+                        code: selectedPeriod.code,
+                        name: selectedPeriod.name,
+                        startDate: selectedPeriod.startDate
+                          ? selectedPeriod.startDate.split('T')[0]
+                          : '',
+                        endDate: selectedPeriod.endDate
+                          ? selectedPeriod.endDate.split('T')[0]
+                          : '',
+                        description: selectedPeriod.description || '',
+                      });
+                      setShowEditForm(true);
+                    }}
+                    className="w-full"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
                   <Button
                     variant="danger"
                     onClick={() => {
@@ -565,6 +617,7 @@ export default function AdminPeriods() {
                       }
                     }}
                     disabled={deletePeriodMutation.isPending}
+                    className="w-full"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Eliminar
@@ -910,6 +963,109 @@ export default function AdminPeriods() {
           </div>
         </div>
       )}
+      {/* Edit Period Modal */}
+      <Modal
+        isOpen={showEditForm}
+        onClose={() => setShowEditForm(false)}
+        title="Editar Período Académico"
+        description="Modifica los datos del período seleccionado"
+        size="md"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            updatePeriodMutation.mutate({
+              id: editPeriodData.id,
+              data: editPeriodData,
+            });
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <Label htmlFor="edit-code">Código</Label>
+            <Input
+              id="edit-code"
+              value={editPeriodData.code}
+              onChange={(e) =>
+                setEditPeriodData({ ...editPeriodData, code: e.target.value })
+              }
+              placeholder="Ej: 2026.2"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-name">Nombre</Label>
+            <Input
+              id="edit-name"
+              value={editPeriodData.name}
+              onChange={(e) =>
+                setEditPeriodData({ ...editPeriodData, name: e.target.value })
+              }
+              placeholder="Ej: Segundo Semestre 2026"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-startDate">Fecha de Inicio</Label>
+            <Input
+              id="edit-startDate"
+              type="date"
+              value={editPeriodData.startDate}
+              onChange={(e) =>
+                setEditPeriodData({
+                  ...editPeriodData,
+                  startDate: e.target.value,
+                })
+              }
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-endDate">Fecha de Fin</Label>
+            <Input
+              id="edit-endDate"
+              type="date"
+              value={editPeriodData.endDate}
+              onChange={(e) =>
+                setEditPeriodData({
+                  ...editPeriodData,
+                  endDate: e.target.value,
+                })
+              }
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-description">Descripción</Label>
+            <Input
+              id="edit-description"
+              value={editPeriodData.description}
+              onChange={(e) =>
+                setEditPeriodData({
+                  ...editPeriodData,
+                  description: e.target.value,
+                })
+              }
+              placeholder="Descripción del período..."
+            />
+          </div>
+          <ModalFooter>
+            <Button
+              type="submit"
+              disabled={updatePeriodMutation.isPending}
+            >
+              Guardar Cambios
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowEditForm(false)}
+            >
+              Cancelar
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </div>
   );
 }

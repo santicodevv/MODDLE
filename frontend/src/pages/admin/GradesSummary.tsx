@@ -123,6 +123,13 @@ export default function GradesSummary() {
 
   const getGradeColor = (grade: number | null, max: number | null = 10) => {
     if (grade === null) return 'text-gray-400';
+    if (max === 10) {
+      if (grade <= 5) return 'text-red-600 font-semibold';
+      if (grade > 5 && grade < 7) return 'text-orange-500 font-semibold';
+      if (grade >= 7 && grade < 9) return 'text-yellow-600 font-semibold';
+      if (grade >= 9 && grade <= 10) return 'text-green-600 font-semibold';
+      return 'text-gray-600 font-semibold';
+    }
     const percentage = max && max > 0 ? (grade / max) * 100 : grade;
     if (percentage >= 90) return 'text-green-600 font-semibold';
     if (percentage >= 70) return 'text-blue-600 font-semibold';

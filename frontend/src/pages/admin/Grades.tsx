@@ -333,6 +333,14 @@ function CourseGradeSection({
       comment: currentGrade?.comment ?? null,
     };
 
+    if (field === 'totalGrade' && value !== null) {
+      const numVal = Number(value);
+      if (numVal < 1 || numVal > 10) {
+        toast.error('Solo se permite calificaciones del 1 - 10');
+        return;
+      }
+    }
+
     setEditingGrades((prev) => {
       const newMap = new Map(prev);
       newMap.set(key, {
@@ -364,10 +372,11 @@ function CourseGradeSection({
 
   const getGradeColor = (grade: number | null) => {
     if (grade === null) return 'text-gray-400';
-    if (grade >= 90) return 'text-green-600';
-    if (grade >= 70) return 'text-blue-600';
-    if (grade >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (grade <= 5) return 'text-red-600 font-bold';
+    if (grade > 5 && grade < 7) return 'text-orange-500 font-bold';
+    if (grade >= 7 && grade < 9) return 'text-yellow-600 font-bold';
+    if (grade >= 9 && grade <= 10) return 'text-green-600 font-bold';
+    return 'text-gray-600';
   };
 
   return (
@@ -475,8 +484,8 @@ function CourseGradeSection({
                           <td className="px-4 py-3 text-center">
                             <Input
                               type="number"
-                              min={0}
-                              max={100}
+                              min={1}
+                              max={10}
                               value={displayTotal ?? ''}
                               onChange={(e) =>
                                 handleGradeChange(
