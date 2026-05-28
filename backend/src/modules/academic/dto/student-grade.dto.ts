@@ -2,7 +2,7 @@ import { IsNumber, IsString, IsOptional, Min, Max } from 'class-validator';
 
 export class UpdateStudentGradeDto {
   @IsNumber()
-  @Min(1)
+  @Min(0)
   @Max(10)
   @IsOptional()
   totalGrade?: number;
@@ -31,7 +31,7 @@ export class CreateStudentGradeDto {
   courseShortname?: string;
 
   @IsNumber()
-  @Min(1)
+  @Min(0)
   @Max(10)
   @IsOptional()
   totalGrade?: number;

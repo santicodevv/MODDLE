@@ -335,8 +335,8 @@ function CourseGradeSection({
 
     if (field === 'totalGrade' && value !== null) {
       const numVal = Number(value);
-      if (numVal < 1 || numVal > 10) {
-        toast.error('Solo se permite calificaciones del 1 - 10');
+      if (numVal < 0 || numVal > 10) {
+        toast.error('Solo se permite calificaciones del 0 - 10');
         return;
       }
     }
@@ -456,7 +456,7 @@ function CourseGradeSection({
                       const key = `${course.courseMoodleId}-${grade.studentId}`;
                       const editData = editingGrades.get(key);
                       const displayTotal =
-                        editData?.totalGrade ?? grade.totalGrade;
+                        editData !== undefined ? editData.totalGrade : grade.totalGrade;
                       const displayComment = editData?.comment ?? grade.comment;
 
                       return (
@@ -484,16 +484,14 @@ function CourseGradeSection({
                           <td className="px-4 py-3 text-center">
                             <Input
                               type="number"
-                              min={1}
+                              min={0}
                               max={10}
                               value={displayTotal ?? ''}
                               onChange={(e) =>
                                 handleGradeChange(
                                   grade.studentId,
                                   'totalGrade',
-                                  e.target.value
-                                    ? Number(e.target.value)
-                                    : null,
+                                  e.target.value === '' ? null : Number(e.target.value),
                                 )
                               }
                               className={`w-20 text-center ${getGradeColor(displayTotal)}`}

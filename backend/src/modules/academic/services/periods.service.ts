@@ -179,10 +179,6 @@ export class PeriodsService {
   ): Promise<AcademicPeriod> {
     const period = await this.findOne(id);
 
-    if (period.status === AcademicPeriodStatus.CLOSED) {
-      throw new ConflictException('Cannot update a closed period');
-    }
-
     const beforeData = { ...period };
 
     if (updateData.name) period.name = updateData.name;
@@ -466,10 +462,6 @@ export class PeriodsService {
     actorUserId?: number,
   ): Promise<void> {
     const period = await this.findOne(periodId);
-
-    if (period.status === AcademicPeriodStatus.CLOSED) {
-      throw new ConflictException('Cannot remove courses from a closed period');
-    }
 
     await this.availableCourseRepository.delete({
       periodId,

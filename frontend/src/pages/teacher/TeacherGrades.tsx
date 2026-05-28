@@ -101,10 +101,10 @@ export default function TeacherGrades() {
       const existing = newMap.get(studentId) || {};
 
       if (field === 'totalGrade') {
-        const numValue = value === '' ? undefined : parseFloat(value);
-        if (numValue !== undefined) {
-          if (isNaN(numValue) || numValue < 1 || numValue > 10) {
-            toast.error('Solo se permite calificaciones del 1 - 10');
+        const numValue = value === '' ? null : parseFloat(value);
+        if (numValue !== null) {
+          if (isNaN(numValue) || numValue < 0 || numValue > 10) {
+            toast.error('Solo se permite calificaciones del 0 - 10');
             return prev;
           }
         }
@@ -236,7 +236,7 @@ export default function TeacherGrades() {
                         <CheckCircle className="h-4 w-4 mb-1" />
                         <span>Nota Final</span>
                         <span className="text-gray-400 font-normal">
-                          (1-10)
+                          (0-10)
                         </span>
                       </div>
                     </th>
@@ -255,7 +255,9 @@ export default function TeacherGrades() {
                   {studentGrades.map((student: StudentGradeWithDetails) => {
                     const localEdit = localEdits.get(student.studentId);
                     const displayTotal =
-                      localEdit?.totalGrade ?? student.totalGrade;
+                      localEdit !== undefined && localEdit.totalGrade !== undefined
+                        ? localEdit.totalGrade
+                        : student.totalGrade;
                     const displayComment =
                       localEdit?.comment ?? student.comment ?? '';
                     const hasLocalEdit = localEdit !== undefined;
@@ -306,7 +308,7 @@ export default function TeacherGrades() {
                                   e.target.value,
                                 )
                               }
-                              min={1}
+                              min={0}
                               max={10}
                               step={0.1}
                               className="w-24 text-center mx-auto"
@@ -381,7 +383,7 @@ export default function TeacherGrades() {
             Moodle (solo lectura).
             <br />
             <strong>Nota Final:</strong> La nota que usted asigna al estudiante
-            (1-10).
+            (0-10).
             <br />
             <strong>Comentario:</strong> Observaciones para el estudiante.
           </p>

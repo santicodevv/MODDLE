@@ -137,8 +137,8 @@ export interface StudentCourseGrade {
 
 // Update student grade DTO
 export interface UpdateStudentGradeDto {
-  totalGrade?: number;
-  comment?: string;
+  totalGrade?: number | null;
+  comment?: string | null;
 }
 
 // Sync result
