@@ -20,7 +20,6 @@ import {
   TableIcon,
   Settings,
   UserRound,
-  BookMarked,
   UserCog,
 } from 'lucide-react';
 import type { RoleCode } from '@/shared/types';
