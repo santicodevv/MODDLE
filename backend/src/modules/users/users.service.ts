@@ -12,6 +12,7 @@ import { Role, RoleCode } from './entities/role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { MoodleClientService } from '../moodle-integration/moodle-client.service';
 
 @Injectable()
@@ -54,6 +55,63 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
+  /**
+   * Crear un profesor: asigna rol TEACHER y opcionalmente sincroniza con Moodle
+   */
+  async createTeacher(dto: CreateTeacherDto): Promise<User> {
+    // 1. Verificar unicidad de email
+    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+    if (existing) {
+      throw new ConflictException('Ya existe un usuario con ese email');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    const user = this.userRepository.create({
+      email: dto.email,
+      passwordHash: hashedPassword,
+      displayName: dto.displayName,
+      isActive: dto.isActive ?? true,
+    });
+
+    // 2. Asignar rol TEACHER
+    const teacherRole = await this.roleRepository.findOne({ where: { code: RoleCode.TEACHER } });
+    if (!teacherRole) {
+      throw new NotFoundException('Rol TEACHER no encontrado en la base de datos');
+    }
+    user.roles = [teacherRole];
+
+    const saved = await this.userRepository.save(user);
+
+    // 3. Sincronizar con Moodle si se solicitó
+    if (dto.syncToMoodle !== false) {
+      try {
+        const parts = (dto.displayName || '').trim().split(/\s+/);
+        const firstname = parts[0] || dto.email.split('@')[0];
+        const lastname = parts.slice(1).join(' ') || '-';
+        const username = dto.email.split('@')[0].toLowerCase();
+
+        const moodleUserId = await this.moodleClient.createMoodleUser({
+          username,
+          password: dto.password,
+          firstname,
+          lastname,
+          email: dto.email,
+        });
+
+        saved.moodleUserId = moodleUserId;
+        await this.userRepository.save(saved);
+        this.logger.log(`Teacher ${saved.id} synced to Moodle (moodleId: ${moodleUserId})`);
+      } catch (error) {
+        this.logger.error(`Failed to sync teacher ${saved.id} to Moodle: ${error.message}`);
+        // No se lanza el error: el usuario ya fue creado localmente
+      }
+    }
+
+    return this.findById(saved.id);
+  }
+
+
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { email },
@@ -89,6 +147,25 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.moodleUserId) {
+      try {
+        const moodleUser = await this.userRepository.manager.query(
+          `SELECT last_access FROM moodle_users WHERE moodle_id = $1`,
+          [user.moodleUserId]
+        );
+        if (moodleUser && moodleUser.length > 0 && moodleUser[0].last_access) {
+          (user as any).lastLoginAt = moodleUser[0].last_access;
+        } else {
+          (user as any).lastLoginAt = user.updatedAt;
+        }
+      } catch (e) {
+        this.logger.error('Failed to fetch moodle_user last_access for ' + user.id, e);
+        (user as any).lastLoginAt = user.updatedAt;
+      }
+    } else {
+      (user as any).lastLoginAt = user.updatedAt;
+    }
+
     return user;
   }
 
@@ -120,6 +197,7 @@ export class UsersService {
         'user.id',
         'user.email',
         'user.displayName',
+        'user.username',
         'user.moodleUserId',
         'user.isActive',
         'user.createdAt',
@@ -158,6 +236,39 @@ export class UsersService {
       .skip((page - 1) * limit)
       .take(limit === 0 ? undefined : limit)
       .getMany();
+
+    // Fetch last_access from moodle_users for these users
+    if (users.length > 0) {
+      const moodleIds = users.map(u => u.moodleUserId).filter(id => id != null);
+      let lastAccessMap = new Map();
+      
+      if (moodleIds.length > 0) {
+        try {
+          const moodleUsers = await this.userRepository.manager.query(
+            `SELECT moodle_id, last_access FROM moodle_users WHERE moodle_id = ANY($1)`,
+            [moodleIds]
+          );
+          moodleUsers.forEach(mu => {
+            lastAccessMap.set(Number(mu.moodle_id), mu.last_access);
+          });
+        } catch (e) {
+          this.logger.error('Failed to fetch moodle_users last_access', e);
+        }
+      }
+      
+      users.forEach(u => {
+        if (u.moodleUserId && lastAccessMap.has(Number(u.moodleUserId))) {
+          const la = lastAccessMap.get(Number(u.moodleUserId));
+          if (la) {
+            (u as any).lastLoginAt = la;
+          } else {
+            (u as any).lastLoginAt = u.updatedAt;
+          }
+        } else {
+          (u as any).lastLoginAt = u.updatedAt;
+        }
+      });
+    }
 
     return { users, total, page, limit };
   }

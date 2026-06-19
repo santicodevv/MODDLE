@@ -214,7 +214,38 @@ export class MoodleClientService {
     return [];
   }
 
-  // Crear un curso en Moodle
+  /**
+   * Crear un usuario en Moodle
+   * Retorna el moodleUserId del usuario recién creado
+   */
+  async createMoodleUser(userData: {
+    username: string;
+    password: string;
+    firstname: string;
+    lastname: string;
+    email: string;
+  }): Promise<number> {
+    const result = await this.callFunction('core_user_create_users', {
+      users: [
+        {
+          username: userData.username,
+          password: userData.password,
+          firstname: userData.firstname,
+          lastname: userData.lastname,
+          email: userData.email,
+          auth: 'manual',
+        },
+      ],
+    });
+
+    if (!Array.isArray(result) || result.length === 0) {
+      throw new Error('Moodle no devolvió un ID de usuario válido');
+    }
+
+    return result[0].id as number;
+  }
+
+
   async createCourse(courseData: {
     fullname: string;
     shortname: string;

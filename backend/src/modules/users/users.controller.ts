@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { RoleCode } from './entities/role.entity';
@@ -33,6 +34,15 @@ export class UsersController {
   @Post('admin/create')
   async adminCreate(@Body() createUserDto: CreateUserDto): Promise<User> {
     return this.usersService.create(createUserDto);
+  }
+
+  /**
+   * Admin-only: crear un profesor con rol TEACHER y sincronización a Moodle
+   */
+  @Roles(RoleCode.ADMIN)
+  @Post('admin/create-teacher')
+  async adminCreateTeacher(@Body() dto: CreateTeacherDto): Promise<User> {
+    return this.usersService.createTeacher(dto);
   }
 
   @Roles(RoleCode.ADMIN)

@@ -74,7 +74,7 @@ export class CoursesController {
   @Get('enrolled')
   async getMyEnrolledCourses(@CurrentUser() user: User) {
     if (!user.moodleUserId) {
-      throw new BadRequestException('User is not linked to a Moodle account');
+      return [];
     }
     return this.coursesService.getCoursesForUser(user.moodleUserId);
   }
