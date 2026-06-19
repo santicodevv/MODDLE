@@ -51,8 +51,7 @@ const AdminSettingsNuevoProfesor = lazy(() => import('@/modules/admin/pages/sett
 const AdminSettingsEditarProfesor = lazy(() => import('@/modules/admin/pages/settings/EditarProfesor'));
 const AdminSettingsEstudiantes = lazy(() => import('@/modules/admin/pages/settings/Estudiantes'));
 const AdminSettingsNuevoEstudiante = lazy(() => import('@/modules/admin/pages/settings/NuevoEstudiante'));
-const AdminSettingsPeriodos = lazy(() => import('@/modules/admin/pages/settings/Periodos'));
-const AdminSettingsCursos = lazy(() => import('@/modules/admin/pages/settings/Cursos'));
+
 const AdminSettingsUsuarios = lazy(() => import('@/modules/admin/pages/settings/Usuarios'));
 const AdminSettingsNuevoUsuario = lazy(() => import('@/modules/admin/pages/settings/NuevoUsuario'));
 const AdminSettingsEditarUsuario = lazy(() => import('@/modules/admin/pages/settings/EditarUsuario'));
@@ -146,8 +145,7 @@ export const routes: RouteObject[] = [
               { path: 'settings/profesores/:id/editar', element: <AdminSettingsEditarProfesor /> },
               { path: 'settings/estudiantes', element: <AdminSettingsEstudiantes /> },
               { path: 'settings/estudiantes/nuevo', element: <AdminSettingsNuevoEstudiante /> },
-              { path: 'settings/periodos', element: <AdminSettingsPeriodos /> },
-              { path: 'settings/cursos', element: <AdminSettingsCursos /> },
+
               { path: 'settings/usuarios', element: <AdminSettingsUsuarios /> },
               { path: 'settings/usuarios/nuevo', element: <AdminSettingsNuevoUsuario /> },
               { path: 'settings/usuarios/:id/editar', element: <AdminSettingsEditarUsuario /> },

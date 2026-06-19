@@ -18,6 +18,7 @@ export default function AdminReEnrolments() {
           backToList={hookState.backToList}
           setEditCoursesModalOpen={hookState.setEditCoursesModalOpen}
           approveMutation={hookState.approveMutation}
+          applyMutation={hookState.applyMutation}
           openRejectModal={hookState.openRejectModal}
           rejectMutation={hookState.rejectMutation}
           deleteMutation={hookState.deleteMutation}
@@ -61,6 +62,7 @@ export default function AdminReEnrolments() {
         statusFilter={hookState.statusFilter}
         viewDetail={hookState.viewDetail}
         approveMutation={hookState.approveMutation}
+          applyMutation={hookState.applyMutation}
         openRejectModal={hookState.openRejectModal}
         rejectMutation={hookState.rejectMutation}
       />

@@ -9,6 +9,7 @@ interface ReEnrolmentDetailProps {
   backToList: () => void;
   setEditCoursesModalOpen: (open: boolean) => void;
   approveMutation: UseMutationResult<any, any, number, unknown>;
+  applyMutation: any;
   openRejectModal: (id: number) => void;
   rejectMutation: UseMutationResult<any, any, { id: number; reason: string }, unknown>;
   deleteMutation: UseMutationResult<any, any, number, unknown>;
@@ -19,6 +20,7 @@ export function ReEnrolmentDetail({
   backToList,
   setEditCoursesModalOpen,
   approveMutation,
+  applyMutation,
   openRejectModal,
   rejectMutation,
   deleteMutation,
@@ -129,16 +131,38 @@ export function ReEnrolmentDetail({
                       Editar Cursos
                     </Button>
                     <Button
-                      className="w-full"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
                       onClick={() => approveMutation.mutate(selectedRequest.id)}
                       disabled={approveMutation.isPending}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {approveMutation.isPending ? 'Aprobando...' : 'Aprobar y Aplicar'}
+                      {approveMutation.isPending ? 'Aprobando...' : 'Aprobar Solicitud'}
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full"
+                      className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                      onClick={() => openRejectModal(selectedRequest.id)}
+                      disabled={rejectMutation.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Rechazar Solicitud
+                    </Button>
+                  </div>
+                )}
+
+                {selectedRequest.status === 'approved' && (
+                  <div className="pt-4 border-t space-y-2">
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => applyMutation.mutate(selectedRequest.id)}
+                      disabled={applyMutation.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {applyMutation.isPending ? 'Aplicando...' : 'Aplicar e Inscribir'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full border-red-200 text-red-600 hover:bg-red-50"
                       onClick={() => openRejectModal(selectedRequest.id)}
                       disabled={rejectMutation.isPending}
                     >

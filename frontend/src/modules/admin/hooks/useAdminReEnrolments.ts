@@ -41,21 +41,22 @@ export function useAdminReEnrolments() {
   const { data: requests, isLoading } = useQuery({
     queryKey: ['admin-reenrolments', statusFilter, periodFilter, search],
     queryFn: async () => {
-      let data: ReEnrolmentRequest[];
+      // Obtenemos todas las solicitudes para asegurar que los filtros funcionen correctamente
+      let data = await reenrolmentsApi.getAll();
+
+      // Filtro por período
       if (periodFilter !== 'all') {
-        data = await reenrolmentsApi.getByPeriod(periodFilter);
-      } else if (statusFilter === 'submitted') {
-        data = await reenrolmentsApi.getPending();
+        data = data.filter((r) => r.periodId === periodFilter);
+      }
+
+      // Filtro por estado
+      if (statusFilter !== 'all') {
+        data = data.filter((r) => r.status?.toLowerCase() === statusFilter.toLowerCase());
       } else {
-        data = await reenrolmentsApi.getAll();
+        data = data.filter((r) => r.status?.toLowerCase() !== 'draft');
       }
 
-      if (statusFilter !== 'all' && statusFilter !== 'submitted') {
-        data = data.filter((r) => r.status === statusFilter);
-      } else if (statusFilter === 'all') {
-        data = data.filter((r) => r.status !== 'draft');
-      }
-
+      // Filtro de búsqueda
       if (search) {
         const searchLower = search.toLowerCase();
         data = data.filter(
@@ -70,12 +71,26 @@ export function useAdminReEnrolments() {
     },
   });
 
+  const applyMutation = useMutation({
+    mutationFn: (id: number) => reenrolmentsApi.applyToMoodle(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
+      queryClient.invalidateQueries({ queryKey: ['reenrolment-stats'] });
+      toast.success('Solicitud aplicada e inscrita en Moodle correctamente');
+      if (data) setSelectedRequest(data);
+    },
+    onError: (error: ApiError) => {
+      const msg = error.response?.data?.message || 'Error al aplicar la solicitud a Moodle';
+      toast.error(Array.isArray(msg) ? msg[0] : msg as string);
+    },
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: number) => reenrolmentsApi.approve(id),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-reenrolments'] });
       queryClient.invalidateQueries({ queryKey: ['reenrolment-stats'] });
-      toast.success('Solicitud aprobada y aplicada a Moodle');
+      toast.success('Solicitud aprobada (pendiente de pago/aplicación)');
       if (data) setSelectedRequest(data);
     },
     onError: (error: ApiError) => {
@@ -193,6 +208,7 @@ export function useAdminReEnrolments() {
     requests,
     isLoading,
     approveMutation,
+    applyMutation,
     rejectMutation,
     deleteMutation,
     availableCourses,

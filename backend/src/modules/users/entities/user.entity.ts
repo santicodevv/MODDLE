@@ -43,6 +43,9 @@ export class User {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
+  // Propiedad dinámica para enviar al frontend sin que class-transformer la elimine
+  lastLoginAt?: Date | number;
+
   @ManyToMany(() => Role, (role) => role.users, { eager: true })
   @JoinTable({
     name: 'user_roles',

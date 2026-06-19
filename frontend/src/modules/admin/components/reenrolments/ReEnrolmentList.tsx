@@ -10,6 +10,7 @@ interface ReEnrolmentListProps {
   statusFilter: string;
   viewDetail: (request: ReEnrolmentRequest) => void;
   approveMutation: UseMutationResult<any, any, number, unknown>;
+  applyMutation: UseMutationResult<any, any, number, unknown>;
   openRejectModal: (id: number) => void;
   rejectMutation: UseMutationResult<any, any, { id: number; reason: string }, unknown>;
 }
@@ -20,6 +21,7 @@ export function ReEnrolmentList({
   statusFilter,
   viewDetail,
   approveMutation,
+  applyMutation,
   openRejectModal,
   rejectMutation,
 }: ReEnrolmentListProps) {
@@ -113,16 +115,39 @@ export function ReEnrolmentList({
                 {request.status === 'submitted' && (
                   <>
                     <Button
-                      onClick={() => approveMutation.mutate(request.id)}
+                      onClick={(e) => { e.stopPropagation(); approveMutation.mutate(request.id); }}
                       disabled={approveMutation.isPending}
+                      className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {approveMutation.isPending ? 'Aplicando...' : 'Aprobar'}
+                      {approveMutation.isPending ? 'Aprobando...' : 'Aprobar'}
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => openRejectModal(request.id)}
+                      onClick={(e) => { e.stopPropagation(); openRejectModal(request.id); }}
                       disabled={rejectMutation.isPending}
+                      className="border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Rechazar
+                    </Button>
+                  </>
+                )}
+                {request.status === 'approved' && (
+                  <>
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); applyMutation.mutate(request.id); }}
+                      disabled={applyMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {applyMutation.isPending ? 'Aplicando...' : 'Aplicar'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={(e) => { e.stopPropagation(); openRejectModal(request.id); }}
+                      disabled={rejectMutation.isPending}
+                      className="border-red-200 text-red-600 hover:bg-red-50"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Rechazar

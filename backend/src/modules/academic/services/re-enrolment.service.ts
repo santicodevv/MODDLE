@@ -464,8 +464,8 @@ export class ReEnrolmentService {
       source: 'app',
     });
 
-    // Aplicar automáticamente a Moodle
-    return this.applyToMoodle(id, adminUserId);
+    // Eliminamos el guardado automático a Moodle para que el admin lo haga luego de forma manual
+    return this.findOne(id);
   }
 
   async reject(
@@ -475,8 +475,11 @@ export class ReEnrolmentService {
   ): Promise<ReEnrolmentRequest> {
     const request = await this.findOne(id);
 
-    if (request.status !== ReEnrolmentStatus.SUBMITTED) {
-      throw new BadRequestException('Only submitted requests can be rejected');
+    if (
+      request.status !== ReEnrolmentStatus.SUBMITTED &&
+      request.status !== ReEnrolmentStatus.APPROVED
+    ) {
+      throw new BadRequestException('Only submitted or approved requests can be rejected');
     }
 
     const beforeData = { ...request };

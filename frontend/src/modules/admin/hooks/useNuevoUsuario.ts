@@ -45,8 +45,9 @@ export function useNuevoUsuario() {
       toast.success('Administrador creado exitosamente');
       navigate('/admin/settings/usuarios');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || error.message || 'Error al crear el administrador');
+    onError: (error: unknown) => {
+      const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(apiError.response?.data?.message || apiError.message || 'Error al crear el administrador');
     },
   });
 
