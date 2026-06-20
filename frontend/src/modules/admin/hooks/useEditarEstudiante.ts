@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/lib';
 import toast from 'react-hot-toast';
-import type { User } from '@/modules/STUDENT/types/user.types';
+import type { User } from '@/modules/admin/types/user.types';
 
 export interface EditStudentForm {
   displayName: string;
@@ -48,7 +48,7 @@ export function useEditarEstudiante() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['STUDENT-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['student-detail', id] });
       toast.success('Estudiante actualizado exitosamente');
     },
@@ -67,9 +67,9 @@ export function useEditarEstudiante() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['STUDENT-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('Rol de Estudiante removido.');
-      navigate('/STUDENT/settings/usuarios');
+      navigate('/admin/settings/estudiantes');
     },
     onError: (error: unknown) => {
       const apiError = error as { response?: { data?: { message?: string } } };
@@ -92,7 +92,7 @@ export function useEditarEstudiante() {
     updateMutation.mutate(changes);
   };
 
-  const isSTUDENT = studentUser?.roles.some((r) => r.code === 'STUDENT') || false;
+  const isStudent = studentUser?.roles.some((r) => r.code === 'STUDENT') || false;
 
   return {
     navigate,
@@ -104,7 +104,7 @@ export function useEditarEstudiante() {
     setShowPassword,
     confirmRemoveRole,
     setConfirmRemoveRole,
-    isSTUDENT,
+    isStudent,
     updateMutation,
     removeRoleMutation,
     handleSave,
