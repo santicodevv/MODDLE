@@ -1,5 +1,5 @@
 import { Card, CardContent, Spinner } from '@/shared/components/ui';
-import { Users, BookOpen, TrendingUp, RefreshCw } from 'lucide-react';
+import { Users, RefreshCw } from 'lucide-react';
 import type { DashboardStats } from '../../hooks/useAdminDashboard';
 
 interface DashboardStatsGridProps {
