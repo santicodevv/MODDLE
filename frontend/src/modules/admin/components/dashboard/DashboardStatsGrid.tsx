@@ -17,20 +17,7 @@ export function DashboardStatsGrid({ stats, statsLoading, pendingReenrolmentsCou
       color: 'text-blue-600',
       bg: 'bg-blue-100',
     },
-    {
-      label: 'Cursos',
-      value: stats?.totalCourses ?? '-',
-      icon: BookOpen,
-      color: 'text-green-600',
-      bg: 'bg-green-100',
-    },
-    {
-      label: 'Inscripciones',
-      value: stats?.totalEnrolments ?? '-',
-      icon: TrendingUp,
-      color: 'text-purple-600',
-      bg: 'bg-purple-100',
-    },
+
     {
       label: 'Reinscripciones Pendientes',
       value: pendingReenrolmentsCount,
