@@ -15,6 +15,7 @@ import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
 import { MoodleCourse } from '../moodle-integration/entities/moodle-course.entity';
 import { GradeEditSession } from './entities/grade-edit-session.entity';
 import { GradeEdit } from './entities/grade-edit.entity';
+import { CourseTeacher } from '../academic/entities/course-teacher.entity';
 
 @Injectable()
 export class GradesService {
@@ -36,6 +37,8 @@ export class GradesService {
     private readonly gradeEditSessionRepository: Repository<GradeEditSession>,
     @InjectRepository(GradeEdit)
     private readonly gradeEditRepository: Repository<GradeEdit>,
+    @InjectRepository(CourseTeacher)
+    private readonly courseTeacherRepository: Repository<CourseTeacher>,
   ) {}
 
   /**
@@ -116,6 +119,7 @@ export class GradesService {
           editedGrade: edit ? Number(edit.newGrade) : null,
           feedback: edit?.feedback || moodleGrade?.feedback || null,
           wasEdited: !!edit,
+          editId: edit ? edit.id : undefined,
         };
       });
 
@@ -155,9 +159,29 @@ export class GradesService {
   }
 
   /**
-   * Get all courses (for dropdown)
+   * Get all courses (for dropdown). If not admin, returns only assigned courses.
    */
-  async getCourses() {
+  async getCourses(teacherUserId?: number, isAdmin: boolean = false) {
+    if (!isAdmin && teacherUserId) {
+      // Find courses where the user is a teacher
+      const assignments = await this.courseTeacherRepository.find({
+        where: { teacherId: teacherUserId },
+        select: ['courseMoodleId'],
+      });
+      const assignedCourseIds = assignments.map((a) => Number(a.courseMoodleId));
+
+      if (assignedCourseIds.length === 0) {
+        return [];
+      }
+
+      return this.moodleCourseRepository
+        .createQueryBuilder('c')
+        .where('c.moodleId IN (:...ids)', { ids: assignedCourseIds })
+        .orderBy('c.fullname', 'ASC')
+        .getMany();
+    }
+
+    // Admins see all courses
     return this.moodleCourseRepository.find({
       order: { fullname: 'ASC' },
     });
@@ -230,6 +254,7 @@ export class GradesService {
       newGrade: number;
       feedback?: string;
     },
+    isAdmin: boolean = false,
   ) {
     // Check if edit session is active
     const activeSession = await this.getActiveSession();
@@ -237,6 +262,17 @@ export class GradesService {
       throw new ForbiddenException(
         'La edición de notas no está habilitada. Contacte al administrador.',
       );
+    }
+
+    // Verify course access (unless Admin)
+    if (!isAdmin) {
+      const isTeacher = await this.courseTeacherRepository.findOne({
+        where: { teacherId: teacherUserId, courseMoodleId: data.courseMoodleId },
+      });
+
+      if (!isTeacher) {
+        throw new ForbiddenException('No estás asignado como profesor de este curso.');
+      }
     }
 
     // Check if this grade was already edited in this session
@@ -282,6 +318,33 @@ export class GradesService {
       gradeEdit: saved,
       message: 'Nota guardada exitosamente',
     };
+  }
+
+  /**
+   * Revert/Delete a grade edit (teacher)
+   */
+  async deleteGradeEdit(editId: number, teacherUserId: number, isAdmin: boolean = false) {
+    const activeSession = await this.getActiveSession();
+    if (!activeSession) {
+      throw new ForbiddenException('La edición de notas no está habilitada.');
+    }
+
+    const edit = await this.gradeEditRepository.findOne({
+      where: { id: editId, sessionId: activeSession.id },
+    });
+
+    if (!edit) {
+      throw new BadRequestException('La edición no existe o no pertenece a la sesión activa.');
+    }
+
+    // Verify ownership or admin
+    if (!isAdmin && edit.teacherUserId !== teacherUserId) {
+      throw new ForbiddenException('Solo puedes revertir calificaciones que tú hayas editado.');
+    }
+
+    await this.gradeEditRepository.remove(edit);
+
+    return { success: true, message: 'Edición revertida correctamente' };
   }
 
   /**

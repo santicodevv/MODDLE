@@ -24,6 +24,7 @@ export interface StudentGrade {
   feedback: string | null;
   wasEdited: boolean;
   editable: boolean;
+  editId?: number; // Added editId so we know what to delete
 }
 
 export interface Participant {
@@ -89,6 +90,20 @@ export function useGradeEntry() {
     },
   });
 
+  const deleteGrade = useMutation({
+    mutationFn: async (editId: number) => {
+      const response = await api.delete(`/grades/edit/${editId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-course-grades', courseId] });
+      toast.success('Edición revertida exitosamente');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al revertir la nota');
+    },
+  });
+
   const handleGradeChange = (studentMoodleId: number, itemMoodleId: number, value: string, gradeMax: number) => {
     const key = `${studentMoodleId}-${itemMoodleId}`;
     const numValue = parseFloat(value);
@@ -134,6 +149,7 @@ export function useGradeEntry() {
     error,
     localEdits,
     saveGrade,
+    deleteGrade,
     handleGradeChange,
     handleSaveGrade,
   };

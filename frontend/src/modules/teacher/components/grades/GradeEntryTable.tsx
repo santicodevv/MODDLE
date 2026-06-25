@@ -1,8 +1,8 @@
 
-import { User, Save, Lock, ClipboardList } from 'lucide-react';
+import { User, Save, Lock, ClipboardList, Trash2 } from 'lucide-react';
 import { Card, CardContent, Input, Badge, Button } from '@/shared/components/ui';
 
-export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSaveGrade, saveGrade, isEditingEnabled }: any) {
+export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSaveGrade, saveGrade, deleteGrade, isEditingEnabled }: any) {
   const getGradeColor = (grade: number | null, max: number) => {
     if (grade === null) return 'text-gray-400';
     const percentage = (grade / max) * 100;
@@ -79,10 +79,24 @@ export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSav
                             </div>
                           ) : (
                             <div className="flex flex-col items-center">
-                              <span className={`font-medium ${getGradeColor(displayGrade, grade.gradeMax)}`}>
-                                {displayGrade !== null ? displayGrade : '-'}
-                              </span>
-                              {grade.wasEdited && <Badge variant="secondary" className="text-xs mt-1"><Lock className="h-3 w-3 mr-1" /> Editada</Badge>}
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${getGradeColor(displayGrade, grade.gradeMax)}`}>
+                                  {displayGrade !== null ? displayGrade : '-'}
+                                </span>
+                                {grade.wasEdited && deleteGrade && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
+                                    onClick={() => deleteGrade.mutate(grade.editId)}
+                                    disabled={deleteGrade.isPending}
+                                    title="Revertir edición"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                              {grade.wasEdited && <Badge variant="secondary" className="text-xs mt-1 bg-yellow-100 text-yellow-800 border-yellow-200"><Lock className="h-3 w-3 mr-1" /> Editada</Badge>}
                             </div>
                           )}
                         </td>

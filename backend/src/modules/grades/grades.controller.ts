@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   ParseIntPipe,
@@ -22,8 +23,11 @@ export class GradesController {
    */
   @Get('courses')
   @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
-  async getCourses() {
-    return this.gradesService.getCourses();
+  async getCourses(@Request() req: any) {
+    const isAdmin = req.user.roles?.some(
+      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+    ) ?? false;
+    return this.gradesService.getCourses(req.user.id, isAdmin);
   }
 
   /**
@@ -63,7 +67,26 @@ export class GradesController {
       feedback?: string;
     },
   ) {
-    return this.gradesService.saveGradeEdit(req.user.id, body);
+    const isAdmin = req.user.roles?.some(
+      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+    ) ?? false;
+    return this.gradesService.saveGradeEdit(req.user.id, body, isAdmin);
+  }
+
+  /**
+   * DELETE /grades/edit/:id
+   * Revert a grade edit (teacher)
+   */
+  @Delete('edit/:id')
+  @Roles(RoleCode.TEACHER, RoleCode.ADMIN)
+  async deleteGradeEdit(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user.roles?.some(
+      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+    ) ?? false;
+    return this.gradesService.deleteGradeEdit(id, req.user.id, isAdmin);
   }
 
   /**

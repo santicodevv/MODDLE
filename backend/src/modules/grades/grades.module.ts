@@ -6,10 +6,12 @@ import { GradeEdit } from './entities/grade-edit.entity';
 import { GradesController } from './grades.controller';
 import { GradesService } from './grades.service';
 
+import { CourseTeacher } from '../academic/entities/course-teacher.entity';
+
 @Module({
   imports: [
     MoodleIntegrationModule,
-    TypeOrmModule.forFeature([GradeEditSession, GradeEdit]),
+    TypeOrmModule.forFeature([GradeEditSession, GradeEdit, CourseTeacher]),
   ],
   controllers: [GradesController],
   providers: [GradesService],
