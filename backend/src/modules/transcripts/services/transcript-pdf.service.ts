@@ -18,44 +18,37 @@ export class TranscriptPdfService {
    * Generar PDF oficial del transcript
    */
   async generateTranscriptPdf(transcript: Transcript): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({
-        size: 'LETTER',
-        margin: 50,
-        info: {
-          Title: `Récord Académico - ${transcript.transcriptNumber}`,
-          Author: 'Sistema de Gestión Académica',
-          Subject: 'Récord Académico Oficial',
-          Keywords: 'transcript, record, academic',
-        },
-      });
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margin: 50,
+      info: {
+        Title: `Récord Académico - ${transcript.transcriptNumber}`,
+        Author: 'Sistema de Gestión Académica',
+        Subject: 'Récord Académico Oficial',
+        Keywords: 'transcript, record, academic',
+      },
+    });
 
-      const chunks: Buffer[] = [];
+    const chunks: Buffer[] = [];
+    const pdfPromise = new Promise<Buffer>((resolve, reject) => {
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
-
-      try {
-        // Header institucional
-        this.renderHeader(doc, transcript);
-
-        // Información del estudiante
-        this.renderStudentInfo(doc, transcript);
-
-        // Tabla de calificaciones
-        this.renderGradesTable(doc, transcript);
-
-        // Resumen
-        this.renderSummary(doc, transcript);
-
-        // Footer con QR y verificación
-        await this.renderFooter(doc, transcript);
-
-        doc.end();
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
     });
+
+    try {
+      this.renderHeader(doc, transcript);
+      this.renderStudentInfo(doc, transcript);
+      this.renderGradesTable(doc, transcript);
+      this.renderSummary(doc, transcript);
+      await this.renderFooter(doc, transcript);
+      doc.end();
+    } catch (error) {
+      doc.end();
+      throw error;
+    }
+
+    return pdfPromise;
   }
 
   /**
