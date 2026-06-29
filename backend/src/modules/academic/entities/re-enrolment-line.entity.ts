@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  Unique,
 } from 'typeorm';
 import { ReEnrolmentRequest } from './re-enrolment-request.entity';
 
@@ -23,6 +24,7 @@ export enum EnrolmentLineStatus {
 }
 
 @Entity('re_enrolment_lines')
+@Unique(['requestId', 'courseMoodleId'])
 export class ReEnrolmentLine {
   @PrimaryGeneratedColumn('increment')
   id: number;

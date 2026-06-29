@@ -22,9 +22,11 @@ export class MoodleEnrolment {
   userMoodleId: number;
 
   @Column({ type: 'varchar', length: 50, name: 'role_code' })
+  @Index()
   roleCode: string; // student|teacher|editingteacher|etc
 
   @Column({ type: 'varchar', length: 50, name: 'enrol_status' })
+  @Index()
   enrolStatus: string; // active|suspended
 
   @Column({ type: 'timestamptz', nullable: true })

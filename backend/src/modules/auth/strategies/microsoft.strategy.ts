@@ -20,14 +20,15 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     if (!clientID || !clientSecret || !callbackURL) {
       MicrosoftStrategy.logger.warn(
         'Microsoft SSO no configurado: faltan MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET o MICROSOFT_CALLBACK_URL en el .env. ' +
-        'El login con Microsoft estará deshabilitado.',
+          'El login con Microsoft estará deshabilitado.',
       );
     }
 
     super({
       clientID: clientID || 'PLACEHOLDER',
       clientSecret: clientSecret || 'PLACEHOLDER',
-      callbackURL: callbackURL || 'http://localhost:3000/auth/microsoft/callback',
+      callbackURL:
+        callbackURL || 'http://localhost:3000/auth/microsoft/callback',
       tenant,
       scope: ['user.read'],
     });
@@ -41,19 +42,26 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     const { id, emails, displayName } = profile;
 
     if (!emails || emails.length === 0) {
-      throw new UnauthorizedException('La cuenta de Microsoft no tiene un correo asociado');
+      throw new UnauthorizedException(
+        'La cuenta de Microsoft no tiene un correo asociado',
+      );
     }
 
     const email = emails[0].value;
 
     // Obtener el dominio permitido desde las variables de entorno (opcional pero recomendado)
-    const allowedDomain = this.configService.get<string>('ALLOWED_EMAIL_DOMAIN');
-    
+    const allowedDomain = this.configService.get<string>(
+      'ALLOWED_EMAIL_DOMAIN',
+    );
+
     if (allowedDomain) {
       const emailDomain = email.split('@')[1];
-      if (!emailDomain || emailDomain.toLowerCase() !== allowedDomain.toLowerCase()) {
+      if (
+        !emailDomain ||
+        emailDomain.toLowerCase() !== allowedDomain.toLowerCase()
+      ) {
         throw new UnauthorizedException(
-          `Solo se permiten correos institucionales terminados en @${allowedDomain}`
+          `Solo se permiten correos institucionales terminados en @${allowedDomain}`,
         );
       }
     }
@@ -66,7 +74,9 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Error de autenticación con la cuenta institucional');
+      throw new UnauthorizedException(
+        'Error de autenticación con la cuenta institucional',
+      );
     }
 
     return user;

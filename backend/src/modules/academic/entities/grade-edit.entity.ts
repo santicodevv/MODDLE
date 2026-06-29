@@ -10,10 +10,9 @@ import {
 import { GradeEditSession } from './grade-edit-session.entity';
 
 @Entity('grade_edits')
-@Index(
-  ['sessionId', 'courseMoodleId', 'itemMoodleId', 'studentMoodleId'],
-  { unique: true },
-)
+@Index(['sessionId', 'courseMoodleId', 'itemMoodleId', 'studentMoodleId'], {
+  unique: true,
+})
 export class GradeEdit {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -34,7 +33,13 @@ export class GradeEdit {
   @Column({ type: 'bigint', name: 'student_moodle_id' })
   studentMoodleId: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 3, nullable: true, name: 'previous_grade' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+    name: 'previous_grade',
+  })
   previousGrade: number | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 3, name: 'new_grade' })

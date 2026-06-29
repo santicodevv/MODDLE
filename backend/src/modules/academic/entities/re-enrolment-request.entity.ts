@@ -30,7 +30,7 @@ export class ReEnrolmentRequest {
   @Index()
   appUserId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'app_user_id' })
   student: User;
 
@@ -59,7 +59,7 @@ export class ReEnrolmentRequest {
   @Column({ type: 'bigint', nullable: true, name: 'decided_by' })
   decidedBy: number;
 
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'decided_by' })
   decider: User;
 

@@ -24,7 +24,8 @@ export class SeedRolesCommand extends CommandRunner {
     const roles = [
       {
         code: RoleCode.STUDENT,
-        description: 'Estudiante - puede ver sus calificaciones y solicitar reinscripción',
+        description:
+          'Estudiante - puede ver sus calificaciones y solicitar reinscripción',
       },
       {
         code: RoleCode.TEACHER,

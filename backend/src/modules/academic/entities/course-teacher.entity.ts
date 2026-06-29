@@ -33,7 +33,7 @@ export class CourseTeacher {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'teacher_id' })
   teacher: User;
 }

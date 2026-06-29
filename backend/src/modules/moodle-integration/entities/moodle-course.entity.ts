@@ -31,7 +31,12 @@ export class MoodleCourse {
   @Column({ type: 'text', nullable: true })
   summary: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'subject_name' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'subject_name',
+  })
   subjectName: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })

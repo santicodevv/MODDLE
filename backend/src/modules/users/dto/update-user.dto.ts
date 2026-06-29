@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, MinLength, IsBoolean, IsArray, IsNumber } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  MinLength,
+  IsBoolean,
+  IsArray,
+  IsNumber,
+} from 'class-validator';
 
 export class UpdateUserDto {
   @IsEmail()
@@ -23,4 +31,3 @@ export class UpdateUserDto {
   @IsOptional()
   roleIds?: number[];
 }
-

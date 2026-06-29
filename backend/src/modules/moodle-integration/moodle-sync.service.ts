@@ -45,7 +45,11 @@ export class MoodleSyncService {
 
       for (const mUser of moodleUsers) {
         // Skip if doing incremental sync and user hasn't been modified
-        if (sinceTimestamp && mUser.timemodified && mUser.timemodified < sinceTimestamp) {
+        if (
+          sinceTimestamp &&
+          mUser.timemodified &&
+          mUser.timemodified < sinceTimestamp
+        ) {
           continue;
         }
 
@@ -62,8 +66,12 @@ export class MoodleSyncService {
           lastname: mUser.lastname,
           userType,
           suspended: mUser.suspended || false,
-          timemodified: mUser.timemodified ? new Date(mUser.timemodified * 1000) : undefined,
-          lastAccess: mUser.lastaccess ? new Date(mUser.lastaccess * 1000) : null,
+          timemodified: mUser.timemodified
+            ? new Date(mUser.timemodified * 1000)
+            : undefined,
+          lastAccess: mUser.lastaccess
+            ? new Date(mUser.lastaccess * 1000)
+            : null,
           lastSyncedAt: new Date(),
         };
 
@@ -91,7 +99,9 @@ export class MoodleSyncService {
    */
   private async syncAppUser(moodleUser: any, userType: string): Promise<void> {
     if (!moodleUser.email) {
-      this.logger.warn(`Skipping app_user creation for Moodle user ${moodleUser.id}: no email`);
+      this.logger.warn(
+        `Skipping app_user creation for Moodle user ${moodleUser.id}: no email`,
+      );
       return;
     }
 
@@ -103,24 +113,31 @@ export class MoodleSyncService {
 
       // Determine role based on userType
       const roleCode = this.mapUserTypeToRole(userType);
-      const role = await this.roleRepository.findOne({ where: { code: roleCode } });
+      const role = await this.roleRepository.findOne({
+        where: { code: roleCode },
+      });
 
       if (!role) {
-        this.logger.warn(`Role ${roleCode} not found, skipping app_user sync for ${moodleUser.email}`);
+        this.logger.warn(
+          `Role ${roleCode} not found, skipping app_user sync for ${moodleUser.email}`,
+        );
         return;
       }
 
-      const displayName = `${moodleUser.firstname || ''} ${moodleUser.lastname || ''}`.trim() || moodleUser.username;
+      const displayName =
+        `${moodleUser.firstname || ''} ${moodleUser.lastname || ''}`.trim() ||
+        moodleUser.username;
 
       if (existingAppUser) {
         // Update existing app_user
         existingAppUser.email = moodleUser.email;
-        existingAppUser.username = moodleUser.username || existingAppUser.username;
+        existingAppUser.username =
+          moodleUser.username || existingAppUser.username;
         existingAppUser.displayName = displayName;
         existingAppUser.isActive = !moodleUser.suspended;
 
         // Add role if not already assigned
-        if (!existingAppUser.roles.some(r => r.code === roleCode)) {
+        if (!existingAppUser.roles.some((r) => r.code === roleCode)) {
           existingAppUser.roles.push(role);
         }
 
@@ -135,15 +152,19 @@ export class MoodleSyncService {
         if (existingByEmail) {
           // Link existing user to Moodle
           existingByEmail.moodleUserId = moodleUser.id;
-          existingByEmail.username = moodleUser.username || existingByEmail.username;
+          existingByEmail.username =
+            moodleUser.username || existingByEmail.username;
           existingByEmail.displayName = displayName;
-          if (!existingByEmail.roles.some(r => r.code === roleCode)) {
+          if (!existingByEmail.roles.some((r) => r.code === roleCode)) {
             existingByEmail.roles.push(role);
           }
           await this.appUserRepository.save(existingByEmail);
         } else {
           // Create new app_user with default password (user should reset)
-          const defaultPassword = await bcrypt.hash(`Moodle${moodleUser.id}!`, 10);
+          const defaultPassword = await bcrypt.hash(
+            `Moodle${moodleUser.id}!`,
+            10,
+          );
 
           const newAppUser = this.appUserRepository.create({
             email: moodleUser.email,
@@ -156,11 +177,15 @@ export class MoodleSyncService {
           });
 
           await this.appUserRepository.save(newAppUser);
-          this.logger.log(`Created app_user for ${moodleUser.email} with role ${roleCode}`);
+          this.logger.log(
+            `Created app_user for ${moodleUser.email} with role ${roleCode}`,
+          );
         }
       }
     } catch (error) {
-      this.logger.error(`Error syncing app_user for Moodle user ${moodleUser.id}: ${error.message}`);
+      this.logger.error(
+        `Error syncing app_user for Moodle user ${moodleUser.id}: ${error.message}`,
+      );
       // Don't throw - continue with other users
     }
   }
@@ -185,7 +210,11 @@ export class MoodleSyncService {
 
       for (const mCourse of moodleCourses) {
         // Skip if doing incremental sync and course hasn't been modified
-        if (sinceTimestamp && mCourse.timemodified && mCourse.timemodified < sinceTimestamp) {
+        if (
+          sinceTimestamp &&
+          mCourse.timemodified &&
+          mCourse.timemodified < sinceTimestamp
+        ) {
           continue;
         }
 
@@ -199,14 +228,23 @@ export class MoodleSyncService {
           fullname: mCourse.fullname,
           categoryId: mCourse.category,
           visible: mCourse.visible === 1,
-          startdate: mCourse.startdate ? new Date(mCourse.startdate * 1000) : undefined,
-          enddate: mCourse.enddate ? new Date(mCourse.enddate * 1000) : undefined,
-          timemodified: mCourse.timemodified ? new Date(mCourse.timemodified * 1000) : undefined,
+          startdate: mCourse.startdate
+            ? new Date(mCourse.startdate * 1000)
+            : undefined,
+          enddate: mCourse.enddate
+            ? new Date(mCourse.enddate * 1000)
+            : undefined,
+          timemodified: mCourse.timemodified
+            ? new Date(mCourse.timemodified * 1000)
+            : undefined,
           lastSyncedAt: new Date(),
         };
 
         if (existingCourse) {
-          await this.moodleCourseRepository.update(existingCourse.id, courseData);
+          await this.moodleCourseRepository.update(
+            existingCourse.id,
+            courseData,
+          );
         } else {
           await this.moodleCourseRepository.save(courseData);
         }
@@ -224,17 +262,19 @@ export class MoodleSyncService {
     this.logger.log(`Starting enrolment sync for course ${courseMoodleId}...`);
 
     try {
-      const enrolledUsers = await this.moodleClient.getEnrolledUsers(courseMoodleId);
+      const enrolledUsers =
+        await this.moodleClient.getEnrolledUsers(courseMoodleId);
 
       for (const enrollment of enrolledUsers) {
         for (const role of enrollment.roles || []) {
-          const existingEnrolment = await this.moodleEnrolmentRepository.findOne({
-            where: {
-              courseMoodleId,
-              userMoodleId: enrollment.id,
-              roleCode: role.shortname,
-            },
-          });
+          const existingEnrolment =
+            await this.moodleEnrolmentRepository.findOne({
+              where: {
+                courseMoodleId,
+                userMoodleId: enrollment.id,
+                roleCode: role.shortname,
+              },
+            });
 
           const enrolmentData = {
             courseMoodleId,
@@ -257,7 +297,10 @@ export class MoodleSyncService {
           }
 
           // Auto-assign TEACHER role and create course_teacher record if enrolled as teacher/editingteacher
-          if (role.shortname === 'teacher' || role.shortname === 'editingteacher') {
+          if (
+            role.shortname === 'teacher' ||
+            role.shortname === 'editingteacher'
+          ) {
             await this.ensureTeacherRole(enrollment.id);
             await this.ensureCourseTeacher(courseMoodleId, enrollment.id);
           }
@@ -266,7 +309,9 @@ export class MoodleSyncService {
 
       this.logger.log(`Synced enrolments for course ${courseMoodleId}`);
     } catch (error) {
-      this.logger.error(`Error syncing enrolments for course ${courseMoodleId}: ${error.message}`);
+      this.logger.error(
+        `Error syncing enrolments for course ${courseMoodleId}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -299,9 +344,13 @@ export class MoodleSyncService {
       appUser.roles = appUser.roles.filter((r) => r.code !== RoleCode.STUDENT);
       appUser.roles.push(teacherRole);
       await this.appUserRepository.save(appUser);
-      this.logger.log(`Auto-assigned TEACHER role (removed STUDENT) to user ${appUser.email} (moodleId: ${moodleUserId})`);
+      this.logger.log(
+        `Auto-assigned TEACHER role (removed STUDENT) to user ${appUser.email} (moodleId: ${moodleUserId})`,
+      );
     } catch (error) {
-      this.logger.warn(`Failed to auto-assign TEACHER role for moodleId ${moodleUserId}: ${error.message}`);
+      this.logger.warn(
+        `Failed to auto-assign TEACHER role for moodleId ${moodleUserId}: ${error.message}`,
+      );
     }
   }
 
@@ -377,10 +426,14 @@ export class MoodleSyncService {
     const teacherEnrolments = await this.moodleEnrolmentRepository
       .createQueryBuilder('e')
       .select('DISTINCT e.userMoodleId', 'userMoodleId')
-      .where('e.roleCode IN (:...roles)', { roles: ['teacher', 'editingteacher'] })
+      .where('e.roleCode IN (:...roles)', {
+        roles: ['teacher', 'editingteacher'],
+      })
       .getRawMany();
 
-    const teacherMoodleIds = teacherEnrolments.map((e) => Number(e.userMoodleId));
+    const teacherMoodleIds = teacherEnrolments.map((e) =>
+      Number(e.userMoodleId),
+    );
 
     if (teacherMoodleIds.length === 0) {
       this.logger.log('No teacher enrolments found.');
@@ -412,10 +465,14 @@ export class MoodleSyncService {
       appUser.roles.push(teacherRole);
       await this.appUserRepository.save(appUser);
       assignedCount++;
-      this.logger.log(`Fixed: assigned TEACHER role (removed STUDENT) to ${appUser.email}`);
+      this.logger.log(
+        `Fixed: assigned TEACHER role (removed STUDENT) to ${appUser.email}`,
+      );
     }
 
-    this.logger.log(`Teacher role fix complete. Assigned ${assignedCount} new TEACHER roles.`);
+    this.logger.log(
+      `Teacher role fix complete. Assigned ${assignedCount} new TEACHER roles.`,
+    );
     return assignedCount;
   }
 
@@ -504,17 +561,23 @@ export class MoodleSyncService {
         });
         totalEnrolments += count;
       } catch (error) {
-        this.logger.warn(`Failed to sync enrolments for course ${course.moodleId}: ${error.message}`);
+        this.logger.warn(
+          `Failed to sync enrolments for course ${course.moodleId}: ${error.message}`,
+        );
         // Continue with other courses
       }
     }
 
-    this.logger.log(`Synced enrolments for ${courses.length} courses (${totalEnrolments} total enrolments)`);
+    this.logger.log(
+      `Synced enrolments for ${courses.length} courses (${totalEnrolments} total enrolments)`,
+    );
     return totalEnrolments;
   }
 
   async syncGradeItems(courseMoodleId: number): Promise<void> {
-    this.logger.log(`Starting grade items sync for course ${courseMoodleId}...`);
+    this.logger.log(
+      `Starting grade items sync for course ${courseMoodleId}...`,
+    );
 
     try {
       const gradeData = await this.moodleClient.getGrades(courseMoodleId);
@@ -547,15 +610,22 @@ export class MoodleSyncService {
         };
 
         if (existingItem) {
-          await this.moodleGradeItemRepository.update(existingItem.id, itemData);
+          await this.moodleGradeItemRepository.update(
+            existingItem.id,
+            itemData,
+          );
         } else {
           await this.moodleGradeItemRepository.save(itemData);
         }
       }
 
-      this.logger.log(`Synced ${gradeItems.length} grade items for course ${courseMoodleId}`);
+      this.logger.log(
+        `Synced ${gradeItems.length} grade items for course ${courseMoodleId}`,
+      );
     } catch (error) {
-      this.logger.error(`Error syncing grade items for course ${courseMoodleId}: ${error.message}`);
+      this.logger.error(
+        `Error syncing grade items for course ${courseMoodleId}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -574,16 +644,23 @@ export class MoodleSyncService {
         });
         totalItems += count;
       } catch (error) {
-        this.logger.warn(`Failed to sync grade items for course ${course.moodleId}: ${error.message}`);
+        this.logger.warn(
+          `Failed to sync grade items for course ${course.moodleId}: ${error.message}`,
+        );
         // Continue with other courses
       }
     }
 
-    this.logger.log(`Synced grade items for ${courses.length} courses (${totalItems} total items)`);
+    this.logger.log(
+      `Synced grade items for ${courses.length} courses (${totalItems} total items)`,
+    );
     return totalItems;
   }
 
-  async syncGrades(courseMoodleId: number, sinceTimestamp?: number): Promise<void> {
+  async syncGrades(
+    courseMoodleId: number,
+    sinceTimestamp?: number,
+  ): Promise<void> {
     this.logger.log(`Starting grades sync for course ${courseMoodleId}...`);
 
     try {
@@ -607,7 +684,11 @@ export class MoodleSyncService {
           }
 
           // Skip if doing incremental sync and grade hasn't been modified
-          if (sinceTimestamp && item.gradedategraded && item.gradedategraded < sinceTimestamp) {
+          if (
+            sinceTimestamp &&
+            item.gradedategraded &&
+            item.gradedategraded < sinceTimestamp
+          ) {
             continue;
           }
 
@@ -634,7 +715,10 @@ export class MoodleSyncService {
           };
 
           if (existingGrade) {
-            await this.moodleGradeRepository.update(existingGrade.id, gradeDataToSave);
+            await this.moodleGradeRepository.update(
+              existingGrade.id,
+              gradeDataToSave,
+            );
           } else {
             await this.moodleGradeRepository.save(gradeDataToSave);
           }
@@ -642,9 +726,13 @@ export class MoodleSyncService {
         }
       }
 
-      this.logger.log(`Synced ${gradesCount} grades for course ${courseMoodleId}`);
+      this.logger.log(
+        `Synced ${gradesCount} grades for course ${courseMoodleId}`,
+      );
     } catch (error) {
-      this.logger.error(`Error syncing grades for course ${courseMoodleId}: ${error.message}`);
+      this.logger.error(
+        `Error syncing grades for course ${courseMoodleId}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -663,12 +751,16 @@ export class MoodleSyncService {
         });
         totalGrades += count;
       } catch (error) {
-        this.logger.warn(`Failed to sync grades for course ${course.moodleId}: ${error.message}`);
+        this.logger.warn(
+          `Failed to sync grades for course ${course.moodleId}: ${error.message}`,
+        );
         // Continue with other courses
       }
     }
 
-    this.logger.log(`Synced grades for ${courses.length} courses (${totalGrades} total grades)`);
+    this.logger.log(
+      `Synced grades for ${courses.length} courses (${totalGrades} total grades)`,
+    );
     return totalGrades;
   }
 

@@ -27,7 +27,10 @@ export class MoodleClientService {
       // pero sí codifica los valores, evitando el error "unescaped characters" con tildes/ñ/etc.
       paramsSerializer: {
         serialize: (params) =>
-          qs.stringify(params, { arrayFormat: 'indices', encodeValuesOnly: true }),
+          qs.stringify(params, {
+            arrayFormat: 'indices',
+            encodeValuesOnly: true,
+          }),
       },
     });
   }
@@ -54,9 +57,7 @@ export class MoodleClientService {
 
       if (response.data.exception) {
         const errorMessage = response.data.message || response.data.exception;
-        this.logger.error(
-          `Moodle API error in ${wsfunction}: ${errorMessage}`,
-        );
+        this.logger.error(`Moodle API error in ${wsfunction}: ${errorMessage}`);
         throw new Error(`Moodle error: ${errorMessage}`);
       }
 
@@ -86,11 +87,12 @@ export class MoodleClientService {
   }
 
   // Obtener usuarios
-  async getUsers(criteria: { key: string; value: string }[] = []): Promise<any[]> {
+  async getUsers(
+    criteria: { key: string; value: string }[] = [],
+  ): Promise<any[]> {
     // Si no hay criterios, obtener todos los usuarios con email no vacío
-    const searchCriteria = criteria.length > 0
-      ? criteria
-      : [{ key: 'email', value: '%' }];
+    const searchCriteria =
+      criteria.length > 0 ? criteria : [{ key: 'email', value: '%' }];
 
     const result = await this.callFunction('core_user_get_users', {
       criteria: searchCriteria,
@@ -179,7 +181,8 @@ export class MoodleClientService {
     if (data.firstname) userUpdate.firstname = data.firstname;
     if (data.lastname) userUpdate.lastname = data.lastname;
     if (data.password) userUpdate.password = data.password;
-    if (data.suspended !== undefined) userUpdate.suspended = data.suspended ? 1 : 0;
+    if (data.suspended !== undefined)
+      userUpdate.suspended = data.suspended ? 1 : 0;
 
     return this.callFunction('core_user_update_users', {
       users: [userUpdate],
@@ -244,7 +247,6 @@ export class MoodleClientService {
 
     return result[0].id as number;
   }
-
 
   async createCourse(courseData: {
     fullname: string;

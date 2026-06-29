@@ -40,10 +40,7 @@ import { IntegrationController } from './controllers/integration.controller';
       AuditLog,
       MoodleGradeItem,
     ]),
-    BullModule.registerQueue(
-      { name: 'outbox' },
-      { name: 'moodle-inbound' },
-    ),
+    BullModule.registerQueue({ name: 'outbox' }, { name: 'moodle-inbound' }),
   ],
   controllers: [AuditController, SyncController, IntegrationController],
   providers: [

@@ -19,7 +19,10 @@ import { RoleCode } from '../users/entities/role.entity';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TranscriptsService } from './services/transcripts.service';
-import { CreateTranscriptDto, RevokeTranscriptDto } from './dto/create-transcript.dto';
+import {
+  CreateTranscriptDto,
+  RevokeTranscriptDto,
+} from './dto/create-transcript.dto';
 import { TranscriptStatus } from './entities/transcript.entity';
 
 @Controller('transcripts')
@@ -105,7 +108,9 @@ export class TranscriptsController {
     // Validar que estudiantes solo pueden ver sus propios transcripts
     const isAdmin = user.roles?.some((r: any) => r.code === 'ADMIN');
     if (!isAdmin && user.id !== studentId) {
-      throw new ForbiddenException('Solo puede consultar sus propios transcripts');
+      throw new ForbiddenException(
+        'Solo puede consultar sus propios transcripts',
+      );
     }
 
     return this.transcriptsService.findByStudent(studentId);
@@ -127,7 +132,9 @@ export class TranscriptsController {
     // Validar permisos
     const isAdmin = user.roles?.some((r: any) => r.code === 'ADMIN');
     if (!isAdmin && transcript.studentId !== user.id) {
-      throw new ForbiddenException('No tiene permisos para ver este transcript');
+      throw new ForbiddenException(
+        'No tiene permisos para ver este transcript',
+      );
     }
 
     return transcript;
@@ -150,7 +157,9 @@ export class TranscriptsController {
     // Validar permisos
     const isAdmin = user.roles?.some((r: any) => r.code === 'ADMIN');
     if (!isAdmin && transcript.studentId !== user.id) {
-      throw new ForbiddenException('No tiene permisos para descargar este transcript');
+      throw new ForbiddenException(
+        'No tiene permisos para descargar este transcript',
+      );
     }
 
     const buffer = await this.transcriptsService.getFile(id);

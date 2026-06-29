@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LocalGrade } from '../../academic/entities/local-grade.entity';
-import { AcademicPeriod, AcademicPeriodStatus } from '../../academic/entities/academic-period.entity';
+import {
+  AcademicPeriod,
+  AcademicPeriodStatus,
+} from '../../academic/entities/academic-period.entity';
 import { PeriodAvailableCourse } from '../../academic/entities/period-available-course.entity';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
@@ -78,7 +81,9 @@ export class ReportsService {
       });
     }
 
-    query.orderBy('period.startDate', 'DESC').addOrderBy('course.fullname', 'ASC');
+    query
+      .orderBy('period.startDate', 'DESC')
+      .addOrderBy('course.fullname', 'ASC');
 
     const grades = await query.getMany();
 
@@ -105,7 +110,8 @@ export class ReportsService {
     const uniqueCourses = new Set(gradeItems.map((g) => g.courseId));
     const avgPercentage =
       gradeItems.length > 0
-        ? gradeItems.reduce((acc, g) => acc + g.percentage, 0) / gradeItems.length
+        ? gradeItems.reduce((acc, g) => acc + g.percentage, 0) /
+          gradeItems.length
         : 0;
 
     let period: AcademicPeriod | null = null;
@@ -170,7 +176,10 @@ export class ReportsService {
 
     // Agrupar por estudiante
     const studentMap = new Map<number, CourseStudentGradeItem>();
-    const gradeItemsSet = new Map<number, { id: number; name: string; gradeMax: number; gradeMin: number }>();
+    const gradeItemsSet = new Map<
+      number,
+      { id: number; name: string; gradeMax: number; gradeMin: number }
+    >();
 
     for (const g of grades) {
       // Agregar grade item al set
@@ -215,7 +224,9 @@ export class ReportsService {
       averagePercentage:
         s.grades.length > 0
           ? Math.round(
-              (s.grades.reduce((acc, g) => acc + g.percentage, 0) / s.grades.length) * 100,
+              (s.grades.reduce((acc, g) => acc + g.percentage, 0) /
+                s.grades.length) *
+                100,
             ) / 100
           : 0,
     }));
@@ -243,11 +254,14 @@ export class ReportsService {
         totalGrades: grades.length,
         averageGrade:
           allGrades.length > 0
-            ? Math.round((allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100) / 100
+            ? Math.round(
+                (allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100,
+              ) / 100
             : 0,
         passRate:
           allGrades.length > 0
-            ? Math.round((passingGrades.length / allGrades.length) * 10000) / 100
+            ? Math.round((passingGrades.length / allGrades.length) * 10000) /
+              100
             : 0,
         highestGrade: allGrades.length > 0 ? Math.max(...allGrades) : 0,
         lowestGrade: allGrades.length > 0 ? Math.min(...allGrades) : 0,
@@ -285,7 +299,10 @@ export class ReportsService {
     const grades = await query.getMany();
 
     // Agrupar por curso
-    const courseMap = new Map<number, PeriodCourseStats & { grades: number[]; students: Set<number> }>();
+    const courseMap = new Map<
+      number,
+      PeriodCourseStats & { grades: number[]; students: Set<number> }
+    >();
 
     for (const g of grades) {
       if (!courseMap.has(g.courseId)) {
@@ -307,23 +324,28 @@ export class ReportsService {
     }
 
     // Calcular estadísticas por curso
-    const courses: PeriodCourseStats[] = Array.from(courseMap.values()).map((c) => {
-      const passingGrades = c.grades.filter((g) => g >= 60);
-      return {
-        courseId: c.courseId,
-        courseName: c.courseName,
-        totalStudents: c.students.size,
-        totalGrades: c.grades.length,
-        averageGrade:
-          c.grades.length > 0
-            ? Math.round((c.grades.reduce((a, b) => a + b, 0) / c.grades.length) * 100) / 100
-            : 0,
-        passRate:
-          c.grades.length > 0
-            ? Math.round((passingGrades.length / c.grades.length) * 10000) / 100
-            : 0,
-      };
-    });
+    const courses: PeriodCourseStats[] = Array.from(courseMap.values()).map(
+      (c) => {
+        const passingGrades = c.grades.filter((g) => g >= 60);
+        return {
+          courseId: c.courseId,
+          courseName: c.courseName,
+          totalStudents: c.students.size,
+          totalGrades: c.grades.length,
+          averageGrade:
+            c.grades.length > 0
+              ? Math.round(
+                  (c.grades.reduce((a, b) => a + b, 0) / c.grades.length) * 100,
+                ) / 100
+              : 0,
+          passRate:
+            c.grades.length > 0
+              ? Math.round((passingGrades.length / c.grades.length) * 10000) /
+                100
+              : 0,
+        };
+      },
+    );
 
     // Resumen general
     const allGrades = grades.map((g) => Number(g.grade));
@@ -344,11 +366,14 @@ export class ReportsService {
         totalGrades: allGrades.length,
         overallAverageGrade:
           allGrades.length > 0
-            ? Math.round((allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100) / 100
+            ? Math.round(
+                (allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100,
+              ) / 100
             : 0,
         overallPassRate:
           allGrades.length > 0
-            ? Math.round((passingGrades.length / allGrades.length) * 10000) / 100
+            ? Math.round((passingGrades.length / allGrades.length) * 10000) /
+              100
             : 0,
       },
     };
@@ -369,15 +394,14 @@ export class ReportsService {
       endDate: Date;
     } | null;
   }> {
-    const [totalUsers, totalGrades, activePeriod] =
-      await Promise.all([
-        this.userRepository.count(),
-        this.gradeRepository.count(),
-        this.periodRepository.findOne({
-          where: { status: AcademicPeriodStatus.OPEN },
-          order: { startDate: 'DESC' },
-        }),
-      ]);
+    const [totalUsers, totalGrades, activePeriod] = await Promise.all([
+      this.userRepository.count(),
+      this.gradeRepository.count(),
+      this.periodRepository.findOne({
+        where: { status: AcademicPeriodStatus.OPEN },
+        order: { startDate: 'DESC' },
+      }),
+    ]);
 
     let totalCourses = 0;
     let totalEnrolments = 0;
@@ -435,7 +459,9 @@ export class ReportsService {
   /**
    * Resumen global institucional
    */
-  async getGlobalSummary(filters: GlobalSummaryFilterDto): Promise<GlobalSummaryDto> {
+  async getGlobalSummary(
+    filters: GlobalSummaryFilterDto,
+  ): Promise<GlobalSummaryDto> {
     const gradeQuery = this.gradeRepository
       .createQueryBuilder('grade')
       .leftJoinAndSelect('grade.period', 'period')
@@ -476,10 +502,15 @@ export class ReportsService {
       .getCount();
 
     // Distribución de calificaciones
-    const gradeDistribution = this.calculateGradeDistribution(grades.map((g) => Number(g.grade)));
+    const gradeDistribution = this.calculateGradeDistribution(
+      grades.map((g) => Number(g.grade)),
+    );
 
     // Comparación por período
-    const periodMap = new Map<number, { periodId: number; periodCode: string; grades: number[] }>();
+    const periodMap = new Map<
+      number,
+      { periodId: number; periodCode: string; grades: number[] }
+    >();
     for (const g of grades) {
       if (!periodMap.has(g.periodId)) {
         periodMap.set(g.periodId, {
@@ -498,7 +529,9 @@ export class ReportsService {
         periodCode: p.periodCode,
         averageGrade:
           p.grades.length > 0
-            ? Math.round((p.grades.reduce((a, b) => a + b, 0) / p.grades.length) * 100) / 100
+            ? Math.round(
+                (p.grades.reduce((a, b) => a + b, 0) / p.grades.length) * 100,
+              ) / 100
             : 0,
         passRate:
           p.grades.length > 0
@@ -509,7 +542,10 @@ export class ReportsService {
     });
 
     // Top cursos
-    const courseMap = new Map<number, { courseId: number; courseName: string; grades: number[] }>();
+    const courseMap = new Map<
+      number,
+      { courseId: number; courseName: string; grades: number[] }
+    >();
     for (const g of grades) {
       if (!courseMap.has(g.courseId)) {
         courseMap.set(g.courseId, {
@@ -529,11 +565,14 @@ export class ReportsService {
           courseName: c.courseName,
           averageGrade:
             c.grades.length > 0
-              ? Math.round((c.grades.reduce((a, b) => a + b, 0) / c.grades.length) * 100) / 100
+              ? Math.round(
+                  (c.grades.reduce((a, b) => a + b, 0) / c.grades.length) * 100,
+                ) / 100
               : 0,
           passRate:
             c.grades.length > 0
-              ? Math.round((passingGrades.length / c.grades.length) * 10000) / 100
+              ? Math.round((passingGrades.length / c.grades.length) * 10000) /
+                100
               : 0,
         };
       })
@@ -564,14 +603,16 @@ export class ReportsService {
    * Obtener estudiantes activos ordenados por último acceso
    * Usa moodle_enrolments para identificar estudiantes por role_code
    */
-  async getActiveStudents(limit: number = 10): Promise<{
-    id: number;
-    moodleId: number;
-    firstname: string;
-    lastname: string;
-    email: string;
-    lastAccess: Date | null;
-  }[]> {
+  async getActiveStudents(limit: number = 10): Promise<
+    {
+      id: number;
+      moodleId: number;
+      firstname: string;
+      lastname: string;
+      email: string;
+      lastAccess: Date | null;
+    }[]
+  > {
     try {
       // Get students from enrolments with last_course_access
       const enrolmentsWithAccess = await this.enrolmentRepository

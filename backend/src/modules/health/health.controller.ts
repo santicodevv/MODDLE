@@ -40,9 +40,7 @@ export class HealthController {
   @Public()
   @HealthCheck()
   checkDb() {
-    return this.health.check([
-      () => this.db.pingCheck('database'),
-    ]);
+    return this.health.check([() => this.db.pingCheck('database')]);
   }
 
   /**
@@ -67,9 +65,7 @@ export class HealthController {
   @Public()
   @HealthCheck()
   readiness() {
-    return this.health.check([
-      () => this.db.pingCheck('database'),
-    ]);
+    return this.health.check([() => this.db.pingCheck('database')]);
   }
 
   /**

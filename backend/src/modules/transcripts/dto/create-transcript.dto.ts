@@ -1,4 +1,10 @@
-import { IsNumber, IsOptional, IsArray, ArrayMinSize } from 'class-validator';
+import {
+  IsNumber,
+  IsOptional,
+  IsArray,
+  ArrayMinSize,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateTranscriptDto {
@@ -15,5 +21,6 @@ export class CreateTranscriptDto {
 
 export class RevokeTranscriptDto {
   @IsOptional()
+  @IsString()
   reason?: string;
 }

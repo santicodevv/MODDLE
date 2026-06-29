@@ -39,7 +39,12 @@ export class CourseStudentGrade {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'course_name' })
   courseName: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'course_shortname' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'course_shortname',
+  })
   courseShortname: string | null;
 
   // Estudiante (app_user)
@@ -47,7 +52,7 @@ export class CourseStudentGrade {
   @Index()
   studentId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'student_id', referencedColumnName: 'id' })
   student: User;
 
@@ -56,7 +61,7 @@ export class CourseStudentGrade {
   @Index()
   periodId: number;
 
-  @ManyToOne(() => AcademicPeriod)
+  @ManyToOne(() => AcademicPeriod, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'period_id', referencedColumnName: 'id' })
   period: AcademicPeriod;
 
@@ -64,19 +69,37 @@ export class CourseStudentGrade {
   @Column({ type: 'bigint', name: 'teacher_id' })
   teacherId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'teacher_id', referencedColumnName: 'id' })
   teacher: User;
 
   // Sumatoria de Moodle (cache, solo lectura para profesor)
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'moodle_sum_grade' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'moodle_sum_grade',
+  })
   moodleSumGrade: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'moodle_sum_max' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'moodle_sum_max',
+  })
   moodleSumMax: number | null;
 
   // Nota final asignada por el profesor
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'total_grade' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'total_grade',
+  })
   totalGrade: number | null;
 
   // Comentario del profesor

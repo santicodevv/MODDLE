@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
+import * as crypto from 'crypto';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuditService } from '../sync/services/audit.service';
 
@@ -35,6 +36,11 @@ export class MoodleWebhookController {
   ) {
     this.webhookSecret =
       this.configService.get<string>('MOODLE_WEBHOOK_SECRET') || '';
+    if (!this.webhookSecret) {
+      throw new Error(
+        'MOODLE_WEBHOOK_SECRET environment variable is not configured',
+      );
+    }
   }
 
   @Public()
@@ -45,8 +51,7 @@ export class MoodleWebhookController {
   ) {
     this.logger.log(`Received webhook: ${payload.eventname}`);
 
-    // Validar firma (seguridad básica)
-    if (!this.validateSignature(signature)) {
+    if (!this.validateSignature(signature, payload)) {
       this.logger.warn('Invalid webhook signature');
       throw new BadRequestException('Invalid signature');
     }
@@ -66,14 +71,19 @@ export class MoodleWebhookController {
     return { status: 'accepted' };
   }
 
-  private validateSignature(signature: string): boolean {
-    if (!this.webhookSecret) {
-      this.logger.warn('MOODLE_WEBHOOK_SECRET not configured, skipping validation');
-      return true;
-    }
+  private validateSignature(signature: string, payload: any): boolean {
+    if (!signature) return false;
 
-    // Comparar con el secreto configurado
-    // En producción, deberías usar un HMAC más robusto
-    return signature === this.webhookSecret;
+    const hmac = crypto.createHmac('sha256', this.webhookSecret);
+    hmac.update(JSON.stringify(payload));
+    const expected = hmac.digest();
+
+    try {
+      const signatureBuf = Buffer.from(signature, 'hex');
+      if (expected.length !== signatureBuf.length) return false;
+      return crypto.timingSafeEqual(expected, signatureBuf);
+    } catch {
+      return false;
+    }
   }
 }

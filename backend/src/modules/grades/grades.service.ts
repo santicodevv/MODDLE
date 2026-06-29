@@ -13,8 +13,8 @@ import { MoodleGradeItem } from '../moodle-integration/entities/moodle-grade-ite
 import { MoodleEnrolment } from '../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
 import { MoodleCourse } from '../moodle-integration/entities/moodle-course.entity';
-import { GradeEditSession } from './entities/grade-edit-session.entity';
-import { GradeEdit } from './entities/grade-edit.entity';
+import { GradeEditSession } from '../academic/entities/grade-edit-session.entity';
+import { GradeEdit } from '../academic/entities/grade-edit.entity';
 import { CourseTeacher } from '../academic/entities/course-teacher.entity';
 
 @Injectable()
@@ -51,7 +51,9 @@ export class GradesService {
       await this.moodleSyncService.syncGrades(courseMoodleId);
       await this.moodleSyncService.syncEnrolments(courseMoodleId);
     } catch (error) {
-      this.logger.warn(`Sync failed for course ${courseMoodleId}, using cached data: ${error.message}`);
+      this.logger.warn(
+        `Sync failed for course ${courseMoodleId}, using cached data: ${error.message}`,
+      );
     }
 
     // Get course info
@@ -75,7 +77,9 @@ export class GradesService {
     // Get student info
     const students = await this.moodleUserRepository
       .createQueryBuilder('u')
-      .where('u.moodleId IN (:...ids)', { ids: studentMoodleIds.length > 0 ? studentMoodleIds : [0] })
+      .where('u.moodleId IN (:...ids)', {
+        ids: studentMoodleIds.length > 0 ? studentMoodleIds : [0],
+      })
       .getMany();
 
     // Get all grades for this course
@@ -125,7 +129,8 @@ export class GradesService {
 
       return {
         studentMoodleId: Number(student.moodleId),
-        studentName: `${student.firstname || ''} ${student.lastname || ''}`.trim(),
+        studentName:
+          `${student.firstname || ''} ${student.lastname || ''}`.trim(),
         studentEmail: student.email,
         grades: studentGrades,
       };
@@ -168,7 +173,9 @@ export class GradesService {
         where: { teacherId: teacherUserId },
         select: ['courseMoodleId'],
       });
-      const assignedCourseIds = assignments.map((a) => Number(a.courseMoodleId));
+      const assignedCourseIds = assignments.map((a) =>
+        Number(a.courseMoodleId),
+      );
 
       if (assignedCourseIds.length === 0) {
         return [];
@@ -267,11 +274,16 @@ export class GradesService {
     // Verify course access (unless Admin)
     if (!isAdmin) {
       const isTeacher = await this.courseTeacherRepository.findOne({
-        where: { teacherId: teacherUserId, courseMoodleId: data.courseMoodleId },
+        where: {
+          teacherId: teacherUserId,
+          courseMoodleId: data.courseMoodleId,
+        },
       });
 
       if (!isTeacher) {
-        throw new ForbiddenException('No estás asignado como profesor de este curso.');
+        throw new ForbiddenException(
+          'No estás asignado como profesor de este curso.',
+        );
       }
     }
 
@@ -307,7 +319,9 @@ export class GradesService {
     gradeEdit.courseMoodleId = data.courseMoodleId;
     gradeEdit.itemMoodleId = data.itemMoodleId;
     gradeEdit.studentMoodleId = data.studentMoodleId;
-    gradeEdit.previousGrade = currentMoodleGrade ? Number(currentMoodleGrade.grade) : null;
+    gradeEdit.previousGrade = currentMoodleGrade
+      ? Number(currentMoodleGrade.grade)
+      : null;
     gradeEdit.newGrade = data.newGrade;
     gradeEdit.feedback = data.feedback || null;
 
@@ -323,7 +337,11 @@ export class GradesService {
   /**
    * Revert/Delete a grade edit (teacher)
    */
-  async deleteGradeEdit(editId: number, teacherUserId: number, isAdmin: boolean = false) {
+  async deleteGradeEdit(
+    editId: number,
+    teacherUserId: number,
+    isAdmin: boolean = false,
+  ) {
     const activeSession = await this.getActiveSession();
     if (!activeSession) {
       throw new ForbiddenException('La edición de notas no está habilitada.');
@@ -334,12 +352,16 @@ export class GradesService {
     });
 
     if (!edit) {
-      throw new BadRequestException('La edición no existe o no pertenece a la sesión activa.');
+      throw new BadRequestException(
+        'La edición no existe o no pertenece a la sesión activa.',
+      );
     }
 
     // Verify ownership or admin
     if (!isAdmin && edit.teacherUserId !== teacherUserId) {
-      throw new ForbiddenException('Solo puedes revertir calificaciones que tú hayas editado.');
+      throw new ForbiddenException(
+        'Solo puedes revertir calificaciones que tú hayas editado.',
+      );
     }
 
     await this.gradeEditRepository.remove(edit);
@@ -352,7 +374,11 @@ export class GradesService {
    * Same as getGradesByCourse but includes editable status per grade
    * A grade is NOT editable if it was already edited by ANY teacher in the current session
    */
-  async getEditableGrades(courseMoodleId: number, teacherUserId: number, isAdmin: boolean = false) {
+  async getEditableGrades(
+    courseMoodleId: number,
+    teacherUserId: number,
+    isAdmin: boolean = false,
+  ) {
     const result = await this.getGradesByCourse(courseMoodleId);
     const activeSession = await this.getActiveSession();
 

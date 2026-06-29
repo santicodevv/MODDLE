@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -9,6 +10,9 @@ async function bootstrap() {
 
   // Prefijo global para la API
   app.setGlobalPrefix('api');
+
+  // Seguridad HTTP (helmet)
+  app.use(helmet());
 
   // Validación global de DTOs
   app.useGlobalPipes(
@@ -36,7 +40,8 @@ async function bootstrap() {
   // Swagger/OpenAPI
   const config = new DocumentBuilder()
     .setTitle('Sistema de Gestión Académica')
-    .setDescription(`
+    .setDescription(
+      `
       API del Sistema de Gestión Académica integrado con Moodle.
 
       ## Características principales:
@@ -50,7 +55,8 @@ async function bootstrap() {
       ## Autenticación:
       Usar el endpoint POST /api/auth/login para obtener el token JWT.
       Luego incluir el token en el header: Authorization: Bearer <token>
-    `)
+    `,
+    )
     .setVersion('1.0')
     .addTag('auth', 'Autenticación y registro')
     .addTag('users', 'Gestión de usuarios')
@@ -90,4 +96,4 @@ async function bootstrap() {
   logger.log(`Health check at: http://localhost:${port}/api/health`);
 }
 
-bootstrap();
+void bootstrap();

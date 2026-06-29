@@ -18,12 +18,17 @@ export class MicrosoftCallbackGuard extends AuthGuard('microsoft') {
     if (err || !user) {
       const res: Response = context.switchToHttp().getResponse();
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const message = err?.message || info?.message || 'Error de autenticación institucional.';
+      const message =
+        err?.message ||
+        info?.message ||
+        'Error de autenticación institucional.';
 
       this.logger.warn(`Microsoft SSO auth failed: ${message}`);
 
       // Redirigir en vez de lanzar excepción
-      res.redirect(`${frontendUrl}/login?sso_error=${encodeURIComponent(message)}`);
+      res.redirect(
+        `${frontendUrl}/login?sso_error=${encodeURIComponent(message)}`,
+      );
 
       // Retornar null para que el controlador no siga ejecutando
       return null;

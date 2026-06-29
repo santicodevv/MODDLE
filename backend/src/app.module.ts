@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -51,6 +52,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
       }),
     }),
 
+    // Rate limiting (Throttler)
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+
     // Módulos de la aplicación
     UsersModule,
     AuthModule,
@@ -73,6 +77,10 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
     // Interceptor de logging global
     {

@@ -51,11 +51,7 @@ export class OutboxProcessor {
       });
     } catch (error) {
       const attempts = event.attempts + 1;
-      await this.outboxService.markAsFailed(
-        eventId,
-        error.message,
-        attempts,
-      );
+      await this.outboxService.markAsFailed(eventId, error.message, attempts);
 
       throw error;
     }

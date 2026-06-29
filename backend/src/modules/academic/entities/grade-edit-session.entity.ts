@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('grade_edit_sessions')
@@ -12,6 +13,7 @@ export class GradeEditSession {
   id: number;
 
   @Column({ type: 'boolean', default: false, name: 'is_active' })
+  @Index()
   isActive: boolean;
 
   @Column({ type: 'int', name: 'activated_by' })

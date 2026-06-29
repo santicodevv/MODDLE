@@ -4,10 +4,7 @@ import { MoodleWebhookController } from './moodle-webhook.controller';
 import { SyncModule } from '../sync/sync.module';
 
 @Module({
-  imports: [
-    SyncModule,
-    BullModule.registerQueue({ name: 'moodle-inbound' }),
-  ],
+  imports: [SyncModule, BullModule.registerQueue({ name: 'moodle-inbound' })],
   controllers: [MoodleWebhookController],
 })
 export class WebhooksModule {}

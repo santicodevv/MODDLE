@@ -17,17 +17,27 @@ import { TokenBlacklistService } from './services/token-blacklist.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is not configured');
+        }
         return {
-          secret: configService.get<string>('JWT_SECRET') || 'your-secret-key-change-in-production',
+          secret,
           signOptions: {
-            expiresIn: (configService.get<string>('JWT_EXPIRATION') || '1h') as any,
+            expiresIn: (configService.get<string>('JWT_EXPIRATION') ||
+              '1h') as any,
           },
         };
       },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, MicrosoftStrategy, TokenBlacklistService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    MicrosoftStrategy,
+    TokenBlacklistService,
+  ],
   exports: [AuthService, JwtStrategy, PassportModule, TokenBlacklistService],
 })
 export class AuthModule {}

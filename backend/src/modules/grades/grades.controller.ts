@@ -24,9 +24,10 @@ export class GradesController {
   @Get('courses')
   @Roles(RoleCode.ADMIN, RoleCode.TEACHER)
   async getCourses(@Request() req: any) {
-    const isAdmin = req.user.roles?.some(
-      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
-    ) ?? false;
+    const isAdmin =
+      req.user.roles?.some(
+        (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+      ) ?? false;
     return this.gradesService.getCourses(req.user.id, isAdmin);
   }
 
@@ -67,9 +68,10 @@ export class GradesController {
       feedback?: string;
     },
   ) {
-    const isAdmin = req.user.roles?.some(
-      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
-    ) ?? false;
+    const isAdmin =
+      req.user.roles?.some(
+        (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+      ) ?? false;
     return this.gradesService.saveGradeEdit(req.user.id, body, isAdmin);
   }
 
@@ -83,9 +85,10 @@ export class GradesController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any,
   ) {
-    const isAdmin = req.user.roles?.some(
-      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
-    ) ?? false;
+    const isAdmin =
+      req.user.roles?.some(
+        (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+      ) ?? false;
     return this.gradesService.deleteGradeEdit(id, req.user.id, isAdmin);
   }
 
@@ -100,10 +103,15 @@ export class GradesController {
     @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
     @Request() req: any,
   ) {
-    const isAdmin = req.user.roles?.some(
-      (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
-    ) ?? false;
-    return this.gradesService.getEditableGrades(courseMoodleId, req.user.id, isAdmin);
+    const isAdmin =
+      req.user.roles?.some(
+        (r: any) => r.code === RoleCode.ADMIN || r === RoleCode.ADMIN,
+      ) ?? false;
+    return this.gradesService.getEditableGrades(
+      courseMoodleId,
+      req.user.id,
+      isAdmin,
+    );
   }
 
   /**

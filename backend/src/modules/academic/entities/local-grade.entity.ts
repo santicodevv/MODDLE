@@ -36,7 +36,7 @@ export class LocalGrade {
   @Column({ type: 'bigint', name: 'course_id' })
   courseId: number;
 
-  @ManyToOne(() => MoodleCourse)
+  @ManyToOne(() => MoodleCourse, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'course_id', referencedColumnName: 'id' })
   course: MoodleCourse;
 
@@ -44,7 +44,7 @@ export class LocalGrade {
   @Column({ type: 'bigint', name: 'grade_item_id' })
   gradeItemId: number;
 
-  @ManyToOne(() => MoodleGradeItem)
+  @ManyToOne(() => MoodleGradeItem, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'grade_item_id', referencedColumnName: 'id' })
   gradeItem: MoodleGradeItem;
 
@@ -52,7 +52,7 @@ export class LocalGrade {
   @Column({ type: 'bigint', name: 'student_id' })
   studentId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'student_id', referencedColumnName: 'id' })
   student: User;
 
@@ -60,7 +60,7 @@ export class LocalGrade {
   @Column({ type: 'bigint', name: 'teacher_id' })
   teacherId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'teacher_id', referencedColumnName: 'id' })
   teacher: User;
 

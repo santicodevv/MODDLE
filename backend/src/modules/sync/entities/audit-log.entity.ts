@@ -18,7 +18,7 @@ export class AuditLog {
   @Index()
   actorUserId: number;
 
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'actor_user_id' })
   actor: User;
 

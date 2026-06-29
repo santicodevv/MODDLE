@@ -7,10 +7,7 @@ import { Role } from './entities/role.entity';
 import { MoodleIntegrationModule } from '../moodle-integration/moodle-integration.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([User, Role]),
-    MoodleIntegrationModule,
-  ],
+  imports: [TypeOrmModule.forFeature([User, Role]), MoodleIntegrationModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule],
