@@ -16,12 +16,14 @@ import {
   EnrolmentAction,
   EnrolmentLineStatus,
 } from '../entities/re-enrolment-line.entity';
-import { AcademicPeriod, AcademicPeriodStatus } from '../entities/academic-period.entity';
+import { AcademicPeriod } from '../entities/academic-period.entity';
 import { PeriodAvailableCourse } from '../entities/period-available-course.entity';
-import { CreateReEnrolmentDto, ReEnrolmentCourseDto } from '../dto/create-re-enrolment.dto';
+import {
+  CreateReEnrolmentDto,
+  ReEnrolmentCourseDto,
+} from '../dto/create-re-enrolment.dto';
 import { AuditService } from '../../sync/services/audit.service';
 import { OutboxService } from '../../sync/services/outbox.service';
-import { OutboxEventType } from '../../sync/entities/outbox-event.entity';
 import { MoodleClientService } from '../../moodle-integration/moodle-client.service';
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
 
@@ -62,22 +64,16 @@ export class ReEnrolmentService {
 
     // Verificar que la reinscripción está abierta
     if (!period.reenrolmentOpen) {
-      throw new BadRequestException(
-        'Reenrolment is not open for this period',
-      );
+      throw new BadRequestException('Reenrolment is not open for this period');
     }
 
     // Verificar fechas de reinscripción
     const now = new Date();
     if (period.reenrolmentStartDate && now < period.reenrolmentStartDate) {
-      throw new BadRequestException(
-        'Reenrolment period has not started yet',
-      );
+      throw new BadRequestException('Reenrolment period has not started yet');
     }
     if (period.reenrolmentEndDate && now > period.reenrolmentEndDate) {
-      throw new BadRequestException(
-        'Reenrolment period has ended',
-      );
+      throw new BadRequestException('Reenrolment period has ended');
     }
 
     // Verificar que no haya solicitud pendiente o ya enviada para este período
@@ -394,10 +390,7 @@ export class ReEnrolmentService {
     return requests;
   }
 
-  async submit(
-    id: number,
-    studentUserId: number,
-  ): Promise<ReEnrolmentRequest> {
+  async submit(id: number, studentUserId: number): Promise<ReEnrolmentRequest> {
     const request = await this.findOne(id);
 
     // Verificar que es el estudiante dueño de la solicitud
@@ -411,9 +404,7 @@ export class ReEnrolmentService {
 
     // Verificar que tenga al menos un curso
     if (!request.lines || request.lines.length === 0) {
-      throw new BadRequestException(
-        'Cannot submit request without courses',
-      );
+      throw new BadRequestException('Cannot submit request without courses');
     }
 
     const beforeData = { ...request };
@@ -436,10 +427,7 @@ export class ReEnrolmentService {
     return this.findOne(id);
   }
 
-  async approve(
-    id: number,
-    adminUserId: number,
-  ): Promise<ReEnrolmentRequest> {
+  async approve(id: number, adminUserId: number): Promise<ReEnrolmentRequest> {
     const request = await this.findOne(id);
 
     if (request.status !== ReEnrolmentStatus.SUBMITTED) {
@@ -479,7 +467,9 @@ export class ReEnrolmentService {
       request.status !== ReEnrolmentStatus.SUBMITTED &&
       request.status !== ReEnrolmentStatus.APPROVED
     ) {
-      throw new BadRequestException('Only submitted or approved requests can be rejected');
+      throw new BadRequestException(
+        'Only submitted or approved requests can be rejected',
+      );
     }
 
     const beforeData = { ...request };
@@ -563,9 +553,7 @@ export class ReEnrolmentService {
             `User ${student.moodleUserId} enrolled in course ${line.courseMoodleId}`,
           );
         } catch (error) {
-          this.logger.error(
-            `Error enrolling user in Moodle: ${error.message}`,
-          );
+          this.logger.error(`Error enrolling user in Moodle: ${error.message}`);
 
           await this.lineRepository.update(line.id, {
             status: EnrolmentLineStatus.FAILED,

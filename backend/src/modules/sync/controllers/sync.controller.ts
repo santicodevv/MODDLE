@@ -57,7 +57,7 @@ export class SyncController {
 
   @Post('trigger')
   @Roles(RoleCode.ADMIN)
-  async triggerSync() {
+  triggerSync() {
     this.logger.log('Triggering full sync in background...');
 
     // Fire-and-forget: no esperamos a que termine para evitar timeout de HTTP
@@ -73,7 +73,7 @@ export class SyncController {
 
   @Post('trigger/:entity')
   @Roles(RoleCode.ADMIN)
-  async triggerEntitySync(@Param('entity') entity: string) {
+  triggerEntitySync(@Param('entity') entity: string) {
     // Entity values in enum are lowercase (users, courses, etc.)
     const syncEntity = entity.toLowerCase() as SyncEntity;
 
@@ -89,7 +89,9 @@ export class SyncController {
       );
     }
 
-    this.logger.log(`Triggering sync for entity: ${syncEntity} in background...`);
+    this.logger.log(
+      `Triggering sync for entity: ${syncEntity} in background...`,
+    );
 
     // Fire-and-forget
     this.syncSchedulerService.forceSync(syncEntity).catch((error) => {
@@ -102,17 +104,16 @@ export class SyncController {
     };
   }
 
-
   // Alias routes for frontend compatibility
   @Post('force')
   @Roles(RoleCode.ADMIN)
-  async forceSync() {
+  forceSync() {
     return this.triggerSync();
   }
 
   @Post('force/:entity')
   @Roles(RoleCode.ADMIN)
-  async forceEntitySync(@Param('entity') entity: string) {
+  forceEntitySync(@Param('entity') entity: string) {
     return this.triggerEntitySync(entity);
   }
 

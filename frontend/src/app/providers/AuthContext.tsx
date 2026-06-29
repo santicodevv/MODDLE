@@ -4,8 +4,8 @@ import {
   useContext,
   useState,
   useEffect,
-  useCallback,
   useMemo,
+  useCallback,
   type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -40,57 +40,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roles: [],
   });
 
-  // Initialize auth state from stored token
-  const initializeAuth = useCallback(async () => {
-    const token = storage.getAccessToken();
 
-    if (!token) {
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        roles: [],
-      });
-      return;
-    }
-
-    // Decode token to get roles
-    const decoded = decodeToken<DecodedToken>(token);
-    if (!decoded) {
-      storage.clearAuth();
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        roles: [],
-      });
-      return;
-    }
-
-    try {
-      // Fetch full user profile
-      const user = await authApi.getProfile();
-      setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        roles: decoded.roles,
-      });
-    } catch {
-      // Token invalid or expired
-      storage.clearAuth();
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        roles: [],
-      });
-    }
-  }, []);
 
   useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
+    let mounted = true;
+
+    const init = async () => {
+      const token = storage.getAccessToken();
+
+      if (!token) {
+        if (mounted) {
+          setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            roles: [],
+          });
+        }
+        return;
+      }
+
+      const decoded = decodeToken<DecodedToken>(token);
+      if (!decoded) {
+        storage.clearAuth();
+        if (mounted) {
+          setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            roles: [],
+          });
+        }
+        return;
+      }
+
+      try {
+        const user = await authApi.getProfile();
+        if (mounted) {
+          setState({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            roles: decoded.roles,
+          });
+        }
+      } catch {
+        storage.clearAuth();
+        if (mounted) {
+          setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            roles: [],
+          });
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const login = useCallback(async (data: LoginRequest) => {
     const response = await authApi.login(data);
@@ -168,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

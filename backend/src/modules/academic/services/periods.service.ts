@@ -184,8 +184,7 @@ export class PeriodsService {
     if (updateData.name) period.name = updateData.name;
     if (updateData.description !== undefined)
       period.description = updateData.description;
-    if (updateData.startDate)
-      period.startDate = new Date(updateData.startDate);
+    if (updateData.startDate) period.startDate = new Date(updateData.startDate);
     if (updateData.endDate) period.endDate = new Date(updateData.endDate);
 
     // Validar fechas si se actualizan
@@ -259,7 +258,10 @@ export class PeriodsService {
     return updated;
   }
 
-  async openReenrolment(id: number, actorUserId?: number): Promise<AcademicPeriod> {
+  async openReenrolment(
+    id: number,
+    actorUserId?: number,
+  ): Promise<AcademicPeriod> {
     const period = await this.findOne(id);
 
     // NOTE: Se permite abrir reinscripción en períodos CERRADOS.
@@ -293,7 +295,10 @@ export class PeriodsService {
     return updated;
   }
 
-  async closeReenrolment(id: number, actorUserId?: number): Promise<AcademicPeriod> {
+  async closeReenrolment(
+    id: number,
+    actorUserId?: number,
+  ): Promise<AcademicPeriod> {
     const period = await this.findOne(id);
 
     if (!period.reenrolmentOpen) {
@@ -333,7 +338,9 @@ export class PeriodsService {
   // CURSOS DISPONIBLES
   // =====================
 
-  async getAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
+  async getAvailableCourses(
+    periodId: number,
+  ): Promise<PeriodAvailableCourse[]> {
     await this.findOne(periodId);
 
     const courses = await this.availableCourseRepository.find({
@@ -344,7 +351,9 @@ export class PeriodsService {
     return this.enrichCoursesWithSubjectName(courses);
   }
 
-  async getAllAvailableCourses(periodId: number): Promise<PeriodAvailableCourse[]> {
+  async getAllAvailableCourses(
+    periodId: number,
+  ): Promise<PeriodAvailableCourse[]> {
     await this.findOne(periodId);
 
     const courses = await this.availableCourseRepository.find({
@@ -355,11 +364,17 @@ export class PeriodsService {
     return this.enrichCoursesWithSubjectName(courses);
   }
 
-  private async enrichCoursesWithSubjectName(courses: PeriodAvailableCourse[]): Promise<PeriodAvailableCourse[]> {
+  private async enrichCoursesWithSubjectName(
+    courses: PeriodAvailableCourse[],
+  ): Promise<PeriodAvailableCourse[]> {
+    if (courses.length === 0) return courses;
+    const moodleIds = courses.map((ac) => ac.courseMoodleId);
+    const dbCourses = await this.courseRepository.find({
+      where: { moodleId: In(moodleIds) },
+    });
+    const courseMap = new Map(dbCourses.map((c) => [c.moodleId, c]));
     for (const ac of courses) {
-      const course = await this.courseRepository.findOne({
-        where: { moodleId: ac.courseMoodleId },
-      });
+      const course = courseMap.get(ac.courseMoodleId);
       if (course && course.subjectName) {
         ac.courseName = course.subjectName;
       }
@@ -372,7 +387,7 @@ export class PeriodsService {
     dto: AddAvailableCoursesDto,
     actorUserId?: number,
   ): Promise<PeriodAvailableCourse[]> {
-    const period = await this.findOne(periodId);
+    await this.findOne(periodId);
 
     // NOTE: Se permite agregar cursos en períodos CERRADOS para configurar reinscripción.
 
@@ -388,8 +403,10 @@ export class PeriodsService {
         // Si ya existe, actualizarlo
         existing.enabled = true;
         if (course.courseName) existing.courseName = course.courseName;
-        if (course.courseShortname) existing.courseShortname = course.courseShortname;
-        if (course.maxStudents !== undefined) existing.maxStudents = course.maxStudents;
+        if (course.courseShortname)
+          existing.courseShortname = course.courseShortname;
+        if (course.maxStudents !== undefined)
+          existing.maxStudents = course.maxStudents;
         coursesToAdd.push(existing);
       } else {
         // Crear nuevo
@@ -461,7 +478,7 @@ export class PeriodsService {
     courseMoodleIds: number[],
     actorUserId?: number,
   ): Promise<void> {
-    const period = await this.findOne(periodId);
+    await this.findOne(periodId);
 
     await this.availableCourseRepository.delete({
       periodId,

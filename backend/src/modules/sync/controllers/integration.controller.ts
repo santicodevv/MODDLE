@@ -1,11 +1,18 @@
-import { Controller, Get, Post, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { SyncState, SyncEntity } from '../entities/sync-state.entity';
+import { SyncState } from '../entities/sync-state.entity';
 import { MoodleClientService } from '../../moodle-integration/moodle-client.service';
 import { MoodleSyncService } from '../../moodle-integration/moodle-sync.service';
 import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
@@ -83,14 +90,19 @@ export class IntegrationController {
     });
 
     // Get counts from mirror tables
-    const [usersCount, coursesCount, enrolmentsCount, gradeItemsCount, gradesCount] =
-      await Promise.all([
-        this.moodleUserRepository.count(),
-        this.moodleCourseRepository.count(),
-        this.moodleEnrolmentRepository.count(),
-        this.moodleGradeItemRepository.count(),
-        this.moodleGradeRepository.count(),
-      ]);
+    const [
+      usersCount,
+      coursesCount,
+      enrolmentsCount,
+      gradeItemsCount,
+      gradesCount,
+    ] = await Promise.all([
+      this.moodleUserRepository.count(),
+      this.moodleCourseRepository.count(),
+      this.moodleEnrolmentRepository.count(),
+      this.moodleGradeItemRepository.count(),
+      this.moodleGradeRepository.count(),
+    ]);
 
     // Check Moodle connectivity
     let moodleStatus = 'unknown';
@@ -155,14 +167,19 @@ export class IntegrationController {
       });
 
       // Get updated counts
-      const [usersCount, coursesCount, enrolmentsCount, gradeItemsCount, gradesCount] =
-        await Promise.all([
-          this.moodleUserRepository.count(),
-          this.moodleCourseRepository.count(),
-          this.moodleEnrolmentRepository.count(),
-          this.moodleGradeItemRepository.count(),
-          this.moodleGradeRepository.count(),
-        ]);
+      const [
+        usersCount,
+        coursesCount,
+        enrolmentsCount,
+        gradeItemsCount,
+        gradesCount,
+      ] = await Promise.all([
+        this.moodleUserRepository.count(),
+        this.moodleCourseRepository.count(),
+        this.moodleEnrolmentRepository.count(),
+        this.moodleGradeItemRepository.count(),
+        this.moodleGradeRepository.count(),
+      ]);
 
       return {
         success: true,

@@ -10,14 +10,15 @@ export class TranscriptPdfService {
   private readonly baseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.baseUrl = this.configService.get('APP_BASE_URL') || 'http://localhost:3000';
+    this.baseUrl =
+      this.configService.get('APP_BASE_URL') || 'http://localhost:3000';
   }
 
   /**
    * Generar PDF oficial del transcript
    */
   async generateTranscriptPdf(transcript: Transcript): Promise<Buffer> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const doc = new PDFDocument({
         size: 'LETTER',
         margin: 50,
@@ -36,13 +37,13 @@ export class TranscriptPdfService {
 
       try {
         // Header institucional
-        await this.renderHeader(doc, transcript);
+        this.renderHeader(doc, transcript);
 
         // Información del estudiante
         this.renderStudentInfo(doc, transcript);
 
         // Tabla de calificaciones
-        await this.renderGradesTable(doc, transcript);
+        this.renderGradesTable(doc, transcript);
 
         // Resumen
         this.renderSummary(doc, transcript);
@@ -52,7 +53,7 @@ export class TranscriptPdfService {
 
         doc.end();
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
@@ -60,7 +61,7 @@ export class TranscriptPdfService {
   /**
    * Render header institucional
    */
-  private async renderHeader(doc: typeof PDFDocument, transcript: Transcript): Promise<void> {
+  private renderHeader(doc: typeof PDFDocument, transcript: Transcript): void {
     const pageWidth = doc.page.width - 100;
 
     // Título institucional
@@ -73,10 +74,10 @@ export class TranscriptPdfService {
       });
 
     doc.moveDown(0.3);
-    doc
-      .fontSize(14)
-      .font('Helvetica')
-      .text('Sistema de Gestión Académica', { align: 'center', width: pageWidth });
+    doc.fontSize(14).font('Helvetica').text('Sistema de Gestión Académica', {
+      align: 'center',
+      width: pageWidth,
+    });
 
     doc.moveDown(0.8);
 
@@ -90,7 +91,10 @@ export class TranscriptPdfService {
     doc
       .fontSize(10)
       .font('Helvetica')
-      .text(`Documento No: ${transcript.transcriptNumber}`, { align: 'center', width: pageWidth });
+      .text(`Documento No: ${transcript.transcriptNumber}`, {
+        align: 'center',
+        width: pageWidth,
+      });
 
     // Línea separadora
     doc.moveDown(0.5);
@@ -105,33 +109,56 @@ export class TranscriptPdfService {
   /**
    * Render información del estudiante
    */
-  private renderStudentInfo(doc: typeof PDFDocument, transcript: Transcript): void {
+  private renderStudentInfo(
+    doc: typeof PDFDocument,
+    transcript: Transcript,
+  ): void {
     const startY = doc.y;
     const leftCol = 50;
     const rightCol = 300;
 
-    doc.fontSize(12).font('Helvetica-Bold').text('INFORMACIÓN DEL ESTUDIANTE', leftCol, startY);
+    doc
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text('INFORMACIÓN DEL ESTUDIANTE', leftCol, startY);
     doc.moveDown(0.5);
 
     const infoStartY = doc.y;
 
     // Columna izquierda
-    doc.fontSize(10).font('Helvetica-Bold').text('Nombre:', leftCol, infoStartY);
-    doc.font('Helvetica').text(transcript.studentData.displayName, leftCol + 70, infoStartY);
+    doc
+      .fontSize(10)
+      .font('Helvetica-Bold')
+      .text('Nombre:', leftCol, infoStartY);
+    doc
+      .font('Helvetica')
+      .text(transcript.studentData.displayName, leftCol + 70, infoStartY);
 
     doc.font('Helvetica-Bold').text('Email:', leftCol, infoStartY + 18);
-    doc.font('Helvetica').text(transcript.studentData.email, leftCol + 70, infoStartY + 18);
+    doc
+      .font('Helvetica')
+      .text(transcript.studentData.email, leftCol + 70, infoStartY + 18);
 
     // Columna derecha
     doc.font('Helvetica-Bold').text('Fecha de emisión:', rightCol, infoStartY);
     doc
       .font('Helvetica')
-      .text(new Date(transcript.summaryData.generatedAt).toLocaleDateString('es-ES'), rightCol + 100, infoStartY);
+      .text(
+        new Date(transcript.summaryData.generatedAt).toLocaleDateString(
+          'es-ES',
+        ),
+        rightCol + 100,
+        infoStartY,
+      );
 
     doc.font('Helvetica-Bold').text('ID Moodle:', rightCol, infoStartY + 18);
     doc
       .font('Helvetica')
-      .text(transcript.studentData.moodleUserId?.toString() || 'N/A', rightCol + 100, infoStartY + 18);
+      .text(
+        transcript.studentData.moodleUserId?.toString() || 'N/A',
+        rightCol + 100,
+        infoStartY + 18,
+      );
 
     doc.y = infoStartY + 50;
 
@@ -147,7 +174,10 @@ export class TranscriptPdfService {
   /**
    * Render tabla de calificaciones
    */
-  private async renderGradesTable(doc: typeof PDFDocument, transcript: Transcript): Promise<void> {
+  private renderGradesTable(
+    doc: typeof PDFDocument,
+    transcript: Transcript,
+  ): void {
     doc.fontSize(12).font('Helvetica-Bold').text('HISTORIAL ACADÉMICO');
     doc.moveDown(0.5);
 
@@ -185,9 +215,7 @@ export class TranscriptPdfService {
       doc.fontSize(9).font('Helvetica-Bold');
 
       // Fondo del header
-      doc
-        .rect(50, headerY - 3, doc.page.width - 100, 15)
-        .fill('#ecf0f1');
+      doc.rect(50, headerY - 3, doc.page.width - 100, 15).fill('#ecf0f1');
       doc.fillColor('black');
 
       headers.forEach((header, i) => {
@@ -207,7 +235,9 @@ export class TranscriptPdfService {
         }
 
         // Nombre del curso
-        doc.font('Helvetica-Bold').text(course.courseName.substring(0, 35), 50, doc.y);
+        doc
+          .font('Helvetica-Bold')
+          .text(course.courseName.substring(0, 35), 50, doc.y);
         doc.font('Helvetica');
         doc.moveDown(0.3);
 
@@ -224,12 +254,18 @@ export class TranscriptPdfService {
           doc.text('', xPos, rowY, { width: colWidths[0] }); // Espacio para indentación
           xPos += colWidths[0];
 
-          doc.text(`  ${item.itemName.substring(0, 15)}`, 60, rowY, { width: colWidths[1] - 10 });
+          doc.text(`  ${item.itemName.substring(0, 15)}`, 60, rowY, {
+            width: colWidths[1] - 10,
+          });
           doc.text(item.grade.toFixed(2), xPos, rowY, { width: colWidths[2] });
           xPos += colWidths[2];
-          doc.text(item.gradeMax.toString(), xPos, rowY, { width: colWidths[3] });
+          doc.text(item.gradeMax.toString(), xPos, rowY, {
+            width: colWidths[3],
+          });
           xPos += colWidths[3];
-          doc.text(`${item.percentage.toFixed(1)}%`, xPos, rowY, { width: colWidths[4] });
+          doc.text(`${item.percentage.toFixed(1)}%`, xPos, rowY, {
+            width: colWidths[4],
+          });
 
           doc.moveDown(0.5);
         }
@@ -237,10 +273,15 @@ export class TranscriptPdfService {
         // Promedio del curso
         doc
           .font('Helvetica-Bold')
-          .text(`Promedio del curso: ${course.courseAverage.toFixed(2)}%`, 300, doc.y, {
-            align: 'right',
-            width: 200,
-          });
+          .text(
+            `Promedio del curso: ${course.courseAverage.toFixed(2)}%`,
+            300,
+            doc.y,
+            {
+              align: 'right',
+              width: 200,
+            },
+          );
         doc.moveDown(0.8);
       }
 
@@ -271,17 +312,27 @@ export class TranscriptPdfService {
     const summaryY = doc.y;
 
     // Box de resumen
-    doc
-      .rect(50, summaryY, doc.page.width - 100, 60)
-      .fill('#f8f9fa');
+    doc.rect(50, summaryY, doc.page.width - 100, 60).fill('#f8f9fa');
     doc.fillColor('black');
 
     doc.fontSize(10).font('Helvetica');
-    doc.text(`Total de cursos: ${transcript.summaryData.totalCourses}`, 60, summaryY + 10);
-    doc.text(`Total de evaluaciones: ${transcript.gradesData.reduce((acc, c) => acc + c.gradeItems.length, 0)}`, 60, summaryY + 25);
+    doc.text(
+      `Total de cursos: ${transcript.summaryData.totalCourses}`,
+      60,
+      summaryY + 10,
+    );
+    doc.text(
+      `Total de evaluaciones: ${transcript.gradesData.reduce((acc, c) => acc + c.gradeItems.length, 0)}`,
+      60,
+      summaryY + 25,
+    );
 
     doc.font('Helvetica-Bold').fontSize(14);
-    doc.text(`PROMEDIO GENERAL: ${transcript.summaryData.overallAverage.toFixed(2)}%`, 300, summaryY + 20);
+    doc.text(
+      `PROMEDIO GENERAL: ${transcript.summaryData.overallAverage.toFixed(2)}%`,
+      300,
+      summaryY + 20,
+    );
 
     doc.y = summaryY + 70;
     doc.moveDown(0.5);
@@ -290,7 +341,10 @@ export class TranscriptPdfService {
   /**
    * Render footer con QR y verificación
    */
-  private async renderFooter(doc: typeof PDFDocument, transcript: Transcript): Promise<void> {
+  private async renderFooter(
+    doc: typeof PDFDocument,
+    transcript: Transcript,
+  ): Promise<void> {
     // Verificar si necesitamos nueva página
     if (doc.y > 600) {
       doc.addPage();
@@ -322,11 +376,20 @@ export class TranscriptPdfService {
     doc.image(qrBuffer, 50, footerY + 15, { width: 80, height: 80 });
 
     // Texto de verificación
-    doc.fontSize(9).font('Helvetica').text('VERIFICACIÓN DE AUTENTICIDAD', 150, footerY + 15);
+    doc
+      .fontSize(9)
+      .font('Helvetica')
+      .text('VERIFICACIÓN DE AUTENTICIDAD', 150, footerY + 15);
     doc.fontSize(8);
-    doc.text(`Código de verificación: ${transcript.verificationHash.substring(0, 32)}...`, 150, footerY + 30);
+    doc.text(
+      `Código de verificación: ${transcript.verificationHash.substring(0, 32)}...`,
+      150,
+      footerY + 30,
+    );
     doc.text(`Escanee el código QR o visite:`, 150, footerY + 45);
-    doc.fillColor('blue').text(verificationUrl, 150, footerY + 58, { link: verificationUrl });
+    doc
+      .fillColor('blue')
+      .text(verificationUrl, 150, footerY + 58, { link: verificationUrl });
     doc.fillColor('black');
 
     // Sello de autenticidad
@@ -336,13 +399,22 @@ export class TranscriptPdfService {
       150,
       footerY + 80,
     );
-    doc.text(`Fecha de generación: ${new Date(transcript.summaryData.generatedAt).toLocaleString('es-ES')}`, 150, footerY + 92);
+    doc.text(
+      `Fecha de generación: ${new Date(transcript.summaryData.generatedAt).toLocaleString('es-ES')}`,
+      150,
+      footerY + 92,
+    );
 
     // Hash completo al final
     doc.fontSize(6).font('Helvetica');
-    doc.text(`SHA-256: ${transcript.verificationHash}`, 50, doc.page.height - 30, {
-      align: 'center',
-      width: doc.page.width - 100,
-    });
+    doc.text(
+      `SHA-256: ${transcript.verificationHash}`,
+      50,
+      doc.page.height - 30,
+      {
+        align: 'center',
+        width: doc.page.width - 100,
+      },
+    );
   }
 }

@@ -71,7 +71,6 @@ export class StudentGradesService {
   async getGradesByCourse(
     courseMoodleId: number,
     periodId: number,
-    teacherId?: number,
   ): Promise<StudentGradeWithDetails[]> {
     // Get course info
     const course = await this.courseRepository.findOne({
@@ -79,7 +78,9 @@ export class StudentGradesService {
     });
 
     if (!course) {
-      throw new NotFoundException(`Course with Moodle ID ${courseMoodleId} not found`);
+      throw new NotFoundException(
+        `Course with Moodle ID ${courseMoodleId} not found`,
+      );
     }
 
     // Get students enrolled in the course
@@ -115,7 +116,10 @@ export class StudentGradesService {
     const gradeMap = new Map(existingGrades.map((g) => [g.studentId, g]));
 
     // Calculate Moodle sum for each student
-    const moodleSums = await this.calculateMoodleSums(courseMoodleId, studentMoodleIds);
+    const moodleSums = await this.calculateMoodleSums(
+      courseMoodleId,
+      studentMoodleIds,
+    );
 
     // Build result
     const results: StudentGradeWithDetails[] = [];
@@ -159,12 +163,9 @@ export class StudentGradesService {
     const result = new Map<number, { sum: number; max: number }>();
 
     // Get grade items for the course, excluding 'course' type (that's the total)
-    const allGradeItems = await this.gradeItemRepository.find({
-      where: { courseMoodleId },
+    const gradeItems = await this.gradeItemRepository.find({
+      where: { courseMoodleId, itemtype: Not('course') },
     });
-
-    // Filter out itemtype='course' - that's the course total, not individual grades
-    const gradeItems = allGradeItems.filter((gi) => gi.itemtype !== 'course');
 
     if (gradeItems.length === 0) {
       return result;
@@ -217,7 +218,9 @@ export class StudentGradesService {
     });
 
     if (!course) {
-      throw new NotFoundException(`Course with Moodle ID ${courseMoodleId} not found`);
+      throw new NotFoundException(
+        `Course with Moodle ID ${courseMoodleId} not found`,
+      );
     }
 
     // Check if student exists
@@ -339,7 +342,9 @@ export class StudentGradesService {
 
     // If courseMoodleId filter is provided
     if (courseMoodleId) {
-      enrolledCourseIds = enrolledCourseIds.filter((id) => id === courseMoodleId);
+      enrolledCourseIds = enrolledCourseIds.filter(
+        (id) => id === courseMoodleId,
+      );
       if (enrolledCourseIds.length === 0) {
         return [];
       }
@@ -365,9 +370,7 @@ export class StudentGradesService {
       relations: ['period', 'teacher'],
     });
 
-    const gradeMap = new Map(
-      existingGrades.map((g) => [g.courseMoodleId, g]),
-    );
+    const gradeMap = new Map(existingGrades.map((g) => [g.courseMoodleId, g]));
 
     // Build results: one entry per enrolled course
     const results: StudentCourseGrade[] = [];
@@ -378,7 +381,11 @@ export class StudentGradesService {
 
       results.push({
         courseMoodleId: courseId,
-        courseName: course?.subjectName || course?.fullname || grade?.courseName || `Curso ${courseId}`,
+        courseName:
+          course?.subjectName ||
+          course?.fullname ||
+          grade?.courseName ||
+          `Curso ${courseId}`,
         courseShortname: course?.shortname || grade?.courseShortname || '',
         periodId: periodId || grade?.periodId || 0,
         periodName: grade?.period?.name || periodName || '',
@@ -399,7 +406,9 @@ export class StudentGradesService {
   async getMyEnrolledCourses(
     studentId: number,
     periodId?: number,
-  ): Promise<{ courseMoodleId: number; courseName: string; courseShortname: string }[]> {
+  ): Promise<
+    { courseMoodleId: number; courseName: string; courseShortname: string }[]
+  > {
     // Get the user's moodleUserId
     const user = await this.userRepository.findOne({
       where: { id: studentId },
@@ -492,7 +501,10 @@ export class StudentGradesService {
     });
 
     // Get unique periods
-    const uniquePeriods = new Map<number, { periodId: number; periodCode: string; periodName: string }>();
+    const uniquePeriods = new Map<
+      number,
+      { periodId: number; periodCode: string; periodName: string }
+    >();
     for (const pc of periodCourses) {
       if (pc.period && !uniquePeriods.has(pc.periodId)) {
         uniquePeriods.set(pc.periodId, {
@@ -543,7 +555,9 @@ export class StudentGradesService {
     });
 
     if (!course) {
-      throw new NotFoundException(`Course with Moodle ID ${courseMoodleId} not found`);
+      throw new NotFoundException(
+        `Course with Moodle ID ${courseMoodleId} not found`,
+      );
     }
 
     const enrolments = await this.enrolmentRepository.find({
@@ -555,7 +569,10 @@ export class StudentGradesService {
     });
 
     const studentMoodleIds = enrolments.map((e) => e.userMoodleId);
-    const moodleSums = await this.calculateMoodleSums(courseMoodleId, studentMoodleIds);
+    const moodleSums = await this.calculateMoodleSums(
+      courseMoodleId,
+      studentMoodleIds,
+    );
 
     // Get students
     const students = await this.userRepository
@@ -612,9 +629,7 @@ export class StudentGradesService {
    * Returns summary of each course with enrolled student count
    * Now queries period_available_courses + moodle_enrolments
    */
-  async getCoursesWithGradesForPeriod(
-    periodId: number,
-  ): Promise<
+  async getCoursesWithGradesForPeriod(periodId: number): Promise<
     {
       courseMoodleId: number;
       courseName: string;
@@ -700,9 +715,7 @@ export class StudentGradesService {
    * Get all grades for a course across all periods (Admin view)
    * Used in CourseDetail to show all students with their grades
    */
-  async getCourseGradesAllPeriods(
-    courseMoodleId: number,
-  ): Promise<
+  async getCourseGradesAllPeriods(courseMoodleId: number): Promise<
     {
       studentId: number;
       studentName: string;
@@ -822,7 +835,14 @@ export class StudentGradesService {
         '(LOWER(user.email) LIKE :query OR LOWER(user.displayName) LIKE :query)',
         { query: `%${query.toLowerCase()}%` },
       )
-      .select(['user.id', 'user.email', 'user.displayName', 'user.username', 'user.moodleUserId', 'user.isActive'])
+      .select([
+        'user.id',
+        'user.email',
+        'user.displayName',
+        'user.username',
+        'user.moodleUserId',
+        'user.isActive',
+      ])
       .take(limit)
       .getMany();
 
@@ -841,9 +861,7 @@ export class StudentGradesService {
    * Shows all courses where the student has grades in course_student_grades
    * Includes detailed Moodle grades for each course
    */
-  async getAllGradesForUser(
-    userId: number,
-  ): Promise<{
+  async getAllGradesForUser(userId: number): Promise<{
     user: {
       id: number;
       email: string;
@@ -902,7 +920,9 @@ export class StudentGradesService {
     }
 
     // Get course info for each grade
-    const courseMoodleIds = [...new Set(studentGrades.map((g) => g.courseMoodleId))];
+    const courseMoodleIds = [
+      ...new Set(studentGrades.map((g) => g.courseMoodleId)),
+    ];
     const courses = await this.courseRepository.find({
       where: { moodleId: In(courseMoodleIds) },
     });
@@ -974,7 +994,8 @@ export class StudentGradesService {
       const firstGrade = grades[0];
       const periodCourses = grades.map((grade) => {
         const course = courseMap.get(grade.courseMoodleId);
-        const courseGradeItems = gradeItemsByCourse.get(grade.courseMoodleId) || [];
+        const courseGradeItems =
+          gradeItemsByCourse.get(grade.courseMoodleId) || [];
 
         // Build grade items with student's grades
         let sumGrade = 0;
@@ -1003,7 +1024,11 @@ export class StudentGradesService {
 
         return {
           courseMoodleId: grade.courseMoodleId,
-          courseName: grade.courseName || course?.subjectName || course?.fullname || `Curso ${grade.courseMoodleId}`,
+          courseName:
+            grade.courseName ||
+            course?.subjectName ||
+            course?.fullname ||
+            `Curso ${grade.courseMoodleId}`,
           courseShortname: grade.courseShortname || course?.shortname || '',
           courseCode: course?.code || null,
           courseSubjectName: course?.subjectName || null,
@@ -1030,7 +1055,8 @@ export class StudentGradesService {
     periods.sort((a, b) => {
       if (a.periodId === null && b.periodId !== null) return 1;
       if (a.periodId !== null && b.periodId === null) return -1;
-      if (a.periodId !== b.periodId) return (b.periodId ?? 0) - (a.periodId ?? 0);
+      if (a.periodId !== b.periodId)
+        return (b.periodId ?? 0) - (a.periodId ?? 0);
       return 0;
     });
 

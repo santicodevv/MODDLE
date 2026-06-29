@@ -7,12 +7,13 @@ import {
   Param,
   Query,
   ParseIntPipe,
-  Request,
 } from '@nestjs/common';
 import { StudentGradesService } from '../services/student-grades.service';
 import { UpdateStudentGradeDto } from '../dto/student-grade.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
 
 @Controller('student-grades')
 export class StudentGradesController {
@@ -27,12 +28,10 @@ export class StudentGradesController {
   async getGradesByCourse(
     @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
     @Query('periodId', ParseIntPipe) periodId: number,
-    @Request() req: any,
   ) {
     return this.studentGradesService.getGradesByCourse(
       courseMoodleId,
       periodId,
-      req.user?.id,
     );
   }
 
@@ -46,15 +45,15 @@ export class StudentGradesController {
     @Param('studentId', ParseIntPipe) studentId: number,
     @Query('periodId', ParseIntPipe) periodId: number,
     @Body() dto: UpdateStudentGradeDto,
-    @Request() req: any,
+    @CurrentUser() user: User,
   ) {
-    const isAdmin = req.user.roles?.some((r: any) => r.code === 'ADMIN') || false;
+    const isAdmin = user.roles?.some((r) => r.code === RoleCode.ADMIN) || false;
     return this.studentGradesService.updateGrade(
       courseMoodleId,
       studentId,
       periodId,
       dto,
-      req.user.id,
+      user.id,
       isAdmin,
     );
   }
@@ -78,12 +77,12 @@ export class StudentGradesController {
   async syncMoodleSums(
     @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
     @Query('periodId', ParseIntPipe) periodId: number,
-    @Request() req: any,
+    @CurrentUser() user: User,
   ) {
     return this.studentGradesService.syncMoodleSums(
       courseMoodleId,
       periodId,
-      req.user.id,
+      user.id,
     );
   }
 
@@ -93,12 +92,12 @@ export class StudentGradesController {
   @Roles(RoleCode.STUDENT)
   @Get('mine')
   async getMyGrades(
-    @Request() req: any,
+    @CurrentUser() user: User,
     @Query('periodId') periodId?: string,
     @Query('courseMoodleId') courseMoodleId?: string,
   ) {
     return this.studentGradesService.getMyGrades(
-      req.user.id,
+      user.id,
       periodId ? parseInt(periodId, 10) : undefined,
       courseMoodleId ? parseInt(courseMoodleId, 10) : undefined,
     );
@@ -109,8 +108,8 @@ export class StudentGradesController {
    */
   @Roles(RoleCode.STUDENT)
   @Get('mine/periods')
-  async getMyPeriodsWithGrades(@Request() req: any) {
-    return this.studentGradesService.getMyPeriodsWithGrades(req.user.id);
+  async getMyPeriodsWithGrades(@CurrentUser() user: User) {
+    return this.studentGradesService.getMyPeriodsWithGrades(user.id);
   }
 
   /**
@@ -119,11 +118,11 @@ export class StudentGradesController {
   @Roles(RoleCode.STUDENT)
   @Get('mine/courses')
   async getMyEnrolledCourses(
-    @Request() req: any,
+    @CurrentUser() user: User,
     @Query('periodId') periodId?: string,
   ) {
     return this.studentGradesService.getMyEnrolledCourses(
-      req.user.id,
+      user.id,
       periodId ? parseInt(periodId, 10) : undefined,
     );
   }
@@ -135,9 +134,9 @@ export class StudentGradesController {
   @Get('mine/period/:periodId')
   async getMyGradesByPeriod(
     @Param('periodId', ParseIntPipe) periodId: number,
-    @Request() req: any,
+    @CurrentUser() user: User,
   ) {
-    return this.studentGradesService.getMyGradesByPeriod(req.user.id, periodId);
+    return this.studentGradesService.getMyGradesByPeriod(user.id, periodId);
   }
 
   // =====================

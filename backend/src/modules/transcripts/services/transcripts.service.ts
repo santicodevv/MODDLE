@@ -12,7 +12,10 @@ import { Transcript, TranscriptStatus } from '../entities/transcript.entity';
 import { User } from '../../users/entities/user.entity';
 import { LocalGrade } from '../../academic/entities/local-grade.entity';
 import { AcademicPeriod } from '../../academic/entities/academic-period.entity';
-import { CreateTranscriptDto, RevokeTranscriptDto } from '../dto/create-transcript.dto';
+import {
+  CreateTranscriptDto,
+  RevokeTranscriptDto,
+} from '../dto/create-transcript.dto';
 import { TranscriptPdfService } from './transcript-pdf.service';
 
 @Injectable()
@@ -37,7 +40,7 @@ export class TranscriptsService {
   private async ensureStorageDir(): Promise<void> {
     try {
       await fs.mkdir(this.storagePath, { recursive: true });
-    } catch (error) {
+    } catch {
       // Ignorar si ya existe
     }
   }
@@ -97,7 +100,9 @@ export class TranscriptsService {
       .getMany();
 
     if (grades.length === 0) {
-      throw new BadRequestException('No hay calificaciones para generar el transcript');
+      throw new BadRequestException(
+        'No hay calificaciones para generar el transcript',
+      );
     }
 
     // Preparar datos del transcript
@@ -127,7 +132,6 @@ export class TranscriptsService {
     >();
 
     for (const g of grades) {
-      const key = `${g.courseId}-${g.periodId}`;
       if (!courseMap.has(g.courseId)) {
         courseMap.set(g.courseId, {
           courseId: g.courseId,
@@ -142,7 +146,9 @@ export class TranscriptsService {
       const gradeMin = g.gradeItem.grademin || 0;
       const percentage =
         gradeMax !== gradeMin
-          ? Math.round(((Number(g.grade) - gradeMin) / (gradeMax - gradeMin)) * 10000) / 100
+          ? Math.round(
+              ((Number(g.grade) - gradeMin) / (gradeMax - gradeMin)) * 10000,
+            ) / 100
           : 100;
 
       course.gradeItems.push({
@@ -168,10 +174,16 @@ export class TranscriptsService {
     }));
 
     // Resumen general
-    const allPercentages = gradesData.flatMap((c) => c.gradeItems.map((g) => g.percentage));
+    const allPercentages = gradesData.flatMap((c) =>
+      c.gradeItems.map((g) => g.percentage),
+    );
     const overallAverage =
       allPercentages.length > 0
-        ? Math.round((allPercentages.reduce((a, b) => a + b, 0) / allPercentages.length) * 100) / 100
+        ? Math.round(
+            (allPercentages.reduce((a, b) => a + b, 0) /
+              allPercentages.length) *
+              100,
+          ) / 100
         : 0;
 
     const summaryData = {
@@ -198,7 +210,10 @@ export class TranscriptsService {
       gradesData,
       summaryData,
     });
-    const verificationHash = crypto.createHash('sha256').update(contentToHash).digest('hex');
+    const verificationHash = crypto
+      .createHash('sha256')
+      .update(contentToHash)
+      .digest('hex');
 
     // Crear el transcript (sin el archivo todavía)
     const transcript = this.transcriptRepository.create({
@@ -279,7 +294,8 @@ export class TranscriptsService {
     if (!transcript) {
       return {
         valid: false,
-        message: 'No se encontró ningún documento con este código de verificación',
+        message:
+          'No se encontró ningún documento con este código de verificación',
       };
     }
 
@@ -374,13 +390,15 @@ export class TranscriptsService {
     const transcript = await this.findOne(id);
 
     if (transcript.status === TranscriptStatus.REVOKED) {
-      throw new BadRequestException('No se puede descargar un transcript revocado');
+      throw new BadRequestException(
+        'No se puede descargar un transcript revocado',
+      );
     }
 
     try {
       const buffer = await fs.readFile(transcript.filePath);
       return buffer;
-    } catch (error) {
+    } catch {
       throw new NotFoundException('Archivo PDF no encontrado');
     }
   }
@@ -392,7 +410,9 @@ export class TranscriptsService {
     const transcript = await this.findOne(id);
 
     if (transcript.status === TranscriptStatus.REVOKED) {
-      throw new BadRequestException('No se puede regenerar un transcript revocado');
+      throw new BadRequestException(
+        'No se puede regenerar un transcript revocado',
+      );
     }
 
     // Regenerar PDF
@@ -414,7 +434,9 @@ export class TranscriptsService {
     // Obtener el último número del año actual
     const lastTranscript = await this.transcriptRepository
       .createQueryBuilder('transcript')
-      .where('transcript.transcriptNumber LIKE :prefix', { prefix: `${prefix}%` })
+      .where('transcript.transcriptNumber LIKE :prefix', {
+        prefix: `${prefix}%`,
+      })
       .orderBy('transcript.id', 'DESC')
       .getOne();
 

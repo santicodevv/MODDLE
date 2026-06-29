@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   ParseIntPipe,
-  Request,
 } from '@nestjs/common';
 import { GradesService } from '../services/grades.service';
 import { CreateGradeDto } from '../dto/create-grade.dto';
@@ -41,8 +40,8 @@ export class GradesController {
    */
   @Post('edit-session/toggle')
   @Roles(RoleCode.ADMIN)
-  async toggleEditSession(@Request() req: any) {
-    return this.gradesService.toggleEditSession(req.user.id);
+  async toggleEditSession(@CurrentUser() user: User) {
+    return this.gradesService.toggleEditSession(user.id);
   }
 
   /**
@@ -62,7 +61,7 @@ export class GradesController {
   @Post('edit')
   @Roles(RoleCode.TEACHER, RoleCode.ADMIN)
   async saveGradeEdit(
-    @Request() req: any,
+    @CurrentUser() user: User,
     @Body()
     body: {
       courseMoodleId: number;
@@ -72,7 +71,7 @@ export class GradesController {
       feedback?: string;
     },
   ) {
-    return this.gradesService.saveGradeEdit(req.user.id, body);
+    return this.gradesService.saveGradeEdit(user.id, body);
   }
 
   /**
@@ -102,9 +101,8 @@ export class GradesController {
   @Roles(RoleCode.TEACHER, RoleCode.ADMIN)
   async getEditableGrades(
     @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
-    @Request() req: any,
   ) {
-    return this.gradesService.getEditableGrades(courseMoodleId, req.user.id);
+    return this.gradesService.getEditableGrades(courseMoodleId);
   }
 
   /**
@@ -135,7 +133,9 @@ export class GradesController {
     // Validar que estudiantes solo vean sus propias calificaciones
     const isStudent = user.roles.some((role) => role.code === RoleCode.STUDENT);
     if (isStudent && user.id !== studentId) {
-      throw new Error('No tiene permisos para ver calificaciones de otros estudiantes');
+      throw new Error(
+        'No tiene permisos para ver calificaciones de otros estudiantes',
+      );
     }
 
     return this.gradesService.findByStudent(
@@ -153,10 +153,7 @@ export class GradesController {
    */
   @Roles(RoleCode.TEACHER, RoleCode.ADMIN)
   @Post()
-  async create(
-    @Body() createDto: CreateGradeDto,
-    @CurrentUser() user: User,
-  ) {
+  async create(@Body() createDto: CreateGradeDto, @CurrentUser() user: User) {
     return this.gradesService.create(createDto, user.id);
   }
 

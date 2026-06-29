@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/app/providers';
 import { api } from '@/shared/lib';
-
-const INACTIVITY_LIMIT = 25 * 60 * 1000;
-const GRACE_LIMIT = 5 * 60; // 300 segundos
+import { STORAGE_KEYS, SESSION } from '@/shared/constants';
 
 export function useSessionTimeout() {
   const { logout, isAuthenticated } = useAuth();
   const [showModal, setShowModal] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(GRACE_LIMIT);
+  const [timeLeft, setTimeLeft] = useState(SESSION.GRACE_LIMIT);
 
   const channelRef = useRef<BroadcastChannel | null>(null);
   const lastActivityUpdateRef = useRef<number>(0);
@@ -22,7 +20,7 @@ export function useSessionTimeout() {
       }
     }
 
-    localStorage.setItem('moddle_session_expired', 'true');
+    localStorage.setItem(STORAGE_KEYS.SESSION_EXPIRED, 'true');
 
     try {
       await api.post('/auth/logout');
@@ -35,9 +33,9 @@ export function useSessionTimeout() {
 
   const renewSession = useCallback((broadcast = true) => {
     const nowStr = Date.now().toString();
-    localStorage.setItem('moddle_last_activity', nowStr);
+    localStorage.setItem(STORAGE_KEYS.LAST_ACTIVITY, nowStr);
     setShowModal(false);
-    setTimeLeft(GRACE_LIMIT);
+    setTimeLeft(SESSION.GRACE_LIMIT);
 
     if (broadcast && channelRef.current) {
       try {
@@ -54,7 +52,7 @@ export function useSessionTimeout() {
     const now = Date.now();
     if (now - lastActivityUpdateRef.current > 3000) {
       lastActivityUpdateRef.current = now;
-      localStorage.setItem('moddle_last_activity', now.toString());
+      localStorage.setItem(STORAGE_KEYS.LAST_ACTIVITY, now.toString());
       
       if (showModal) {
         renewSession(true);
@@ -64,22 +62,21 @@ export function useSessionTimeout() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setShowModal(false);
       return;
     }
 
-    if (!localStorage.getItem('moddle_last_activity')) {
-      localStorage.setItem('moddle_last_activity', Date.now().toString());
+    if (!localStorage.getItem(STORAGE_KEYS.LAST_ACTIVITY)) {
+      localStorage.setItem(STORAGE_KEYS.LAST_ACTIVITY, Date.now().toString());
     }
 
     try {
-      const channel = new BroadcastChannel('moddle_session');
+      const channel = new BroadcastChannel(STORAGE_KEYS.SESSION_CHANNEL);
       channelRef.current = channel;
 
       channel.onmessage = (event) => {
         if (event.data === 'keep_alive') {
           setShowModal(false);
-          setTimeLeft(GRACE_LIMIT);
+          setTimeLeft(SESSION.GRACE_LIMIT);
         } else if (event.data === 'logout') {
           handleForceLogout(false);
         }
@@ -92,24 +89,22 @@ export function useSessionTimeout() {
     events.forEach((name) => window.addEventListener(name, registerActivity, { passive: true }));
 
     const interval = setInterval(() => {
-      const lastActivity = Number(localStorage.getItem('moddle_last_activity') || Date.now());
+      const lastActivity = Number(localStorage.getItem(STORAGE_KEYS.LAST_ACTIVITY) || Date.now());
       const now = Date.now();
       const diff = now - lastActivity;
 
-      if (diff >= INACTIVITY_LIMIT) {
+      if (diff >= SESSION.INACTIVITY_LIMIT) {
         setShowModal(true);
-        const timePassedSinceLimit = Math.floor((diff - INACTIVITY_LIMIT) / 1000);
-        const secondsRemaining = Math.max(0, GRACE_LIMIT - timePassedSinceLimit);
+        const timePassedSinceLimit = Math.floor((diff - SESSION.INACTIVITY_LIMIT) / 1000);
+        const secondsRemaining = Math.max(0, SESSION.GRACE_LIMIT - timePassedSinceLimit);
         setTimeLeft(secondsRemaining);
 
         if (secondsRemaining <= 0) {
           clearInterval(interval);
           handleForceLogout(true);
         }
-      } else {
-        if (showModal) {
-          setShowModal(false);
-        }
+      } else if (showModal) {
+        setShowModal(false);
       }
     }, 1000);
 

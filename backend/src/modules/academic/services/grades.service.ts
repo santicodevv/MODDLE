@@ -9,7 +9,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LocalGrade } from '../entities/local-grade.entity';
-import { AcademicPeriod, AcademicPeriodStatus } from '../entities/academic-period.entity';
+import {
+  AcademicPeriod,
+  AcademicPeriodStatus,
+} from '../entities/academic-period.entity';
 import { GradeEditSession } from '../entities/grade-edit-session.entity';
 import { GradeEdit } from '../entities/grade-edit.entity';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
@@ -168,10 +171,7 @@ export class GradesService {
 
     // Validar rango de la nueva calificación
     if (updateDto.grade !== undefined) {
-      await this.validateGradeRange(
-        grade.gradeItemId,
-        updateDto.grade,
-      );
+      await this.validateGradeRange(grade.gradeItemId, updateDto.grade);
     }
 
     const oldData = { ...grade };
@@ -300,13 +300,7 @@ export class GradesService {
   async findOne(id: number): Promise<LocalGrade> {
     const grade = await this.gradeRepository.findOne({
       where: { id },
-      relations: [
-        'course',
-        'gradeItem',
-        'student',
-        'teacher',
-        'period',
-      ],
+      relations: ['course', 'gradeItem', 'student', 'teacher', 'period'],
     });
 
     if (!grade) {
@@ -464,17 +458,24 @@ export class GradesService {
         const enrolments = await this.enrolmentRepository
           .createQueryBuilder('e')
           .where('e.userMoodleId = :moodleId', { moodleId: user.moodleUserId })
-          .andWhere('(e.roleCode = :r1 OR e.roleCode = :r2)', { r1: 'editingteacher', r2: 'teacher' })
+          .andWhere('(e.roleCode = :r1 OR e.roleCode = :r2)', {
+            r1: 'editingteacher',
+            r2: 'teacher',
+          })
           .getMany();
 
-        enrolments.forEach((e) => courseMoodleIds.add(Number(e.courseMoodleId)));
+        enrolments.forEach((e) =>
+          courseMoodleIds.add(Number(e.courseMoodleId)),
+        );
       }
 
       // 2. Check course_teachers table (manual assignments)
       const teacherAssignments = await this.courseTeacherRepository.find({
         where: { teacherId: userId },
       });
-      teacherAssignments.forEach((a) => courseMoodleIds.add(Number(a.courseMoodleId)));
+      teacherAssignments.forEach((a) =>
+        courseMoodleIds.add(Number(a.courseMoodleId)),
+      );
 
       if (courseMoodleIds.size === 0) {
         return [];
@@ -558,7 +559,9 @@ export class GradesService {
       await this.moodleSyncService.syncGrades(courseMoodleId);
       await this.moodleSyncService.syncEnrolments(courseMoodleId);
     } catch (error) {
-      this.logger.warn(`Sync failed for course ${courseMoodleId}, using cached data: ${error.message}`);
+      this.logger.warn(
+        `Sync failed for course ${courseMoodleId}, using cached data: ${error.message}`,
+      );
     }
 
     // Get course info
@@ -582,7 +585,9 @@ export class GradesService {
     // Get student info
     const students = await this.moodleUserRepository
       .createQueryBuilder('u')
-      .where('u.moodleId IN (:...ids)', { ids: studentMoodleIds.length > 0 ? studentMoodleIds : [0] })
+      .where('u.moodleId IN (:...ids)', {
+        ids: studentMoodleIds.length > 0 ? studentMoodleIds : [0],
+      })
       .getMany();
 
     // Get all grades for this course
@@ -631,7 +636,8 @@ export class GradesService {
 
       return {
         studentMoodleId: Number(student.moodleId),
-        studentName: `${student.firstname || ''} ${student.lastname || ''}`.trim(),
+        studentName:
+          `${student.firstname || ''} ${student.lastname || ''}`.trim(),
         studentEmail: student.email,
         grades: studentGrades,
       };
@@ -717,7 +723,9 @@ export class GradesService {
     gradeEdit.courseMoodleId = data.courseMoodleId;
     gradeEdit.itemMoodleId = data.itemMoodleId;
     gradeEdit.studentMoodleId = data.studentMoodleId;
-    gradeEdit.previousGrade = currentMoodleGrade ? Number(currentMoodleGrade.grade) : null;
+    gradeEdit.previousGrade = currentMoodleGrade
+      ? Number(currentMoodleGrade.grade)
+      : null;
     gradeEdit.newGrade = data.newGrade;
     gradeEdit.feedback = data.feedback || null;
 
@@ -725,19 +733,20 @@ export class GradesService {
 
     // Create outbox event to sync to Moodle immediately
     try {
-      await this.outboxService.createEvent(
-        OutboxEventType.GRADE_UPDATED,
-        {
-          courseMoodleId: data.courseMoodleId,
-          itemMoodleId: data.itemMoodleId,
-          userMoodleId: data.studentMoodleId,
-          grade: data.newGrade,
-          feedback: data.feedback || '',
-        },
+      await this.outboxService.createEvent(OutboxEventType.GRADE_UPDATED, {
+        courseMoodleId: data.courseMoodleId,
+        itemMoodleId: data.itemMoodleId,
+        userMoodleId: data.studentMoodleId,
+        grade: data.newGrade,
+        feedback: data.feedback || '',
+      });
+      this.logger.log(
+        `Grade edit queued for Moodle sync: course=${data.courseMoodleId}, student=${data.studentMoodleId}, grade=${data.newGrade}`,
       );
-      this.logger.log(`Grade edit queued for Moodle sync: course=${data.courseMoodleId}, student=${data.studentMoodleId}, grade=${data.newGrade}`);
     } catch (error) {
-      this.logger.error(`Failed to queue grade sync to Moodle: ${error.message}`);
+      this.logger.error(
+        `Failed to queue grade sync to Moodle: ${error.message}`,
+      );
       // Don't throw - the local edit was saved successfully
     }
 
@@ -767,7 +776,7 @@ export class GradesService {
    * Get editable grades for a course (teacher view)
    * A grade is NOT editable if it was already edited by ANY teacher in the current session
    */
-  async getEditableGrades(courseMoodleId: number, teacherUserId: number) {
+  async getEditableGrades(courseMoodleId: number) {
     const result = await this.getGradesByCourse(courseMoodleId);
     const activeSession = await this.getActiveSession();
 
