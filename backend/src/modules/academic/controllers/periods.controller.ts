@@ -20,7 +20,6 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { User } from '../../users/entities/user.entity';
-import { Public } from '../../../common/decorators/public.decorator';
 
 @Controller('periods')
 export class PeriodsController {
@@ -50,6 +49,7 @@ export class PeriodsController {
     return this.periodsService.findOpenForReenrolment();
   }
 
+  @Roles(RoleCode.ADMIN)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.periodsService.findOne(id);
@@ -67,10 +67,7 @@ export class PeriodsController {
 
   @Roles(RoleCode.ADMIN)
   @Post(':id/open')
-  async open(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: User,
-  ) {
+  async open(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
     return this.periodsService.open(id, user.id);
   }
 
@@ -158,7 +155,12 @@ export class PeriodsController {
     @Body() dto: UpdateAvailableCourseDto,
     @CurrentUser() user: User,
   ) {
-    return this.periodsService.updateAvailableCourse(id, courseMoodleId, dto, user.id);
+    return this.periodsService.updateAvailableCourse(
+      id,
+      courseMoodleId,
+      dto,
+      user.id,
+    );
   }
 
   @Roles(RoleCode.ADMIN)
@@ -168,7 +170,11 @@ export class PeriodsController {
     @Body() dto: RemoveAvailableCoursesDto,
     @CurrentUser() user: User,
   ) {
-    await this.periodsService.removeAvailableCourses(id, dto.courseMoodleIds, user.id);
+    await this.periodsService.removeAvailableCourses(
+      id,
+      dto.courseMoodleIds,
+      user.id,
+    );
     return { success: true };
   }
 }
