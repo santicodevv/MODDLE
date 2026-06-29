@@ -1,8 +1,9 @@
 import { Card, CardContent } from '@/shared/components/ui';
 import { Calendar, Clock } from 'lucide-react';
+import type { Course } from '@/modules/admin/types/course.types';
 
 interface CourseInfoCardProps {
-  course: any;
+  course: Course;
 }
 
 export function CourseInfoCard({ course }: CourseInfoCardProps) {

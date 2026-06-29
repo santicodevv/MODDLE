@@ -2,11 +2,23 @@
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, Eye, EyeOff, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, Badge, Spinner, Button } from '@/shared/components/ui';
-import type { Course } from '@/modules/admin/types/course.types';
+import type { Course, CoursesResponse } from '@/modules/admin/types/course.types';
+import type React from 'react';
+
+interface CourseListProps {
+  data: CoursesResponse | null | undefined;
+  isLoading: boolean;
+  page: number;
+  setPage: (page: number) => void;
+  limit: number;
+  selectedCourse: Course | null;
+  setSelectedCourse: (course: Course) => void;
+  toggleVisibilityMutation: { mutate: (id: number) => void; isPending: boolean };
+}
 
 export function CourseList({
   data, isLoading, page, setPage, limit, selectedCourse, setSelectedCourse, toggleVisibilityMutation
-}: any) {
+}: CourseListProps) {
   const navigate = useNavigate();
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
@@ -70,7 +82,7 @@ export function CourseList({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={(e: any) => {
+                              onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
                                 toggleVisibilityMutation.mutate(course.id);
                               }}
@@ -83,7 +95,7 @@ export function CourseList({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={(e: any) => {
+                              onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
                                 navigate(`/admin/courses/${course.id}`);
                               }}

@@ -1,6 +1,6 @@
 import { Card, CardContent, Spinner } from '@/shared/components/ui';
 import { CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import type { RecentActivity } from '../../hooks/useAdminDashboard';
+import type { RecentActivity } from '../../types/dashboard.types';
 
 interface RecentActivityCardProps {
   recentActivity: RecentActivity[] | undefined;

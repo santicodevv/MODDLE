@@ -2,7 +2,13 @@
 import { Search } from 'lucide-react';
 import { Card, CardContent, Input } from '@/shared/components/ui';
 
-export function CourseFilters({ search, setSearch, setPage }: any) {
+interface CourseFiltersProps {
+  search: string;
+  setSearch: (value: string) => void;
+  setPage: (page: number) => void;
+}
+
+export function CourseFilters({ search, setSearch, setPage }: CourseFiltersProps) {
   return (
     <Card className="mb-6">
       <CardContent className="p-4">

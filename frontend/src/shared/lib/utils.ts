@@ -55,3 +55,27 @@ export function downloadBlob(blob: Blob, filename: string) {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
+export function getGradeColor(grade: number | null | undefined): string {
+  if (grade === null || grade === undefined) return 'text-gray-400';
+  if (grade >= 90) return 'text-green-600';
+  if (grade >= 70) return 'text-yellow-600';
+  if (grade >= 60) return 'text-orange-600';
+  return 'text-red-600';
+}
+
+export function getCurrentDashboard(pathname: string): string {
+  if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname.startsWith('/teacher')) return 'teacher';
+  if (pathname.startsWith('/student')) return 'student';
+  return '';
+}
+
+export function getRoleLabel(role: string): string {
+  const labels: Record<string, string> = {
+    ADMIN: 'Administrador',
+    TEACHER: 'Profesor',
+    STUDENT: 'Estudiante',
+  };
+  return labels[role] || role;
+}

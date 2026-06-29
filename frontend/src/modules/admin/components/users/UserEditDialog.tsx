@@ -2,15 +2,30 @@
 import { useState } from 'react';
 import { X, Save, Eye, EyeOff, Shield } from 'lucide-react';
 import { Button, Input, Spinner } from '@/shared/components/ui';
+import type { User } from '@/modules/admin/types/user.types';
+import type { UseMutationResult } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
-export function UserEditDialog({ user, onClose, rolesData, updateUser }: any) {
+interface RoleOption {
+  id: number;
+  code: string;
+  description?: string;
+}
+
+interface UserEditDialogProps {
+  user: User;
+  onClose: () => void;
+  rolesData: RoleOption[];
+  updateUser: UseMutationResult<unknown, Error, { id: number; data: Record<string, unknown> }, unknown>;
+}
+
+export function UserEditDialog({ user, onClose, rolesData, updateUser }: UserEditDialogProps) {
   const [editForm, setEditForm] = useState({
     displayName: user.displayName || '',
     email: user.email || '',
     password: '',
     isActive: user.isActive,
-    selectedRoleIds: user.roles.map((r: any) => r.id),
+    selectedRoleIds: user.roles.map((r) => r.id),
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -31,12 +46,12 @@ export function UserEditDialog({ user, onClose, rolesData, updateUser }: any) {
   };
 
   const handleSave = () => {
-    const changes: any = {};
+    const changes: Record<string, unknown> = {};
     if (editForm.displayName !== user.displayName) changes.displayName = editForm.displayName;
     if (editForm.email !== user.email) changes.email = editForm.email;
     if (editForm.password) changes.password = editForm.password;
     if (editForm.isActive !== user.isActive) changes.isActive = editForm.isActive;
-    const currentRoleIds = user.roles.map((r: any) => r.id).sort();
+    const currentRoleIds = user.roles.map((r) => r.id).sort();
     const newRoleIds = [...editForm.selectedRoleIds].sort();
     if (JSON.stringify(currentRoleIds) !== JSON.stringify(newRoleIds)) changes.roleIds = editForm.selectedRoleIds;
     
@@ -80,7 +95,7 @@ export function UserEditDialog({ user, onClose, rolesData, updateUser }: any) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
             <div className="flex flex-wrap gap-2">
-              {rolesData?.map((role: any) => {
+              {rolesData?.map((role) => {
                 const isSelected = editForm.selectedRoleIds.includes(role.id);
                 return (
                   <button key={role.id} type="button" onClick={() => toggleRole(role.id)}

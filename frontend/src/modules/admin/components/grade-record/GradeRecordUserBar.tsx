@@ -1,8 +1,9 @@
 import { Card, CardContent, Button } from '@/shared/components/ui';
 import { GraduationCap, Printer } from 'lucide-react';
+import type { UserGradesData } from '../../hooks/useAdminGradeRecord';
 
 interface GradeRecordUserBarProps {
-  userGrades: any;
+  userGrades: UserGradesData | null | undefined;
   setSelectedUserId: (id: number | null) => void;
   setShowSearch: (show: boolean) => void;
   handlePrint: () => void;

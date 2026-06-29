@@ -1,8 +1,14 @@
 import { Label, Select, Spinner } from '@/shared/components/ui';
 import { UserCheck, X } from 'lucide-react';
 
+interface TeacherOption {
+  id: number;
+  email: string;
+  displayName: string | null;
+}
+
 interface CourseTeachersFieldProps {
-  teachers: any[] | undefined;
+  teachers: TeacherOption[] | undefined;
   teachersLoading: boolean;
   selectedTeacherIds: number[];
   setSelectedTeacherIds: React.Dispatch<React.SetStateAction<number[]>>;

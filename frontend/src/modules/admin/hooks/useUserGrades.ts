@@ -1,24 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { gradesApi } from '@/shared/api';
-
-export interface UserSearchResult {
-  id: number;
-  email: string;
-  displayName: string | null;
-  moodleUserId: number | null;
-}
-
-export interface FlattenedCourse {
-  courseMoodleId: number;
-  courseName: string;
-  courseShortname: string;
-  totalGrade: number | null;
-  comment: string | null;
-  periodId: number;
-  periodName: string;
-  periodCode: string;
-}
+import type { UserSearchResult, FlattenedCourse } from '@/modules/admin/types/user.types';
 
 export function useUserGrades() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,8 +30,8 @@ export function useUserGrades() {
 
   const allCourses: FlattenedCourse[] = useMemo(() => {
     if (!userData?.periods) return [];
-    return userData.periods.flatMap((period: any) =>
-      period.courses.map((course: any) => ({
+    return userData.periods.flatMap((period: { periodId: number | null; periodName: string; periodCode: string; courses: Array<{ courseMoodleId: number; courseName: string; courseShortname: string; totalGrade: number | null; comment: string | null }> }) =>
+      period.courses.map((course) => ({
         ...course,
         periodId: period.periodId,
         periodName: period.periodName,

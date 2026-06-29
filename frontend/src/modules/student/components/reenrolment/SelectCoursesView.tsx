@@ -1,25 +1,30 @@
 import { Card, CardContent, Spinner, Badge, Button } from '@/shared/components/ui';
 import { BookOpen, AlertCircle, ChevronRight, CheckCircle, Trash2, Plus, Send } from 'lucide-react';
 import type { AcademicPeriod } from '@/shared/types';
+import type { PeriodAvailableCourse } from '@/modules/admin/types/period.types';
+import type { ReEnrolmentRequest } from '@/shared/types';
 import type { ViewMode } from '../../hooks/useStudentReEnrolment';
+import type { UseMutationResult } from '@tanstack/react-query';
+
+type ApiError = { response?: { data?: { message?: string } } };
 
 interface SelectCoursesViewProps {
   selectedPeriod: AcademicPeriod;
   setViewMode: (mode: ViewMode) => void;
   setSelectedPeriod: (period: AcademicPeriod | null) => void;
   setSelectedCourses: (courses: number[]) => void;
-  existingDraft: any;
+  existingDraft: ReEnrolmentRequest | null | undefined;
   loadingCourses: boolean;
-  availableCourses?: any[];
+  availableCourses?: PeriodAvailableCourse[];
   selectedCourses: number[];
   alreadyRequestedCourses: Set<number>;
   handleToggleCourse: (id: number) => void;
   handleSaveDraft: () => void;
   handleSubmit: () => void;
-  deleteMutation: any;
-  createMutation: any;
-  updateMutation: any;
-  submitMutation: any;
+  deleteMutation: UseMutationResult<unknown, ApiError, number, unknown>;
+  createMutation: UseMutationResult<unknown, ApiError, { periodId: number; courses: { courseMoodleId: number }[] }, unknown>;
+  updateMutation: UseMutationResult<unknown, ApiError, { id: number; courses: { courseMoodleId: number }[] }, unknown>;
+  submitMutation: UseMutationResult<unknown, ApiError, number, unknown>;
 }
 
 export function SelectCoursesView({

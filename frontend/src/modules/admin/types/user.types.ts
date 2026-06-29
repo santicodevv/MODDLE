@@ -54,3 +54,51 @@ export interface UsersQueryParams {
   role?: string;
   isActive?: boolean;
 }
+
+// Response types
+export interface UsersResponse {
+  users: User[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface UserSearchResult {
+  id: number;
+  email: string;
+  displayName: string | null;
+  moodleUserId: number | null;
+}
+
+export interface TeacherUser {
+  id: number;
+  email: string;
+  displayName?: string;
+  roles?: { code: string }[];
+}
+
+export interface UsersResponseData {
+  users: TeacherUser[];
+  total: number;
+}
+
+export interface FlattenedCourse {
+  courseMoodleId: number;
+  courseName: string;
+  courseShortname: string;
+  totalGrade: number | null;
+  comment: string | null;
+  periodId: number | null;
+  periodName: string;
+  periodCode: string;
+}
+
+export interface FlattenedGrade {
+  periodName: string;
+  courseCode: string;
+  courseName: string;
+  grade: number | null;
+  eq: string;
+  isConvalidated: boolean;
+  comments: string | null;
+}

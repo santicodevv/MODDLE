@@ -5,6 +5,7 @@ import { PeriodListView } from '../components/periods/PeriodListView';
 import { PeriodDetailView } from '../components/periods/PeriodDetailView';
 import { PeriodCoursesView } from '../components/periods/PeriodCoursesView';
 import { PeriodEditModal } from '../components/periods/PeriodEditModal';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 export default function AdminPeriods() {
   const {
@@ -84,18 +85,18 @@ export default function AdminPeriods() {
           selectedPeriod={selectedPeriod}
           setViewMode={setViewMode}
           setSelectedPeriod={setSelectedPeriod}
-          openPeriodMutation={openPeriodMutation}
-          closePeriodMutation={closePeriodMutation}
-          deletePeriodMutation={deletePeriodMutation}
+          openPeriodMutation={openPeriodMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
+          closePeriodMutation={closePeriodMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
+          deletePeriodMutation={deletePeriodMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
           setEditPeriodData={setEditPeriodData}
           setShowEditForm={setShowEditForm}
           showReenrolmentConfig={showReenrolmentConfig}
           setShowReenrolmentConfig={setShowReenrolmentConfig}
           reenrolmentConfig={reenrolmentConfig}
           setReenrolmentConfig={setReenrolmentConfig}
-          configReenrolmentMutation={configReenrolmentMutation}
-          openReenrolmentMutation={openReenrolmentMutation}
-          closeReenrolmentMutation={closeReenrolmentMutation}
+          configReenrolmentMutation={configReenrolmentMutation as unknown as UseMutationResult<unknown, Error, { id: number; data: { reenrolmentStartDate: string; reenrolmentEndDate: string } }, unknown>}
+          openReenrolmentMutation={openReenrolmentMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
+          closeReenrolmentMutation={closeReenrolmentMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
         />
       )}
 
@@ -105,8 +106,8 @@ export default function AdminPeriods() {
           setViewMode={setViewMode}
           loadingAvailableCourses={loadingAvailableCourses}
           availableCourses={availableCourses}
-          toggleCourseMutation={toggleCourseMutation}
-          removeCoursesMutation={removeCoursesMutation}
+          toggleCourseMutation={toggleCourseMutation as unknown as UseMutationResult<unknown, Error, { periodId: number; courseMoodleId: number; enabled: boolean }, unknown>}
+          removeCoursesMutation={removeCoursesMutation as unknown as UseMutationResult<unknown, Error, { periodId: number; courseMoodleIds: number[] }, unknown>}
           courseSearch={courseSearch}
           setCourseSearch={setCourseSearch}
           loadingMoodleCourses={loadingMoodleCourses}
@@ -114,7 +115,7 @@ export default function AdminPeriods() {
           selectedCoursesToAdd={selectedCoursesToAdd}
           setSelectedCoursesToAdd={setSelectedCoursesToAdd}
           handleAddCourses={handleAddCourses}
-          addCoursesMutation={addCoursesMutation}
+          addCoursesMutation={addCoursesMutation as unknown as UseMutationResult<unknown, Error, { periodId: number; courses: { courseMoodleId: number; courseName?: string; courseShortname?: string; categoryMoodleId?: number }[] }, unknown>}
         />
       )}
 
@@ -123,7 +124,7 @@ export default function AdminPeriods() {
         setShowEditForm={setShowEditForm}
         editPeriodData={editPeriodData}
         setEditPeriodData={setEditPeriodData}
-        updatePeriodMutation={updatePeriodMutation}
+        updatePeriodMutation={updatePeriodMutation as unknown as UseMutationResult<unknown, Error, { id: number; data: { id: number; code: string; name: string; startDate: string; endDate: string; description: string } }, unknown>}
       />
     </div>
   );

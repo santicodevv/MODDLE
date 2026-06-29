@@ -1,10 +1,11 @@
 import { Card, CardContent, Label, Select } from '@/shared/components/ui';
 import { GraduationCap } from 'lucide-react';
+import type { AcademicPeriod } from '@/shared/types';
 
 interface AdminGradesPeriodSelectorProps {
   effectivePeriodId: number | undefined;
   handlePeriodChange: (id: number | null) => void;
-  periods: any[] | undefined;
+  periods: AcademicPeriod[] | undefined;
 }
 
 export function AdminGradesPeriodSelector({

@@ -27,14 +27,35 @@ export default function TeacherGrades() {
     return <TeacherGradesError onBack={handleBack} />;
   }
 
-  const courseName = gradesHook.studentGrades?.[0]?.courseName || 'Curso';
-  const courseShortname = gradesHook.studentGrades?.[0]?.courseShortname || '';
+  const {
+    periods,
+    setSelectedPeriodId,
+    effectivePeriodId,
+    studentGrades,
+    localEdits,
+    updateGradeMutation,
+    handleGradeChange,
+    handleSave,
+  } = gradesHook;
+
+  const courseName = studentGrades?.[0]?.courseName || 'Curso';
+  const courseShortname = studentGrades?.[0]?.courseShortname || '';
 
   return (
     <div className="p-6">
       <TeacherGradesHeader courseName={courseName} courseShortname={courseShortname} />
-      <TeacherGradesFilters {...gradesHook} />
-      <TeacherGradesTable {...gradesHook} />
+      <TeacherGradesFilters
+        periods={periods ?? []}
+        effectivePeriodId={effectivePeriodId ?? null}
+        setSelectedPeriodId={setSelectedPeriodId}
+      />
+      <TeacherGradesTable
+        studentGrades={studentGrades ?? []}
+        localEdits={localEdits as Map<number, { totalGrade?: number | null; comment?: string | null }>}
+        handleGradeChange={handleGradeChange}
+        handleSave={handleSave}
+        updateGradeMutation={updateGradeMutation}
+      />
       <TeacherGradesLegend />
     </div>
   );

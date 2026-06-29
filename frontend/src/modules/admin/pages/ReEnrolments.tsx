@@ -6,6 +6,7 @@ import { ReEnrolmentList } from '../components/reenrolments/ReEnrolmentList';
 import { ReEnrolmentDetail } from '../components/reenrolments/ReEnrolmentDetail';
 import { RejectModal } from '../components/reenrolments/RejectModal';
 import { EditCoursesModal } from '../components/reenrolments/EditCoursesModal';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 export default function AdminReEnrolments() {
   const hookState = useAdminReEnrolments();
@@ -17,11 +18,11 @@ export default function AdminReEnrolments() {
           selectedRequest={hookState.selectedRequest}
           backToList={hookState.backToList}
           setEditCoursesModalOpen={hookState.setEditCoursesModalOpen}
-          approveMutation={hookState.approveMutation}
-          applyMutation={hookState.applyMutation}
+          approveMutation={hookState.approveMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
+          applyMutation={hookState.applyMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
           openRejectModal={hookState.openRejectModal}
           rejectMutation={hookState.rejectMutation}
-          deleteMutation={hookState.deleteMutation}
+          deleteMutation={hookState.deleteMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
         />
         <RejectModal
           rejectModalOpen={hookState.rejectModalOpen}
@@ -36,8 +37,8 @@ export default function AdminReEnrolments() {
           setEditCoursesModalOpen={hookState.setEditCoursesModalOpen}
           selectedRequest={hookState.selectedRequest}
           availableCourses={hookState.availableCourses || []}
-          adminRemoveCoursesMutation={hookState.adminRemoveCoursesMutation}
-          adminAddCoursesMutation={hookState.adminAddCoursesMutation}
+          adminRemoveCoursesMutation={hookState.adminRemoveCoursesMutation as unknown as UseMutationResult<unknown, Error, { id: number; courseMoodleIds: number[] }, unknown>}
+          adminAddCoursesMutation={hookState.adminAddCoursesMutation as unknown as UseMutationResult<unknown, Error, { id: number; courses: { courseMoodleId: number }[] }, unknown>}
         />
       </div>
     );
@@ -61,8 +62,8 @@ export default function AdminReEnrolments() {
         requests={hookState.requests}
         statusFilter={hookState.statusFilter}
         viewDetail={hookState.viewDetail}
-        approveMutation={hookState.approveMutation}
-          applyMutation={hookState.applyMutation}
+        approveMutation={hookState.approveMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
+          applyMutation={hookState.applyMutation as unknown as UseMutationResult<unknown, Error, number, unknown>}
         openRejectModal={hookState.openRejectModal}
         rejectMutation={hookState.rejectMutation}
       />

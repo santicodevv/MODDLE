@@ -9,18 +9,18 @@ interface PeriodDetailViewProps {
   selectedPeriod: AcademicPeriod;
   setViewMode: (mode: 'list' | 'detail' | 'courses') => void;
   setSelectedPeriod: (period: AcademicPeriod | null) => void;
-  openPeriodMutation: UseMutationResult<any, any, number, unknown>;
-  closePeriodMutation: UseMutationResult<any, any, number, unknown>;
-  deletePeriodMutation: UseMutationResult<any, any, number, unknown>;
-  setEditPeriodData: (data: any) => void;
+  openPeriodMutation: UseMutationResult<unknown, Error, number, unknown>;
+  closePeriodMutation: UseMutationResult<unknown, Error, number, unknown>;
+  deletePeriodMutation: UseMutationResult<unknown, Error, number, unknown>;
+  setEditPeriodData: (data: { id: number; code: string; name: string; startDate: string; endDate: string; description: string }) => void;
   setShowEditForm: (show: boolean) => void;
   showReenrolmentConfig: boolean;
   setShowReenrolmentConfig: (show: boolean) => void;
   reenrolmentConfig: { reenrolmentStartDate: string; reenrolmentEndDate: string };
-  setReenrolmentConfig: (config: any) => void;
-  configReenrolmentMutation: UseMutationResult<any, any, { id: number; data: any }, unknown>;
-  openReenrolmentMutation: UseMutationResult<any, any, number, unknown>;
-  closeReenrolmentMutation: UseMutationResult<any, any, number, unknown>;
+  setReenrolmentConfig: (config: { reenrolmentStartDate: string; reenrolmentEndDate: string }) => void;
+  configReenrolmentMutation: UseMutationResult<unknown, Error, { id: number; data: { reenrolmentStartDate: string; reenrolmentEndDate: string } }, unknown>;
+  openReenrolmentMutation: UseMutationResult<unknown, Error, number, unknown>;
+  closeReenrolmentMutation: UseMutationResult<unknown, Error, number, unknown>;
 }
 
 export function PeriodDetailView({

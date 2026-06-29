@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/app/providers';
 import { getErrorMessage } from '@/shared/lib';
+import { STORAGE_KEYS } from '@/shared/constants';
 
 export const loginSchema = z.object({
   identifier: z.string().min(1, 'El correo o usuario es requerido'),
@@ -33,13 +34,13 @@ export function useLogin() {
       );
     }
 
-    if (localStorage.getItem('moddle_session_expired') === 'true') {
+    if (localStorage.getItem(STORAGE_KEYS.SESSION_EXPIRED) === 'true') {
       setSessionExpired(true);
     }
   }, [searchParams, setSearchParams]);
 
   const handleAcknowledgeSessionExpired = () => {
-    localStorage.removeItem('moddle_session_expired');
+    localStorage.removeItem(STORAGE_KEYS.SESSION_EXPIRED);
     setSessionExpired(false);
   };
 

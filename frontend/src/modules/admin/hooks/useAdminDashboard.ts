@@ -1,44 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/app/providers';
 import { api } from '@/shared/lib';
+import type { DashboardStats, RecentActivity, ActiveStudent } from '@/modules/admin/types/dashboard.types';
 import toast from 'react-hot-toast';
-
-export interface DashboardStats {
-  totalUsers: number;
-  totalCourses: number;
-  totalEnrolments: number;
-  totalGrades: number;
-  pendingReEnrolments: number;
-  activePeriod?: {
-    id: number;
-    name: string;
-    startDate: string;
-    endDate: string;
-  };
-}
-
-export interface RecentActivity {
-  id: number;
-  action: string;
-  entity: string;
-  entityKey: string;
-  actorUserId: number;
-  actor?: {
-    id: number;
-    email: string;
-    displayName: string;
-  };
-  createdAt: string;
-}
-
-export interface ActiveStudent {
-  id: number;
-  moodleId: number;
-  firstname: string;
-  lastname: string;
-  email: string;
-  lastAccess: string | null;
-}
 
 export function useAdminDashboard() {
   const { user } = useAuth();
@@ -88,14 +52,14 @@ export function useAdminDashboard() {
     },
   });
 
-  const toggleEditSession = useMutation<any, Error, void>({
+  const toggleEditSession = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       const response = await api.post('/grades/edit-session/toggle');
       return response.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['edit-session-status'] });
-      toast.success(data.message || 'Estado actualizado');
+      toast.success((data as { message?: string }).message || 'Estado actualizado');
     },
     onError: () => {
       toast.error('Error al cambiar el estado');

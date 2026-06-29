@@ -1,16 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/lib/axios';
-import type { User, CreateUserRequest, UpdateUserRequest } from '@/modules/admin/types/user.types';
+import type { User, UsersResponse, CreateUserRequest, UpdateUserRequest } from '@/modules/admin/types/user.types';
 import type { Role } from '@/modules/auth/types';
 import toast from 'react-hot-toast';
-
-export interface UsersResponse {
-  users: User[];
-  total: number;
-  page: number;
-  limit: number;
-}
 
 export function useUsers() {
   const [search, setSearch] = useState('');

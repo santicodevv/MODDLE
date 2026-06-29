@@ -52,7 +52,7 @@ export function useCourses() {
       setSelectedCourse(null);
       toast.success('Curso eliminado');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al eliminar curso');
     },
   });
@@ -71,7 +71,7 @@ export function useCourses() {
         updated.visible ? 'Curso habilitado en Moodle' : 'Curso deshabilitado en Moodle'
       );
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al cambiar visibilidad');
     },
   });

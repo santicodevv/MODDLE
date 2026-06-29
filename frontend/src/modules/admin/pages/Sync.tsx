@@ -6,6 +6,7 @@ import { SyncActionButtons } from '../components/sync/SyncActionButtons';
 import { SyncReconcileResult } from '../components/sync/SyncReconcileResult';
 import { SyncEntityStatus } from '../components/sync/SyncEntityStatus';
 import { SyncInfoCard } from '../components/sync/SyncInfoCard';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 export default function AdminSync() {
   const hookState = useAdminSync();
@@ -24,9 +25,9 @@ export default function AdminSync() {
       />
       <SyncActionButtons
         triggerAllMutation={hookState.triggerAllMutation}
-        bootstrapMutation={hookState.bootstrapMutation}
-        reconcileMutation={hookState.reconcileMutation}
-        fixTeachersMutation={hookState.fixTeachersMutation}
+        bootstrapMutation={hookState.bootstrapMutation as unknown as UseMutationResult<unknown, Error, void, unknown>}
+        reconcileMutation={hookState.reconcileMutation as unknown as UseMutationResult<unknown, Error, void, unknown>}
+        fixTeachersMutation={hookState.fixTeachersMutation as unknown as UseMutationResult<unknown, Error, void, unknown>}
         isAnyMutationPending={hookState.isAnyMutationPending}
         syncStatus={hookState.syncStatus}
         healthStatus={hookState.healthStatus}

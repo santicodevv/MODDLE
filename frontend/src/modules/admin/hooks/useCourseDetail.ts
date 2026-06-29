@@ -4,28 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { coursesApi, usersApi, gradesApi } from '@/shared/api';
 import toast from 'react-hot-toast';
 import type { EnrolledUserWithDetails } from '@/shared/types';
-
-export interface CourseGradeData {
-  studentName: string;
-  studentEmail: string;
-  periodName: string | null;
-  moodleSumGrade: number | null;
-  moodleSumMax: number | null;
-  totalGrade: number | null;
-  comment: string | null;
-}
-
-export interface TeacherUser {
-  id: number;
-  email: string;
-  displayName?: string;
-  roles?: { code: string }[];
-}
-
-export interface UsersResponseData {
-  users: TeacherUser[];
-  total: number;
-}
+import type { CourseGradeData } from '@/modules/admin/types/course.types';
+import type { UsersResponseData } from '@/modules/admin/types/user.types';
 
 export function getAccessStatus(lastAccess: string | null): { color: string; bgColor: string; label: string } {
   if (!lastAccess) {

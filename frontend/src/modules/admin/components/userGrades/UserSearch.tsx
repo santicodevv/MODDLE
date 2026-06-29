@@ -1,6 +1,6 @@
 import { Card, CardContent, Input, Label, Spinner } from '@/shared/components/ui';
 import { Search, User } from 'lucide-react';
-import type { UserSearchResult } from '../../hooks/useUserGrades';
+import type { UserSearchResult } from '../../types/user.types';
 
 interface UserSearchProps {
   searchQuery: string;

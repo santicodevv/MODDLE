@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 
-export function TeacherGradesHeader({ courseShortname, courseName }: any) {
+interface TeacherGradesHeaderProps {
+  courseShortname: string | null;
+  courseName: string | null;
+}
+
+export function TeacherGradesHeader({ courseShortname, courseName }: TeacherGradesHeaderProps) {
   const navigate = useNavigate();
   return (
     <div className="flex items-center justify-between mb-6">

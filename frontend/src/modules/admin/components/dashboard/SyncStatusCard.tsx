@@ -1,6 +1,6 @@
 import { Card, CardContent, Badge } from '@/shared/components/ui';
 import { Database } from 'lucide-react';
-import type { DashboardStats } from '../../hooks/useAdminDashboard';
+import type { DashboardStats } from '../../types/dashboard.types';
 
 interface SyncStatusCardProps {
   stats: DashboardStats | undefined;

@@ -1,6 +1,6 @@
 import { Card, CardContent, Spinner } from '@/shared/components/ui';
 import { Users, RefreshCw } from 'lucide-react';
-import type { DashboardStats } from '../../hooks/useAdminDashboard';
+import type { DashboardStats } from '../../types/dashboard.types';
 
 interface DashboardStatsGridProps {
   stats: DashboardStats | undefined;

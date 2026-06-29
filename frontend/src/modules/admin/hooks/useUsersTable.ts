@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { UsersResponse } from './useUsers';
+import type { UsersResponse } from '@/modules/admin/types/user.types';
 
 export const PAGE_SIZE_OPTIONS = [20, 50, 100, 0] as const;
 

@@ -1,6 +1,6 @@
 import { Card, CardContent, Badge, Spinner, Button } from '@/shared/components/ui';
 import { User, Clock, AlertCircle, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import type { AuditLog } from '../../hooks/useAdminAudit';
+import type { AuditLog } from '../../types/audit.types';
 
 interface AuditLogListProps {
   logs?: AuditLog[];
@@ -102,7 +102,7 @@ export function AuditLogList({ logs, isLoading, search, entityFilter, setPage }:
                     {new Date(log.createdAt).toLocaleString()}
                   </span>
                   <Badge variant="outline">
-                    {sourceLabels[log.source] || log.source}
+                    {sourceLabels[log.source ?? ''] || log.source || 'App'}
                   </Badge>
                 </div>
 

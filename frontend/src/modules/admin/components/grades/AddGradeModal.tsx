@@ -4,6 +4,7 @@ import { Button } from '@/shared/components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { periodsApi } from '@/shared/api';
 import type { User } from '@/modules/admin/types/user.types';
+import type { AcademicPeriod, PeriodAvailableCourse } from '@/modules/admin/types/period.types';
 import toast from 'react-hot-toast';
 
 interface AddGradeModalProps {
@@ -86,7 +87,7 @@ export function AddGradeModal({ user, onClose }: AddGradeModalProps) {
                 className="w-full px-3 py-2 border border-blue-400 rounded-md outline-none focus:ring-2 focus:ring-blue-100 bg-white"
               >
                 <option value="">Seleccionar ciclo...</option>
-                {periods.map((period: any) => (
+                {(periods as AcademicPeriod[]).map((period) => (
                   <option key={period.id} value={period.id}>
                     {period.name} ({period.code})
                   </option>
@@ -106,7 +107,7 @@ export function AddGradeModal({ user, onClose }: AddGradeModalProps) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white disabled:bg-gray-100 disabled:text-gray-500"
               >
                 <option value="">Seleccionar materia...</option>
-                {availableCourses.map((course: any) => (
+                {(availableCourses as PeriodAvailableCourse[]).map((course) => (
                   <option key={course.id || course.courseMoodleId} value={course.courseMoodleId}>
                     {course.courseName || 'Curso sin nombre'}
                   </option>

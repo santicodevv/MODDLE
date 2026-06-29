@@ -25,8 +25,9 @@ export default function TeacherGradeEntry() {
     return <TeacherGradeEntryError onBack={handleBack} />;
   }
 
-  const isEditingEnabled = gradesHook.data.editSession?.isActive ?? false;
-  const course = gradesHook.data.course;
+  const { data, localEdits, saveGrade, deleteGrade, handleGradeChange, handleSaveGrade } = gradesHook;
+  const isEditingEnabled = data.editSession?.isActive ?? false;
+  const course = data.course;
 
   return (
     <div className="p-6">
@@ -39,7 +40,15 @@ export default function TeacherGradeEntry() {
 
       <TeacherGradeEntryAlert isEditingEnabled={isEditingEnabled} />
 
-      <GradeEntryTable {...gradesHook} isEditingEnabled={isEditingEnabled} />
+      <GradeEntryTable
+        data={data}
+        localEdits={localEdits}
+        handleGradeChange={handleGradeChange}
+        handleSaveGrade={handleSaveGrade}
+        saveGrade={saveGrade}
+        deleteGrade={deleteGrade}
+        isEditingEnabled={isEditingEnabled}
+      />
 
       <TeacherGradeEntryLegend />
     </div>

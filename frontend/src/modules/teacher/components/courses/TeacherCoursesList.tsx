@@ -1,8 +1,9 @@
 import { Card, CardContent, Button, Badge } from '@/shared/components/ui';
 import { BookOpen, Users, ClipboardList, ChevronRight } from 'lucide-react';
+import type { CourseWithStats } from '@/modules/admin/types/course.types';
 
 interface TeacherCoursesListProps {
-  courses: any[];
+  courses: CourseWithStats[];
   onNavigate: (courseId: number) => void;
 }
 

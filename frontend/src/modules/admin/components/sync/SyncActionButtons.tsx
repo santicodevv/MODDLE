@@ -4,10 +4,10 @@ import type { UseMutationResult } from '@tanstack/react-query';
 import type { HealthStatus, SyncStatus } from '../../hooks/useAdminSync';
 
 interface SyncActionButtonsProps {
-  triggerAllMutation: UseMutationResult<any, any, void, unknown>;
-  bootstrapMutation: UseMutationResult<any, any, void, unknown>;
-  reconcileMutation: UseMutationResult<any, any, void, unknown>;
-  fixTeachersMutation: UseMutationResult<any, any, void, unknown>;
+  triggerAllMutation: UseMutationResult<unknown, Error, void, unknown>;
+  bootstrapMutation: UseMutationResult<unknown, Error, void, unknown>;
+  reconcileMutation: UseMutationResult<unknown, Error, void, unknown>;
+  fixTeachersMutation: UseMutationResult<unknown, Error, void, unknown>;
   isAnyMutationPending: boolean;
   syncStatus?: SyncStatus;
   healthStatus?: HealthStatus;

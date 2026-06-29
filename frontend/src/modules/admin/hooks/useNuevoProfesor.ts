@@ -14,7 +14,7 @@ export interface CreateTeacherForm {
 
 interface CreateTeacherResponse {
   moodleUserId?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function useNuevoProfesor() {

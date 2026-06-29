@@ -8,11 +8,11 @@ interface ReEnrolmentDetailProps {
   selectedRequest: ReEnrolmentRequest;
   backToList: () => void;
   setEditCoursesModalOpen: (open: boolean) => void;
-  approveMutation: UseMutationResult<any, any, number, unknown>;
-  applyMutation: any;
+  approveMutation: UseMutationResult<unknown, Error, number, unknown>;
+  applyMutation: UseMutationResult<unknown, Error, number, unknown>;
   openRejectModal: (id: number) => void;
-  rejectMutation: UseMutationResult<any, any, { id: number; reason: string }, unknown>;
-  deleteMutation: UseMutationResult<any, any, number, unknown>;
+  rejectMutation: UseMutationResult<unknown, Error, { id: number; reason: string }, unknown>;
+  deleteMutation: UseMutationResult<unknown, Error, number, unknown>;
 }
 
 export function ReEnrolmentDetail({

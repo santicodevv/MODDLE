@@ -1,5 +1,4 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
-// test: trigger CI pipeline
 import { cn } from '@/shared/lib';
 import { Loader2 } from 'lucide-react';
 

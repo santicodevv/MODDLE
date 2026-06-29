@@ -118,15 +118,17 @@ export interface Course {
   moodleId: number;
   shortname: string;
   fullname: string;
-  categoryId: number;
+  categoryId?: number;
+  idnumber?: string;
+  summary?: string;
   visible: boolean;
-  startdate: string;
-  enddate: string;
+  startdate?: string;
+  enddate?: string;
   studentCount?: number;
   teacherCount?: number;
   subjectName?: string;
   code?: string;
-  lastSyncedAt: string;
+  lastSyncedAt?: string;
 }
 
 export interface CoursesResponse {
@@ -134,4 +136,14 @@ export interface CoursesResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface CourseGradeData {
+  studentName: string;
+  studentEmail: string;
+  periodName: string | null;
+  moodleSumGrade: number | null;
+  moodleSumMax: number | null;
+  totalGrade: number | null;
+  comment: string | null;
 }

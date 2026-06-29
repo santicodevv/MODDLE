@@ -18,7 +18,7 @@ export interface UserGradesData {
     username: string | null;
   };
   periods: Array<{
-    periodId: number;
+    periodId: number | null;
     periodName: string;
     periodCode: string;
     courses: Array<{

@@ -10,7 +10,7 @@ interface RevokeTranscriptModalProps {
   revokeReason: string;
   setRevokeReason: (reason: string) => void;
   handleRevoke: () => void;
-  revokeMutation: UseMutationResult<any, any, any, unknown>;
+  revokeMutation: UseMutationResult<unknown, Error, { id: number; reason: string }, unknown>;
 }
 
 export function RevokeTranscriptModal({

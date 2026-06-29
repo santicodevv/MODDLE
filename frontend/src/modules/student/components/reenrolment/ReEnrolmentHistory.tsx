@@ -1,14 +1,18 @@
 import { Card, CardContent, Spinner, Badge, Button } from '@/shared/components/ui';
 import { Clock, CheckCircle, XCircle, BookOpen, AlertCircle, Plus, Send } from 'lucide-react';
 import type { AcademicPeriod } from '@/shared/types';
+import type { ReEnrolmentRequest } from '@/shared/types';
 import type { ViewMode } from '../../hooks/useStudentReEnrolment';
+import type { UseMutationResult } from '@tanstack/react-query';
+
+type ApiError = { response?: { data?: { message?: string } } };
 
 interface ReEnrolmentHistoryProps {
   loadingRequests: boolean;
-  myRequests?: any[];
+  myRequests?: ReEnrolmentRequest[];
   openPeriods?: AcademicPeriod[];
   handleSelectPeriod: (period: AcademicPeriod) => void;
-  submitMutation: any;
+  submitMutation: UseMutationResult<unknown, ApiError, number, unknown>;
   setViewMode: (mode: ViewMode) => void;
 }
 
@@ -21,7 +25,7 @@ export function ReEnrolmentHistory({
   setViewMode,
 }: ReEnrolmentHistoryProps) {
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { variant: any; icon: any; label: string }> = {
+    const configs: Record<string, { variant: 'secondary' | 'warning' | 'info' | 'error' | 'success'; icon: React.ComponentType<{ className?: string }>; label: string }> = {
       draft: { variant: 'secondary', icon: Clock, label: 'Borrador' },
       submitted: { variant: 'warning', icon: Clock, label: 'En revisión' },
       approved: { variant: 'info', icon: CheckCircle, label: 'Aprobada' },
@@ -91,7 +95,7 @@ export function ReEnrolmentHistory({
                       Cursos solicitados ({request.lines.length}):
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {request.lines.map((line: any) => (
+                      {request.lines.map((line) => (
                         <Badge key={line.id} variant="secondary">
                           <BookOpen className="h-3 w-3 mr-1" />
                           {line.courseName || `Curso ${line.courseMoodleId}`}

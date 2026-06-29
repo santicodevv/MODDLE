@@ -20,7 +20,7 @@ export default function StudentCourses() {
   if (error) {
     return (
       <div className="p-6">
-        <StudentCoursesError error={error} />
+        <StudentCoursesError error={error as { response?: { data?: { message?: string } } } | null} />
       </div>
     );
   }

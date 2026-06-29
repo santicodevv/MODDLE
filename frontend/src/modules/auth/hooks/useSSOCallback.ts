@@ -6,10 +6,9 @@ import type { DecodedToken } from '@/shared/types';
 export function useSSOCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const token = searchParams.get('token');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-
     if (!token) {
       // No hay token — redirigir al login con error
       navigate('/login?sso_error=' + encodeURIComponent('No se recibió el token de autenticación.'), { replace: true });
@@ -34,5 +33,5 @@ export function useSSOCallback() {
     } else {
       navigate('/student', { replace: true });
     }
-  }, [navigate, searchParams]);
+  }, [token, navigate]);
 }

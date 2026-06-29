@@ -145,3 +145,48 @@ export interface UpdateStudentGradeDto {
 export interface SyncMoodleSumsResult {
   updated: number;
 }
+
+// Grade entry types
+export interface GradeItem {
+  itemMoodleId: number;
+  itemName: string;
+  itemType: string;
+  gradeMax: number;
+  gradeMin: number;
+  weight: number | null;
+}
+
+export interface StudentGrade {
+  itemMoodleId: number;
+  itemName: string;
+  gradeMax: number;
+  gradeMin: number;
+  moodleGrade: number | null;
+  editedGrade: number | null;
+  feedback: string | null;
+  wasEdited: boolean;
+  editable: boolean;
+  editId?: number;
+}
+
+export interface Participant {
+  studentMoodleId: number;
+  studentName: string;
+  studentEmail: string;
+  grades: StudentGrade[];
+}
+
+export interface CourseGradesResponse {
+  course: {
+    moodleId: number;
+    fullname: string;
+    shortname: string;
+  } | null;
+  gradeItems: GradeItem[];
+  participants: Participant[];
+  editSession: {
+    id: number;
+    isActive: boolean;
+    activatedAt: string;
+  } | null;
+}

@@ -1,23 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/lib';
-
-export interface AuditLog {
-  id: number;
-  actorUserId: number;
-  actor?: {
-    id: number;
-    email: string;
-    displayName: string;
-  };
-  action: string;
-  entity: string;
-  entityKey: string;
-  beforeData?: unknown;
-  afterData?: unknown;
-  source: string;
-  createdAt: string;
-}
+import type { AuditLog } from '@/modules/admin/types/audit.types';
 
 export function useAdminAudit() {
   const [search, setSearch] = useState('');

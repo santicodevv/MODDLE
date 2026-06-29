@@ -13,6 +13,7 @@ export function SettingsUsuarios() {
   // Forzar que solo se muestren administradores
   useEffect(() => {
     usersHook.setFilterRole('ADMIN');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
