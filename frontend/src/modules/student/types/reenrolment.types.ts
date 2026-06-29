@@ -12,6 +12,7 @@ export interface ReEnrolmentRequest {
   submittedAt?: string;
   decidedAt?: string;
   decidedBy?: number;
+  rejectionReason?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;

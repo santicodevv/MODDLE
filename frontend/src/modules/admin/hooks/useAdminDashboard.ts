@@ -59,7 +59,7 @@ export function useAdminDashboard() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['edit-session-status'] });
-      toast.success(data.message || 'Estado actualizado');
+      toast.success((data as { message?: string }).message || 'Estado actualizado');
     },
     onError: () => {
       toast.error('Error al cambiar el estado');

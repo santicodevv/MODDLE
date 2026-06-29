@@ -4,7 +4,7 @@ import { UserCheck, X } from 'lucide-react';
 interface TeacherOption {
   id: number;
   email: string;
-  displayName: string;
+  displayName: string | null;
 }
 
 interface CourseTeachersFieldProps {

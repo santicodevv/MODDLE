@@ -6,7 +6,7 @@ import { getGradeColor } from '@/shared/lib/utils';
 
 interface TeacherGradesTableProps {
   studentGrades: StudentGradeWithDetails[];
-  localEdits: Map<number, { totalGrade?: number; comment?: string }>;
+  localEdits: Map<number, { totalGrade?: number | null; comment?: string | null }>;
   handleGradeChange: (studentId: number, field: 'totalGrade' | 'comment', value: string) => void;
   handleSave: (studentId: number) => void;
   updateGradeMutation: { isPending: boolean };

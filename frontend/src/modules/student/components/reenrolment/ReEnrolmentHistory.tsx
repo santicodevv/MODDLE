@@ -5,12 +5,14 @@ import type { ReEnrolmentRequest } from '@/shared/types';
 import type { ViewMode } from '../../hooks/useStudentReEnrolment';
 import type { UseMutationResult } from '@tanstack/react-query';
 
+type ApiError = { response?: { data?: { message?: string } } };
+
 interface ReEnrolmentHistoryProps {
   loadingRequests: boolean;
   myRequests?: ReEnrolmentRequest[];
   openPeriods?: AcademicPeriod[];
   handleSelectPeriod: (period: AcademicPeriod) => void;
-  submitMutation: UseMutationResult<unknown, Error, number, unknown>;
+  submitMutation: UseMutationResult<unknown, ApiError, number, unknown>;
   setViewMode: (mode: ViewMode) => void;
 }
 

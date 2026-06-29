@@ -102,7 +102,7 @@ export function AuditLogList({ logs, isLoading, search, entityFilter, setPage }:
                     {new Date(log.createdAt).toLocaleString()}
                   </span>
                   <Badge variant="outline">
-                    {sourceLabels[log.source] || log.source}
+                    {sourceLabels[log.source ?? ''] || log.source || 'App'}
                   </Badge>
                 </div>
 

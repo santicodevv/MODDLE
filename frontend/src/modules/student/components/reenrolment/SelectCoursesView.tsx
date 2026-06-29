@@ -6,6 +6,8 @@ import type { ReEnrolmentRequest } from '@/shared/types';
 import type { ViewMode } from '../../hooks/useStudentReEnrolment';
 import type { UseMutationResult } from '@tanstack/react-query';
 
+type ApiError = { response?: { data?: { message?: string } } };
+
 interface SelectCoursesViewProps {
   selectedPeriod: AcademicPeriod;
   setViewMode: (mode: ViewMode) => void;
@@ -19,10 +21,10 @@ interface SelectCoursesViewProps {
   handleToggleCourse: (id: number) => void;
   handleSaveDraft: () => void;
   handleSubmit: () => void;
-  deleteMutation: UseMutationResult<unknown, Error, number, unknown>;
-  createMutation: UseMutationResult<unknown, Error, { periodId: number; courses: { courseMoodleId: number }[] }, unknown>;
-  updateMutation: UseMutationResult<unknown, Error, { id: number; courses: { courseMoodleId: number }[] }, unknown>;
-  submitMutation: UseMutationResult<unknown, Error, number, unknown>;
+  deleteMutation: UseMutationResult<unknown, ApiError, number, unknown>;
+  createMutation: UseMutationResult<unknown, ApiError, { periodId: number; courses: { courseMoodleId: number }[] }, unknown>;
+  updateMutation: UseMutationResult<unknown, ApiError, { id: number; courses: { courseMoodleId: number }[] }, unknown>;
+  submitMutation: UseMutationResult<unknown, ApiError, number, unknown>;
 }
 
 export function SelectCoursesView({

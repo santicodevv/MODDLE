@@ -6,7 +6,7 @@ import type { Course, CoursesResponse } from '@/modules/admin/types/course.types
 import type React from 'react';
 
 interface CourseListProps {
-  data: CoursesResponse | null;
+  data: CoursesResponse | null | undefined;
   isLoading: boolean;
   page: number;
   setPage: (page: number) => void;

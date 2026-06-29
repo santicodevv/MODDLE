@@ -88,7 +88,7 @@ export interface FlattenedCourse {
   courseShortname: string;
   totalGrade: number | null;
   comment: string | null;
-  periodId: number;
+  periodId: number | null;
   periodName: string;
   periodCode: string;
 }

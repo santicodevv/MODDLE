@@ -6,6 +6,7 @@ export interface AuditLog {
   action: string;
   entity: string;
   entityKey: string;
+  source?: string;
   beforeData?: Record<string, unknown>;
   afterData?: Record<string, unknown>;
   createdAt: string;

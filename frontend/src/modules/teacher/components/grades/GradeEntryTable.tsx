@@ -2,33 +2,10 @@
 import { User, Save, Lock, ClipboardList, Trash2 } from 'lucide-react';
 import { Card, CardContent, Input, Badge, Button } from '@/shared/components/ui';
 import { getGradeColor } from '@/shared/lib/utils';
-
-interface GradeParticipant {
-  studentMoodleId: number;
-  studentName: string;
-  studentEmail: string;
-  grades: Array<{
-    itemMoodleId: number;
-    gradeMax: number;
-    moodleGrade: number | null;
-    editedGrade: number | null;
-    editable: boolean;
-    wasEdited: boolean;
-    editId: number;
-  }>;
-}
-
-interface GradeEntryData {
-  participants: GradeParticipant[];
-  gradeItems: Array<{
-    itemMoodleId: number;
-    itemName: string;
-    gradeMax: number;
-  }>;
-}
+import type { CourseGradesResponse } from '@/modules/teacher/types/grade.types';
 
 interface GradeEntryTableProps {
-  data: GradeEntryData;
+  data: CourseGradesResponse;
   localEdits: Map<string, { grade?: number }>;
   handleGradeChange: (studentMoodleId: number, itemMoodleId: number, value: string, gradeMax: number) => void;
   handleSaveGrade: (studentMoodleId: number, itemMoodleId: number) => void;
@@ -109,12 +86,12 @@ export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSav
                                 <span className={`font-medium ${getGradeColor(displayGrade !== null ? Math.round((displayGrade / grade.gradeMax) * 100) : null)}`}>
                                   {displayGrade !== null ? displayGrade : '-'}
                                 </span>
-                                {grade.wasEdited && deleteGrade && (
+                                {grade.wasEdited && deleteGrade && grade.editId != null && (
                                   <Button 
                                     size="sm" 
                                     variant="outline" 
                                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
-                                    onClick={() => deleteGrade.mutate(grade.editId)}
+                                    onClick={() => deleteGrade.mutate(grade.editId!)}
                                     disabled={deleteGrade.isPending}
                                     title="Revertir edición"
                                   >

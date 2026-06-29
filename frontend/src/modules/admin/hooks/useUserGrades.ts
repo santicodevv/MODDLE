@@ -30,7 +30,7 @@ export function useUserGrades() {
 
   const allCourses: FlattenedCourse[] = useMemo(() => {
     if (!userData?.periods) return [];
-    return userData.periods.flatMap((period: { periodId: number; periodName: string; periodCode: string; courses: Array<{ courseMoodleId: number; courseName: string; courseShortname: string; totalGrade: number | null; comment: string | null }> }) =>
+    return userData.periods.flatMap((period: { periodId: number | null; periodName: string; periodCode: string; courses: Array<{ courseMoodleId: number; courseName: string; courseShortname: string; totalGrade: number | null; comment: string | null }> }) =>
       period.courses.map((course) => ({
         ...course,
         periodId: period.periodId,

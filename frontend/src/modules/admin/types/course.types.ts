@@ -118,15 +118,17 @@ export interface Course {
   moodleId: number;
   shortname: string;
   fullname: string;
-  categoryId: number;
+  categoryId?: number;
+  idnumber?: string;
+  summary?: string;
   visible: boolean;
-  startdate: string;
-  enddate: string;
+  startdate?: string;
+  enddate?: string;
   studentCount?: number;
   teacherCount?: number;
   subjectName?: string;
   code?: string;
-  lastSyncedAt: string;
+  lastSyncedAt?: string;
 }
 
 export interface CoursesResponse {
