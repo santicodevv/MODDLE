@@ -37,8 +37,8 @@ export class MoodleWebhookController {
     this.webhookSecret =
       this.configService.get<string>('MOODLE_WEBHOOK_SECRET') || '';
     if (!this.webhookSecret) {
-      throw new Error(
-        'MOODLE_WEBHOOK_SECRET environment variable is not configured',
+      this.logger.warn(
+        'MOODLE_WEBHOOK_SECRET not configured — webhook endpoint will reject all requests',
       );
     }
   }
