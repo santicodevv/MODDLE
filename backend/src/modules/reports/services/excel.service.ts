@@ -12,7 +12,9 @@ export class ExcelService {
   /**
    * Generar Excel de reporte de calificaciones por estudiante
    */
-  async generateStudentGradesExcel(report: StudentGradesReportDto): Promise<Buffer> {
+  async generateStudentGradesExcel(
+    report: StudentGradesReportDto,
+  ): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Sistema Académico';
     workbook.created = new Date();
@@ -42,7 +44,7 @@ export class ExcelService {
     sheet.getCell('B8').value = report.summary.coursesCount;
 
     // Tabla de calificaciones
-    const headerRow = sheet.addRow([]);
+    sheet.addRow([]);
     sheet.addRow([
       'Curso',
       'Item de Evaluación',
@@ -100,7 +102,9 @@ export class ExcelService {
   /**
    * Generar Excel de reporte de calificaciones por curso
    */
-  async generateCourseGradesExcel(report: CourseGradesReportDto): Promise<Buffer> {
+  async generateCourseGradesExcel(
+    report: CourseGradesReportDto,
+  ): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Sistema Académico';
     workbook.created = new Date();
@@ -134,7 +138,12 @@ export class ExcelService {
     sheet.getCell('B10').value = report.statistics.lowestGrade;
 
     // Construir headers dinámicos basados en los items de calificación
-    const headers = ['Estudiante', 'Email', ...report.gradeItems.map((i) => i.name), 'Promedio'];
+    const headers = [
+      'Estudiante',
+      'Email',
+      ...report.gradeItems.map((i) => i.name),
+      'Promedio',
+    ];
     sheet.addRow([]);
     sheet.addRow([]);
     const headerRow = sheet.addRow(headers);
@@ -296,7 +305,12 @@ export class ExcelService {
 
     // Hoja de comparación por período
     const compSheet = workbook.addWorksheet('Comparación por Período');
-    compSheet.addRow(['Período', 'Promedio', 'Tasa Aprobación', 'Total Calificaciones']);
+    compSheet.addRow([
+      'Período',
+      'Promedio',
+      'Tasa Aprobación',
+      'Total Calificaciones',
+    ]);
     compSheet.getRow(1).font = { bold: true };
 
     for (const period of report.periodComparison) {
@@ -319,7 +333,11 @@ export class ExcelService {
     topSheet.getRow(1).font = { bold: true };
 
     for (const course of report.topPerformingCourses) {
-      topSheet.addRow([course.courseName, course.averageGrade, `${course.passRate}%`]);
+      topSheet.addRow([
+        course.courseName,
+        course.averageGrade,
+        `${course.passRate}%`,
+      ]);
     }
 
     topSheet.getColumn(1).width = 40;

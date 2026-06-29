@@ -12,7 +12,9 @@ export class PdfService {
   /**
    * Generar PDF de reporte de calificaciones por estudiante
    */
-  async generateStudentGradesPdf(report: StudentGradesReportDto): Promise<Buffer> {
+  async generateStudentGradesPdf(
+    report: StudentGradesReportDto,
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50 });
       const chunks: Buffer[] = [];
@@ -22,11 +24,17 @@ export class PdfService {
       doc.on('error', reject);
 
       // Header
-      doc.fontSize(20).font('Helvetica-Bold').text('Reporte de Calificaciones', { align: 'center' });
+      doc
+        .fontSize(20)
+        .font('Helvetica-Bold')
+        .text('Reporte de Calificaciones', { align: 'center' });
       doc.moveDown();
 
       // Información del estudiante
-      doc.fontSize(12).font('Helvetica-Bold').text('Información del Estudiante');
+      doc
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text('Información del Estudiante');
       doc.fontSize(10).font('Helvetica');
       doc.text(`Nombre: ${report.studentName}`);
       doc.text(`Email: ${report.studentEmail}`);
@@ -57,7 +65,10 @@ export class PdfService {
         xPos += colWidths[i];
       });
 
-      doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+      doc
+        .moveTo(50, tableTop + 15)
+        .lineTo(550, tableTop + 15)
+        .stroke();
 
       // Datos
       doc.font('Helvetica').fontSize(8);
@@ -88,7 +99,9 @@ export class PdfService {
 
       // Footer
       doc.moveDown(2);
-      doc.fontSize(8).text(`Generado: ${new Date().toISOString()}`, { align: 'right' });
+      doc
+        .fontSize(8)
+        .text(`Generado: ${new Date().toISOString()}`, { align: 'right' });
 
       doc.end();
     });
@@ -97,7 +110,9 @@ export class PdfService {
   /**
    * Generar PDF de reporte de calificaciones por curso
    */
-  async generateCourseGradesPdf(report: CourseGradesReportDto): Promise<Buffer> {
+  async generateCourseGradesPdf(
+    report: CourseGradesReportDto,
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50, layout: 'landscape' });
       const chunks: Buffer[] = [];
@@ -107,7 +122,10 @@ export class PdfService {
       doc.on('error', reject);
 
       // Header
-      doc.fontSize(18).font('Helvetica-Bold').text(`Reporte de Calificaciones`, { align: 'center' });
+      doc
+        .fontSize(18)
+        .font('Helvetica-Bold')
+        .text(`Reporte de Calificaciones`, { align: 'center' });
       doc.fontSize(14).text(report.courseName, { align: 'center' });
       doc.moveDown();
 
@@ -144,7 +162,10 @@ export class PdfService {
       doc.moveDown();
 
       // Tabla de estudiantes
-      doc.fontSize(12).font('Helvetica-Bold').text('Calificaciones por Estudiante');
+      doc
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text('Calificaciones por Estudiante');
       doc.moveDown(0.5);
 
       const tableTop = doc.y;
@@ -159,12 +180,17 @@ export class PdfService {
 
       for (const item of report.gradeItems.slice(0, 6)) {
         // Limitar a 6 items por espacio
-        doc.text(item.name.substring(0, 10), xPos, tableTop, { width: gradeColWidth });
+        doc.text(item.name.substring(0, 10), xPos, tableTop, {
+          width: gradeColWidth,
+        });
         xPos += gradeColWidth;
       }
       doc.text('Promedio', xPos, tableTop, { width: gradeColWidth });
 
-      doc.moveTo(50, tableTop + 12).lineTo(750, tableTop + 12).stroke();
+      doc
+        .moveTo(50, tableTop + 12)
+        .lineTo(750, tableTop + 12)
+        .stroke();
 
       // Datos
       doc.font('Helvetica').fontSize(7);
@@ -178,22 +204,30 @@ export class PdfService {
         }
 
         xPos = 50;
-        doc.text(student.studentName.substring(0, 25), xPos, yPos, { width: baseColWidth });
+        doc.text(student.studentName.substring(0, 25), xPos, yPos, {
+          width: baseColWidth,
+        });
         xPos += baseColWidth;
 
         for (const item of report.gradeItems.slice(0, 6)) {
           const grade = student.grades.find((g) => g.gradeItemId === item.id);
-          doc.text(grade ? grade.grade.toString() : '-', xPos, yPos, { width: gradeColWidth });
+          doc.text(grade ? grade.grade.toString() : '-', xPos, yPos, {
+            width: gradeColWidth,
+          });
           xPos += gradeColWidth;
         }
-        doc.text(`${student.averagePercentage}%`, xPos, yPos, { width: gradeColWidth });
+        doc.text(`${student.averagePercentage}%`, xPos, yPos, {
+          width: gradeColWidth,
+        });
 
         yPos += 12;
       }
 
       // Footer
       doc.moveDown(2);
-      doc.fontSize(8).text(`Generado: ${new Date().toISOString()}`, { align: 'right' });
+      doc
+        .fontSize(8)
+        .text(`Generado: ${new Date().toISOString()}`, { align: 'right' });
 
       doc.end();
     });
@@ -212,13 +246,21 @@ export class PdfService {
       doc.on('error', reject);
 
       // Header
-      doc.fontSize(20).font('Helvetica-Bold').text('Reporte por Período Académico', { align: 'center' });
+      doc
+        .fontSize(20)
+        .font('Helvetica-Bold')
+        .text('Reporte por Período Académico', { align: 'center' });
       doc.moveDown();
 
       // Información del período
-      doc.fontSize(14).font('Helvetica-Bold').text(`${report.periodName} (${report.periodCode})`);
+      doc
+        .fontSize(14)
+        .font('Helvetica-Bold')
+        .text(`${report.periodName} (${report.periodCode})`);
       doc.fontSize(10).font('Helvetica');
-      doc.text(`Fecha inicio: ${new Date(report.startDate).toLocaleDateString()}`);
+      doc.text(
+        `Fecha inicio: ${new Date(report.startDate).toLocaleDateString()}`,
+      );
       doc.text(`Fecha fin: ${new Date(report.endDate).toLocaleDateString()}`);
       doc.text(`Estado: ${report.status}`);
       doc.moveDown();
@@ -239,7 +281,13 @@ export class PdfService {
 
       const tableTop = doc.y;
       const colWidths = [180, 80, 80, 80, 80];
-      const headers = ['Curso', 'Estudiantes', 'Notas', 'Promedio', 'Aprobación'];
+      const headers = [
+        'Curso',
+        'Estudiantes',
+        'Notas',
+        'Promedio',
+        'Aprobación',
+      ];
 
       doc.fontSize(9).font('Helvetica-Bold');
       let xPos = 50;
@@ -248,7 +296,10 @@ export class PdfService {
         xPos += colWidths[i];
       });
 
-      doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+      doc
+        .moveTo(50, tableTop + 15)
+        .lineTo(550, tableTop + 15)
+        .stroke();
 
       doc.font('Helvetica').fontSize(8);
       let yPos = tableTop + 20;
@@ -278,7 +329,9 @@ export class PdfService {
 
       // Footer
       doc.moveDown(2);
-      doc.fontSize(8).text(`Generado: ${new Date().toISOString()}`, { align: 'right' });
+      doc
+        .fontSize(8)
+        .text(`Generado: ${new Date().toISOString()}`, { align: 'right' });
 
       doc.end();
     });

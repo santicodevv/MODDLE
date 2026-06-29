@@ -38,7 +38,12 @@ export class Transcript {
   /**
    * Número único del transcript (formato: TRN-YYYY-NNNNNN)
    */
-  @Column({ type: 'varchar', length: 20, unique: true, name: 'transcript_number' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    unique: true,
+    name: 'transcript_number',
+  })
   transcriptNumber: string;
 
   /**
@@ -47,7 +52,7 @@ export class Transcript {
   @Column({ type: 'bigint', name: 'student_id' })
   studentId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'student_id', referencedColumnName: 'id' })
   student: User;
 
@@ -105,7 +110,12 @@ export class Transcript {
   /**
    * Hash SHA-256 del contenido para verificación
    */
-  @Column({ type: 'varchar', length: 64, unique: true, name: 'verification_hash' })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    unique: true,
+    name: 'verification_hash',
+  })
   verificationHash: string;
 
   /**

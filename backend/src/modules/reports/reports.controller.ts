@@ -54,15 +54,21 @@ export class ReportsController {
     );
 
     if (isStudent && !isTeacherOrAdmin && user.id !== studentId) {
-      throw new ForbiddenException('Solo puede consultar sus propias calificaciones');
+      throw new ForbiddenException(
+        'Solo puede consultar sus propias calificaciones',
+      );
     }
 
-    const report = await this.reportsService.getStudentGradesReport(studentId, filters);
+    const report = await this.reportsService.getStudentGradesReport(
+      studentId,
+      filters,
+    );
 
     if (filters.format === ExportFormat.EXCEL) {
       const buffer = await this.excelService.generateStudentGradesExcel(report);
       res.set({
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="calificaciones_estudiante_${studentId}.xlsx"`,
       });
       return res.send(buffer);
@@ -92,12 +98,16 @@ export class ReportsController {
     @Query() filters: CourseGradesFilterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const report = await this.reportsService.getCourseGradesReport(courseId, filters);
+    const report = await this.reportsService.getCourseGradesReport(
+      courseId,
+      filters,
+    );
 
     if (filters.format === ExportFormat.EXCEL) {
       const buffer = await this.excelService.generateCourseGradesExcel(report);
       res.set({
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="calificaciones_curso_${courseId}.xlsx"`,
       });
       return res.send(buffer);
@@ -132,7 +142,8 @@ export class ReportsController {
     if (filters.format === ExportFormat.EXCEL) {
       const buffer = await this.excelService.generatePeriodReportExcel(report);
       res.set({
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="reporte_periodo_${periodId}.xlsx"`,
       });
       return res.send(buffer);
@@ -175,7 +186,8 @@ export class ReportsController {
     if ((filters as any).format === ExportFormat.EXCEL) {
       const buffer = await this.excelService.generateGlobalSummaryExcel(report);
       res.set({
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="resumen_global.xlsx"`,
       });
       return res.send(buffer);
@@ -208,12 +220,16 @@ export class ReportsController {
     @CurrentUser() user: any,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const report = await this.reportsService.getStudentGradesReport(user.id, filters);
+    const report = await this.reportsService.getStudentGradesReport(
+      user.id,
+      filters,
+    );
 
     if (filters.format === ExportFormat.EXCEL) {
       const buffer = await this.excelService.generateStudentGradesExcel(report);
       res.set({
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="mis_calificaciones.xlsx"`,
       });
       return res.send(buffer);

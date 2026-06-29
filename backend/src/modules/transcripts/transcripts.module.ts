@@ -18,12 +18,7 @@ import { TranscriptsController } from './transcripts.controller';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([
-      Transcript,
-      User,
-      LocalGrade,
-      AcademicPeriod,
-    ]),
+    TypeOrmModule.forFeature([Transcript, User, LocalGrade, AcademicPeriod]),
   ],
   controllers: [TranscriptsController],
   providers: [TranscriptsService, TranscriptPdfService],

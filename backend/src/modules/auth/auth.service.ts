@@ -13,19 +13,26 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(createUserDto: CreateUserDto): Promise<{ user: User; message: string }> {
+  async register(
+    createUserDto: CreateUserDto,
+  ): Promise<{ user: User; message: string }> {
     const user = await this.usersService.create(createUserDto);
     return {
       user,
-      message: 'Usuario registrado exitosamente. Contacte al administrador para asignar roles.',
+      message:
+        'Usuario registrado exitosamente. Contacte al administrador para asignar roles.',
     };
   }
 
-  async login(loginDto: LoginDto): Promise<{ accessToken: string; user: User }> {
-    const user = await this.usersService.findByEmailOrUsername(loginDto.identifier);
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ accessToken: string; user: User }> {
+    const user = await this.usersService.findByEmailOrUsername(
+      loginDto.identifier,
+    );
 
     if (!user) {
-      throw new UnauthorizedException('User not registered');
+      throw new UnauthorizedException('Credenciales incorrectas');
     }
 
     const isPasswordValid = await this.usersService.validatePassword(
@@ -34,11 +41,11 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Credenciales incorrectas');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('User is inactive');
+      throw new UnauthorizedException('Credenciales incorrectas');
     }
 
     const payload: JwtPayload = {
@@ -56,11 +63,15 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
-  async validateMicrosoftUser(profile: { email: string; displayName: string; microsoftId: string }): Promise<User> {
+  async validateMicrosoftUser(profile: {
+    email: string;
+    displayName: string;
+    microsoftId: string;
+  }): Promise<User> {
     return this.usersService.findOrCreateSSOUser(profile);
   }
 
-  async loginSSO(user: User): Promise<{ accessToken: string; user: User }> {
+  loginSSO(user: User): { accessToken: string; user: User } {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,

@@ -42,10 +42,7 @@ export class AuditService {
     return saved;
   }
 
-  async findByEntity(
-    entity: string,
-    entityKey: string,
-  ): Promise<AuditLog[]> {
+  async findByEntity(entity: string, entityKey: string): Promise<AuditLog[]> {
     return this.auditRepository.find({
       where: { entity, entityKey },
       order: { createdAt: 'DESC' },

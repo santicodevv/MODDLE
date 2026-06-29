@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
 import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.entity';
@@ -81,33 +86,32 @@ export class CoursesService {
       take: limit,
     });
 
-    // Get student and teacher counts for each course
-    const coursesWithCounts: CourseWithCounts[] = await Promise.all(
-      courses.map(async (course) => {
-        const [studentCount, teacherCount] = await Promise.all([
-          this.enrolmentRepository.count({
+    // Get student and teacher counts for each course (batch query)
+    const courseMoodleIds = courses.map((c) => c.moodleId);
+    const allEnrolments =
+      courseMoodleIds.length > 0
+        ? await this.enrolmentRepository.find({
             where: {
-              courseMoodleId: course.moodleId,
-              roleCode: 'student',
+              courseMoodleId: In(courseMoodleIds),
               enrolStatus: 'active',
             },
-          }),
-          this.enrolmentRepository.count({
-            where: {
-              courseMoodleId: course.moodleId,
-              roleCode: ILike('%teacher%'),
-              enrolStatus: 'active',
-            },
-          }),
-        ]);
-
-        return {
-          ...course,
-          studentCount,
-          teacherCount,
-        };
-      }),
-    );
+          })
+        : [];
+    const studentCountMap = new Map<number, number>();
+    const teacherCountMap = new Map<number, number>();
+    for (const e of allEnrolments) {
+      const mid = e.courseMoodleId;
+      if (e.roleCode === 'student') {
+        studentCountMap.set(mid, (studentCountMap.get(mid) || 0) + 1);
+      } else if (e.roleCode.toLowerCase().includes('teacher')) {
+        teacherCountMap.set(mid, (teacherCountMap.get(mid) || 0) + 1);
+      }
+    }
+    const coursesWithCounts: CourseWithCounts[] = courses.map((course) => ({
+      ...course,
+      studentCount: studentCountMap.get(course.moodleId) || 0,
+      teacherCount: teacherCountMap.get(course.moodleId) || 0,
+    }));
 
     return {
       courses: coursesWithCounts,
@@ -199,15 +203,22 @@ export class CoursesService {
 
     const moodleCategories = await this.moodleClient.getCategories();
 
-    this.logger.log(`Received ${moodleCategories?.length || 0} categories from Moodle`);
+    this.logger.log(
+      `Received ${moodleCategories?.length || 0} categories from Moodle`,
+    );
     this.logger.debug(`Categories data: ${JSON.stringify(moodleCategories)}`);
 
-    if (!moodleCategories || !Array.isArray(moodleCategories) || moodleCategories.length === 0) {
+    if (
+      !moodleCategories ||
+      !Array.isArray(moodleCategories) ||
+      moodleCategories.length === 0
+    ) {
       this.logger.warn('No categories received from Moodle');
       return { synced: 0 };
     }
 
-    for (const mCat of moodleCategories) {
+    const rawCategories = moodleCategories;
+    for (const mCat of rawCategories) {
       let category = await this.categoryRepository.findOne({
         where: { moodleId: mCat.id },
       });
@@ -245,7 +256,9 @@ export class CoursesService {
       this.logger.log(`Saved category: ${mCat.name} (Moodle ID: ${mCat.id})`);
     }
 
-    this.logger.log(`Categories sync completed. Total synced: ${moodleCategories.length}`);
+    this.logger.log(
+      `Categories sync completed. Total synced: ${moodleCategories.length}`,
+    );
     return { synced: moodleCategories.length };
   }
 
@@ -253,7 +266,9 @@ export class CoursesService {
    * Update the subject name of a course (local only)
    */
   async updateSubjectName(courseId: number, subjectName: string) {
-    const course = await this.courseRepository.findOne({ where: { id: courseId } });
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+    });
     if (!course) {
       throw new NotFoundException(`Course with ID ${courseId} not found`);
     }
@@ -266,7 +281,9 @@ export class CoursesService {
    * Update the code of a course (local only)
    */
   async updateCode(courseId: number, code: string) {
-    const course = await this.courseRepository.findOne({ where: { id: courseId } });
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+    });
     if (!course) {
       throw new NotFoundException(`Course with ID ${courseId} not found`);
     }
@@ -292,7 +309,9 @@ export class CoursesService {
       where: { moodleId: categoryId },
     });
 
-    this.logger.log(`Category lookup for moodleId ${data.categoryid}: ${category ? 'found' : 'not found'}`);
+    this.logger.log(
+      `Category lookup for moodleId ${data.categoryid}: ${category ? 'found' : 'not found'}`,
+    );
 
     if (!category) {
       throw new BadRequestException(
@@ -324,11 +343,15 @@ export class CoursesService {
       this.logger.log(`Moodle response: ${JSON.stringify(moodleResult)}`);
 
       if (!moodleResult || moodleResult.length === 0) {
-        throw new BadRequestException('Failed to create course in Moodle - empty response');
+        throw new BadRequestException(
+          'Failed to create course in Moodle - empty response',
+        );
       }
     } catch (error) {
       this.logger.error(`Moodle create course error: ${error.message}`);
-      throw new BadRequestException(`Error creating course in Moodle: ${error.message}`);
+      throw new BadRequestException(
+        `Error creating course in Moodle: ${error.message}`,
+      );
     }
 
     const createdMoodleCourse = moodleResult[0];
@@ -388,7 +411,9 @@ export class CoursesService {
     }
 
     // Get unique course moodle IDs
-    const courseMoodleIds = [...new Set(enrolments.map((e) => e.courseMoodleId))];
+    const courseMoodleIds = [
+      ...new Set(enrolments.map((e) => e.courseMoodleId)),
+    ];
 
     // Get the courses
     const courses = await this.courseRepository
@@ -397,33 +422,32 @@ export class CoursesService {
       .orderBy('course.fullname', 'ASC')
       .getMany();
 
-    // Add counts for each course
-    const coursesWithCounts: CourseWithCounts[] = await Promise.all(
-      courses.map(async (course) => {
-        const [studentCount, teacherCount] = await Promise.all([
-          this.enrolmentRepository.count({
+    // Add counts for each course (batch query)
+    const courseIdsForCounts = courses.map((c) => c.moodleId);
+    const allEnrolments =
+      courseIdsForCounts.length > 0
+        ? await this.enrolmentRepository.find({
             where: {
-              courseMoodleId: course.moodleId,
-              roleCode: 'student',
+              courseMoodleId: In(courseIdsForCounts),
               enrolStatus: 'active',
             },
-          }),
-          this.enrolmentRepository.count({
-            where: {
-              courseMoodleId: course.moodleId,
-              roleCode: ILike('%teacher%'),
-              enrolStatus: 'active',
-            },
-          }),
-        ]);
-
-        return {
-          ...course,
-          studentCount,
-          teacherCount,
-        };
-      }),
-    );
+          })
+        : [];
+    const studentCountMap = new Map<number, number>();
+    const teacherCountMap = new Map<number, number>();
+    for (const e of allEnrolments) {
+      const mid = e.courseMoodleId;
+      if (e.roleCode === 'student') {
+        studentCountMap.set(mid, (studentCountMap.get(mid) || 0) + 1);
+      } else if (e.roleCode.toLowerCase().includes('teacher')) {
+        teacherCountMap.set(mid, (teacherCountMap.get(mid) || 0) + 1);
+      }
+    }
+    const coursesWithCounts: CourseWithCounts[] = courses.map((course) => ({
+      ...course,
+      studentCount: studentCountMap.get(course.moodleId) || 0,
+      teacherCount: teacherCountMap.get(course.moodleId) || 0,
+    }));
 
     return coursesWithCounts;
   }
@@ -537,7 +561,9 @@ export class CoursesService {
       },
     });
 
-    const existingTeacherIds = existingAssignments.map((a) => Number(a.teacherId));
+    const existingTeacherIds = existingAssignments.map((a) =>
+      Number(a.teacherId),
+    );
     const newTeacherIds = teacherIds.filter(
       (id) => !existingTeacherIds.includes(Number(id)),
     );
@@ -552,11 +578,14 @@ export class CoursesService {
         courseMoodleId,
         courseName,
         teacherId,
-        isPrimary: existingAssignments.length === 0 && newTeacherIds.indexOf(teacherId) === 0,
+        isPrimary:
+          existingAssignments.length === 0 &&
+          newTeacherIds.indexOf(teacherId) === 0,
       }),
     );
 
-    const savedAssignments = await this.courseTeacherRepository.save(newAssignments);
+    const savedAssignments =
+      await this.courseTeacherRepository.save(newAssignments);
 
     // Ensure all assigned teachers have the TEACHER role
     await this.ensureTeachersHaveRole(teachers);
@@ -597,7 +626,9 @@ export class CoursesService {
       teacher.roles = teacher.roles.filter((r) => r.code !== RoleCode.STUDENT);
       teacher.roles.push(teacherRole);
       await this.userRepository.save(teacher);
-      this.logger.log(`Assigned TEACHER role to user ${teacher.email} (id: ${teacher.id})`);
+      this.logger.log(
+        `Assigned TEACHER role to user ${teacher.email} (id: ${teacher.id})`,
+      );
     }
   }
 
@@ -644,7 +675,7 @@ export class CoursesService {
         `Error fetching teachers for course ${courseMoodleId}: ${error.message}`,
         error.stack,
       );
-      // Return empty array instead of crashing 
+      // Return empty array instead of crashing
       return [];
     }
   }
@@ -671,33 +702,32 @@ export class CoursesService {
       where: { moodleId: In(courseMoodleIds) },
     });
 
-    // Add counts for each course
-    const coursesWithCounts: CourseWithCounts[] = await Promise.all(
-      courses.map(async (course) => {
-        const [studentCount, teacherCount] = await Promise.all([
-          this.enrolmentRepository.count({
+    // Add counts for each course (batch query)
+    const courseIdsForCounts = courses.map((c) => c.moodleId);
+    const allEnrolments =
+      courseIdsForCounts.length > 0
+        ? await this.enrolmentRepository.find({
             where: {
-              courseMoodleId: course.moodleId,
-              roleCode: 'student',
+              courseMoodleId: In(courseIdsForCounts),
               enrolStatus: 'active',
             },
-          }),
-          this.enrolmentRepository.count({
-            where: {
-              courseMoodleId: course.moodleId,
-              roleCode: ILike('%teacher%'),
-              enrolStatus: 'active',
-            },
-          }),
-        ]);
-
-        return {
-          ...course,
-          studentCount,
-          teacherCount,
-        };
-      }),
-    );
+          })
+        : [];
+    const studentCountMap = new Map<number, number>();
+    const teacherCountMap = new Map<number, number>();
+    for (const e of allEnrolments) {
+      const mid = e.courseMoodleId;
+      if (e.roleCode === 'student') {
+        studentCountMap.set(mid, (studentCountMap.get(mid) || 0) + 1);
+      } else if (e.roleCode.toLowerCase().includes('teacher')) {
+        teacherCountMap.set(mid, (teacherCountMap.get(mid) || 0) + 1);
+      }
+    }
+    const coursesWithCounts: CourseWithCounts[] = courses.map((course) => ({
+      ...course,
+      studentCount: studentCountMap.get(course.moodleId) || 0,
+      teacherCount: teacherCountMap.get(course.moodleId) || 0,
+    }));
 
     return coursesWithCounts;
   }
@@ -747,7 +777,9 @@ export class CoursesService {
     courseId: number,
     adminUserId: number,
   ): Promise<CourseWithCounts> {
-    const course = await this.courseRepository.findOne({ where: { id: courseId } });
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+    });
 
     if (!course) {
       throw new NotFoundException(`Course with ID ${courseId} not found`);
@@ -758,7 +790,10 @@ export class CoursesService {
 
     // Update in Moodle first
     try {
-      const result = await this.moodleClient.updateCourseVisibility(course.moodleId, newVisibility);
+      const result = await this.moodleClient.updateCourseVisibility(
+        course.moodleId,
+        newVisibility,
+      );
       this.logger.log(
         `Updated course visibility in Moodle: ${course.moodleId} -> ${newVisibility}. Result: ${JSON.stringify(result)}`,
       );

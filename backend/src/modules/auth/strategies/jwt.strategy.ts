@@ -14,10 +14,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly usersService: UsersService,
     private readonly tokenBlacklistService: TokenBlacklistService,
   ) {
+    const secret = configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is not configured');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'your-secret-key-change-in-production',
+      secretOrKey: secret,
       passReqToCallback: true,
     });
   }
@@ -27,8 +31,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (token && this.tokenBlacklistService.isBlacklisted(token)) {
-      throw new UnauthorizedException('La sesión ha sido cerrada (token invalidado)');
+    if (token && (await this.tokenBlacklistService.isBlacklisted(token))) {
+      throw new UnauthorizedException(
+        'La sesión ha sido cerrada (token invalidado)',
+      );
     }
 
     const user = await this.usersService.findById(payload.sub);

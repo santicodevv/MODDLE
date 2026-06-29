@@ -9,7 +9,6 @@ import {
   Query,
   ParseIntPipe,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { CoursesService } from '../services/courses.service';
 import { CreateCourseDto } from '../dto/create-course.dto';

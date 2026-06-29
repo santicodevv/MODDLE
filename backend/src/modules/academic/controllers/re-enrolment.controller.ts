@@ -10,7 +10,10 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { ReEnrolmentService } from '../services/re-enrolment.service';
-import { CreateReEnrolmentDto, ReEnrolmentCourseDto } from '../dto/create-re-enrolment.dto';
+import {
+  CreateReEnrolmentDto,
+  ReEnrolmentCourseDto,
+} from '../dto/create-re-enrolment.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleCode } from '../../users/entities/role.entity';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -47,6 +50,7 @@ export class ReEnrolmentController {
     return this.reEnrolmentService.findPending();
   }
 
+  @Roles(RoleCode.ADMIN)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.reEnrolmentService.findOne(id);

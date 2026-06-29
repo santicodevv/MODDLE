@@ -8,7 +8,16 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+
+interface RequestWithUser extends Request {
+  user?: { id: number | string };
+}
+
+interface ErrorWithStatus extends Error {
+  status?: number;
+  statusCode?: number;
+}
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -16,17 +25,18 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const ctx = context.switchToHttp();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithUser>();
     const response = ctx.getResponse<Response>();
 
     // Generar correlation ID
-    const correlationId = (request.headers['x-correlation-id'] as string) || uuidv4();
+    const correlationId =
+      (request.headers['x-correlation-id'] as string) || uuidv4();
     request.headers['x-correlation-id'] = correlationId;
     response.setHeader('x-correlation-id', correlationId);
 
     const { method, url, ip } = request;
     const userAgent = request.get('user-agent') || '';
-    const userId = (request as any).user?.id || 'anonymous';
+    const userId = request.user?.id || 'anonymous';
 
     const startTime = Date.now();
 
@@ -44,7 +54,7 @@ export class LoggingInterceptor implements NestInterceptor {
             `[${correlationId}] ${method} ${url} - ${statusCode} - ${duration}ms`,
           );
         },
-        error: (error) => {
+        error: (error: ErrorWithStatus) => {
           const duration = Date.now() - startTime;
           const statusCode = error.status || error.statusCode || 500;
 

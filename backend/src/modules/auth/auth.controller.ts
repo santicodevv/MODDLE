@@ -53,7 +53,7 @@ export class AuthController {
    * Obtener perfil del usuario autenticado
    */
   @Get('me')
-  async getProfile(@Request() req) {
+  getProfile(@Request() req) {
     return req.user;
   }
 
@@ -61,7 +61,7 @@ export class AuthController {
    * Actualizar perfil del usuario autenticado
    */
   @Patch('me')
-  async updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+  updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.id, updateProfileDto);
   }
 
@@ -73,7 +73,7 @@ export class AuthController {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
     if (token) {
-      this.tokenBlacklistService.add(token);
+      await this.tokenBlacklistService.add(token);
     }
     return { success: true, message: 'Sesión invalidada en servidor' };
   }
@@ -84,7 +84,7 @@ export class AuthController {
   @Public()
   @UseGuards(AuthGuard('microsoft'))
   @Get('microsoft')
-  async microsoftAuth() {
+  microsoftAuth() {
     // Passport redirige automáticamente a Microsoft
   }
 
@@ -96,7 +96,7 @@ export class AuthController {
   @Public()
   @Get('microsoft/callback')
   @UseGuards(MicrosoftCallbackGuard)
-  async microsoftAuthRedirect(
+  microsoftAuthRedirect(
     @Request() req,
     @Res() res: Response,
     @Query('error') oauthError?: string,
@@ -106,7 +106,9 @@ export class AuthController {
 
     // Errores devueltos por Microsoft directamente en la URL (antes de llegar al guard)
     if (oauthError) {
-      this.logger.error(`Microsoft OAuth error: ${oauthError} - ${oauthErrorDesc}`);
+      this.logger.error(
+        `Microsoft OAuth error: ${oauthError} - ${oauthErrorDesc}`,
+      );
 
       let userMessage = 'Error al iniciar sesión con tu cuenta institucional.';
       if (oauthError === 'access_denied') {
@@ -125,7 +127,7 @@ export class AuthController {
 
     // Login exitoso: generar JWT y redirigir al frontend
     try {
-      const { accessToken } = await this.authService.loginSSO(req.user);
+      const { accessToken } = this.authService.loginSSO(req.user);
       return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
     } catch (err) {
       this.logger.error(`loginSSO error: ${err.message}`);

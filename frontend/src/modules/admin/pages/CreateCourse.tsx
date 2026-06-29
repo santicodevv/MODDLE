@@ -1,5 +1,5 @@
 // Create Course Page
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coursesApi } from '@/modules/admin/api/courses.api';
@@ -33,6 +33,12 @@ export default function CreateCoursePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const getDefaultStartDate = () => {
+    const today = new Date();
+    today.setHours(8, 0, 0, 0);
+    return today.toISOString().slice(0, 16);
+  };
+
   const [formData, setFormData] = useState<CreateCourseDto>({
     fullname: '',
     shortname: '',
@@ -40,7 +46,7 @@ export default function CreateCoursePage() {
     idnumber: '',
     summary: '',
     visible: true,
-    startdate: '',
+    startdate: getDefaultStartDate(),
     enddate: '',
     periodId: undefined,
   });
@@ -113,7 +119,7 @@ export default function CreateCoursePage() {
       toast.success('Curso creado exitosamente');
       navigate('/admin/courses');
     },
-    onError: (err: any) => {
+    onError: (err: { response?: { data?: { message?: string } } }) => {
       setError(err.response?.data?.message || 'Error al crear el curso');
     },
   });
@@ -164,18 +170,6 @@ export default function CreateCoursePage() {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
-
-  // Set default start date
-  useEffect(() => {
-    if (!formData.startdate) {
-      const today = new Date();
-      today.setHours(8, 0, 0, 0);
-      setFormData((prev) => ({
-        ...prev,
-        startdate: today.toISOString().slice(0, 16),
-      }));
-    }
-  }, []);
 
   return (
     <div>

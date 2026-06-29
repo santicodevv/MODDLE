@@ -24,6 +24,7 @@ export class MoodleGradeItem {
   itemname: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
+  @Index()
   itemtype: string; // course|mod|manual|etc
 
   @Column({ type: 'decimal', precision: 10, scale: 3, nullable: true })

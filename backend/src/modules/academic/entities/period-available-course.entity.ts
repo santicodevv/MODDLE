@@ -33,7 +33,12 @@ export class PeriodAvailableCourse {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'course_name' })
   courseName: string | null; // Cache del nombre del curso
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'course_shortname' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'course_shortname',
+  })
   courseShortname: string | null; // Cache del shortname
 
   @Column({ type: 'bigint', nullable: true, name: 'category_moodle_id' })

@@ -175,9 +175,7 @@ export class MoodleInboundProcessor {
 
     if (!courseId || !userId) return;
 
-    this.logger.log(
-      `Syncing enrolment for course ${courseId}, user ${userId}`,
-    );
+    this.logger.log(`Syncing enrolment for course ${courseId}, user ${userId}`);
 
     // Obtener matrículas del curso
     const enrolledUsers = await this.moodleClient.getEnrolledUsers(courseId);
@@ -228,11 +226,15 @@ export class MoodleInboundProcessor {
       const gradeData = await this.moodleClient.getGrades(courseId, [userId]);
 
       if (!gradeData?.usergrades || gradeData.usergrades.length === 0) {
-        this.logger.debug(`No grade data found for user ${userId} in course ${courseId}`);
+        this.logger.debug(
+          `No grade data found for user ${userId} in course ${courseId}`,
+        );
         return;
       }
 
-      const userGrade = gradeData.usergrades.find((ug: any) => ug.userid === userId);
+      const userGrade = gradeData.usergrades.find(
+        (ug: any) => ug.userid === userId,
+      );
       if (!userGrade) return;
 
       const gradeItems = userGrade.gradeitems || [];
@@ -270,21 +272,29 @@ export class MoodleInboundProcessor {
         };
 
         if (existingGrade) {
-          await this.moodleGradeRepository.update(existingGrade.id, gradeDataToSave);
+          await this.moodleGradeRepository.update(
+            existingGrade.id,
+            gradeDataToSave,
+          );
         } else {
           await this.moodleGradeRepository.save(gradeDataToSave);
         }
         syncedCount++;
       }
 
-      this.logger.log(`Synced ${syncedCount} grades for user ${userId} in course ${courseId} from webhook`);
+      this.logger.log(
+        `Synced ${syncedCount} grades for user ${userId} in course ${courseId} from webhook`,
+      );
     } catch (error) {
       this.logger.error(`Error syncing grades from webhook: ${error.message}`);
       throw error;
     }
   }
 
-  private async ensureGradeItemExists(courseId: number, item: any): Promise<void> {
+  private async ensureGradeItemExists(
+    courseId: number,
+    item: any,
+  ): Promise<void> {
     const existingItem = await this.moodleGradeItemRepository.findOne({
       where: {
         courseMoodleId: courseId,

@@ -46,8 +46,26 @@ import { StudentGradesController } from './controllers/student-grades.controller
     MoodleIntegrationModule, // Para MoodleCourse, MoodleGradeItem, MoodleEnrolment
     UsersModule, // Para User
   ],
-  controllers: [PeriodsController, ReEnrolmentController, GradesController, CoursesController, StudentGradesController],
-  providers: [PeriodsService, ReEnrolmentService, GradesService, CoursesService, StudentGradesService],
-  exports: [PeriodsService, ReEnrolmentService, GradesService, CoursesService, StudentGradesService],
+  controllers: [
+    PeriodsController,
+    ReEnrolmentController,
+    GradesController,
+    CoursesController,
+    StudentGradesController,
+  ],
+  providers: [
+    PeriodsService,
+    ReEnrolmentService,
+    GradesService,
+    CoursesService,
+    StudentGradesService,
+  ],
+  exports: [
+    PeriodsService,
+    ReEnrolmentService,
+    GradesService,
+    CoursesService,
+    StudentGradesService,
+  ],
 })
 export class AcademicModule {}

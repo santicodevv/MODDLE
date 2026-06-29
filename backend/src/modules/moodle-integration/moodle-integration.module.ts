@@ -29,10 +29,6 @@ import { CourseTeacher } from '../academic/entities/course-teacher.entity';
     BullModule.registerQueue({ name: 'moodle-inbound' }),
   ],
   providers: [MoodleClientService, MoodleSyncService],
-  exports: [
-    MoodleClientService,
-    MoodleSyncService,
-    TypeOrmModule,
-  ],
+  exports: [MoodleClientService, MoodleSyncService, TypeOrmModule],
 })
 export class MoodleIntegrationModule {}

@@ -17,6 +17,7 @@ export enum AcademicPeriodStatus {
 }
 
 @Entity('academic_periods')
+@Index(['reenrolmentOpen', 'reenrolmentStartDate', 'reenrolmentEndDate'])
 export class AcademicPeriod {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -67,15 +68,9 @@ export class AcademicPeriod {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @OneToMany(
-    () => ReEnrolmentRequest,
-    (request) => request.period,
-  )
+  @OneToMany(() => ReEnrolmentRequest, (request) => request.period)
   reEnrolmentRequests: ReEnrolmentRequest[];
 
-  @OneToMany(
-    () => PeriodAvailableCourse,
-    (course) => course.period,
-  )
+  @OneToMany(() => PeriodAvailableCourse, (course) => course.period)
   availableCourses: PeriodAvailableCourse[];
 }

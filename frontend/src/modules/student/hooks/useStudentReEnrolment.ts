@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { periodsApi, reenrolmentsApi } from '@/shared/api';
 import toast from 'react-hot-toast';
-import type { AcademicPeriod } from '@/shared/types';
+import type { AcademicPeriod, ReEnrolmentRequest } from '@/shared/types';
 
 export type ViewMode = 'periods' | 'select-courses' | 'history';
 
@@ -34,7 +34,10 @@ export function useStudentReEnrolment() {
   // Borrador existente del período seleccionado
   const { data: existingDraft } = useQuery({
     queryKey: ['my-draft', selectedPeriod?.id],
-    queryFn: () => reenrolmentsApi.getMyDraft(selectedPeriod!.id),
+    queryFn: async () => {
+      const draft = await reenrolmentsApi.getMyDraft(selectedPeriod!.id);
+      return draft;
+    },
     enabled: !!selectedPeriod,
   });
 
@@ -47,7 +50,7 @@ export function useStudentReEnrolment() {
       queryClient.invalidateQueries({ queryKey: ['my-draft'] });
       toast.success('Solicitud creada');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al crear solicitud');
     },
   });
@@ -60,7 +63,7 @@ export function useStudentReEnrolment() {
       queryClient.invalidateQueries({ queryKey: ['my-draft'] });
       toast.success('Solicitud actualizada');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al actualizar');
     },
   });
@@ -75,7 +78,7 @@ export function useStudentReEnrolment() {
       setSelectedPeriod(null);
       setSelectedCourses([]);
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al enviar');
     },
   });
@@ -88,7 +91,7 @@ export function useStudentReEnrolment() {
       toast.success('Borrador eliminado');
       setSelectedCourses([]);
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al eliminar');
     },
   });
@@ -98,6 +101,14 @@ export function useStudentReEnrolment() {
     setSelectedPeriod(period);
     setSelectedCourses([]);
     setViewMode('select-courses');
+    // Attempt to load draft courses from cache
+    const cachedDraft = queryClient.getQueryData<ReEnrolmentRequest>(['my-draft', period.id]);
+    if (cachedDraft?.lines && cachedDraft.lines.length > 0) {
+      const draftCourseIds = cachedDraft.lines.map((l) => l.courseMoodleId);
+      if (draftCourseIds.length > 0) {
+        setSelectedCourses(draftCourseIds);
+      }
+    }
   };
 
   const handleToggleCourse = (courseMoodleId: number) => {
@@ -143,31 +154,22 @@ export function useStudentReEnrolment() {
     }
   };
 
-  // Sync draft courses
-  useEffect(() => {
-    if (existingDraft && selectedCourses.length === 0 && viewMode === 'select-courses') {
-      const draftCourseIds = existingDraft.lines?.map((l: any) => l.courseMoodleId) || [];
-      if (draftCourseIds.length > 0) {
-        setSelectedCourses(draftCourseIds);
-      }
-    }
-  }, [existingDraft, viewMode]);
+
 
   const getAlreadyRequestedCourses = (): Set<number> => {
     if (!selectedPeriod || !myRequests) return new Set();
 
     const requestedCourses = new Set<number>();
-    myRequests
-      .filter(
-        (r: any) =>
-          r.periodId === selectedPeriod.id &&
-          ['submitted', 'approved', 'applied'].includes(r.status)
-      )
-      .forEach((request: any) => {
-        request.lines?.forEach((line: any) => {
-          requestedCourses.add(Number(line.courseMoodleId));
-        });
-      });
+    const relevantRequests = myRequests.filter(
+      (r) =>
+        r.periodId === selectedPeriod.id &&
+        ['submitted', 'approved', 'applied'].includes(r.status)
+    );
+    for (const request of relevantRequests) {
+      for (const line of request.lines || []) {
+        requestedCourses.add(Number(line.courseMoodleId));
+      }
+    }
 
     return requestedCourses;
   };

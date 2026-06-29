@@ -13,15 +13,8 @@ export default function StudentProfile() {
   const { data: user, isLoading } = useQuery({
     queryKey: ['admin-user', id],
     queryFn: async () => {
-      // Intentamos obtener el usuario, el backend puede que no tenga endpoint para by-id si no lo hicimos
-      // Si falla o no existe, retornaremos algo genérico o el que viene de la tabla
-      // Por ahora probaremos con el get de /users/admin/users o /users/${id}
-      try {
-        const res = await api.get<User>(`/users/${id}`);
-        return res.data;
-      } catch (e) {
-        throw e;
-      }
+      const res = await api.get<User>(`/users/${id}`);
+      return res.data;
     },
   });
 

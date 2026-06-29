@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { Role, RoleCode } from './entities/role.entity';
@@ -60,7 +60,9 @@ export class UsersService {
    */
   async createTeacher(dto: CreateTeacherDto): Promise<User> {
     // 1. Verificar unicidad de email
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+    const existing = await this.userRepository.findOne({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new ConflictException('Ya existe un usuario con ese email');
     }
@@ -75,9 +77,13 @@ export class UsersService {
     });
 
     // 2. Asignar rol TEACHER
-    const teacherRole = await this.roleRepository.findOne({ where: { code: RoleCode.TEACHER } });
+    const teacherRole = await this.roleRepository.findOne({
+      where: { code: RoleCode.TEACHER },
+    });
     if (!teacherRole) {
-      throw new NotFoundException('Rol TEACHER no encontrado en la base de datos');
+      throw new NotFoundException(
+        'Rol TEACHER no encontrado en la base de datos',
+      );
     }
     user.roles = [teacherRole];
 
@@ -101,16 +107,19 @@ export class UsersService {
 
         saved.moodleUserId = moodleUserId;
         await this.userRepository.save(saved);
-        this.logger.log(`Teacher ${saved.id} synced to Moodle (moodleId: ${moodleUserId})`);
+        this.logger.log(
+          `Teacher ${saved.id} synced to Moodle (moodleId: ${moodleUserId})`,
+        );
       } catch (error) {
-        this.logger.error(`Failed to sync teacher ${saved.id} to Moodle: ${error.message}`);
+        this.logger.error(
+          `Failed to sync teacher ${saved.id} to Moodle: ${error.message}`,
+        );
         // No se lanza el error: el usuario ya fue creado localmente
       }
     }
 
     return this.findById(saved.id);
   }
-
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
@@ -129,10 +138,7 @@ export class UsersService {
   async findByEmailOrUsername(identifier: string): Promise<User | null> {
     const trimmed = identifier.trim();
     return this.userRepository.findOne({
-      where: [
-        { email: ILike(trimmed) },
-        { username: ILike(trimmed) },
-      ],
+      where: [{ email: ILike(trimmed) }, { username: ILike(trimmed) }],
       relations: ['roles'],
     });
   }
@@ -151,7 +157,7 @@ export class UsersService {
       try {
         const moodleUser = await this.userRepository.manager.query(
           `SELECT last_access FROM moodle_users WHERE moodle_id = $1`,
-          [user.moodleUserId]
+          [user.moodleUserId],
         );
         if (moodleUser && moodleUser.length > 0 && moodleUser[0].last_access) {
           (user as any).lastLoginAt = moodleUser[0].last_access;
@@ -159,7 +165,10 @@ export class UsersService {
           (user as any).lastLoginAt = user.updatedAt;
         }
       } catch (e) {
-        this.logger.error('Failed to fetch moodle_user last_access for ' + user.id, e);
+        this.logger.error(
+          'Failed to fetch moodle_user last_access for ' + user.id,
+          e,
+        );
         (user as any).lastLoginAt = user.updatedAt;
       }
     } else {
@@ -211,7 +220,9 @@ export class UsersService {
     const params: Record<string, any> = {};
 
     if (search && search.trim()) {
-      conditions.push('(user.email ILIKE :search OR user.displayName ILIKE :search)');
+      conditions.push(
+        '(user.email ILIKE :search OR user.displayName ILIKE :search)',
+      );
       params.search = `%${search.trim()}%`;
     }
 
@@ -239,24 +250,26 @@ export class UsersService {
 
     // Fetch last_access from moodle_users for these users
     if (users.length > 0) {
-      const moodleIds = users.map(u => u.moodleUserId).filter(id => id != null);
-      let lastAccessMap = new Map();
-      
+      const moodleIds = users
+        .map((u) => u.moodleUserId)
+        .filter((id) => id != null);
+      const lastAccessMap = new Map();
+
       if (moodleIds.length > 0) {
         try {
           const moodleUsers = await this.userRepository.manager.query(
             `SELECT moodle_id, last_access FROM moodle_users WHERE moodle_id = ANY($1)`,
-            [moodleIds]
+            [moodleIds],
           );
-          moodleUsers.forEach(mu => {
+          moodleUsers.forEach((mu) => {
             lastAccessMap.set(Number(mu.moodle_id), mu.last_access);
           });
         } catch (e) {
           this.logger.error('Failed to fetch moodle_users last_access', e);
         }
       }
-      
-      users.forEach(u => {
+
+      users.forEach((u) => {
         if (u.moodleUserId && lastAccessMap.has(Number(u.moodleUserId))) {
           const la = lastAccessMap.get(Number(u.moodleUserId));
           if (la) {
@@ -319,7 +332,8 @@ export class UsersService {
         const moodleData: any = {};
         if (updateDto.email) moodleData.email = updateDto.email;
         if (updateDto.password) moodleData.password = updateDto.password;
-        if (updateDto.isActive !== undefined) moodleData.suspended = !updateDto.isActive;
+        if (updateDto.isActive !== undefined)
+          moodleData.suspended = !updateDto.isActive;
 
         // Split displayName into firstname/lastname for Moodle
         if (updateDto.displayName) {
@@ -330,10 +344,14 @@ export class UsersService {
 
         if (Object.keys(moodleData).length > 0) {
           await this.moodleClient.updateUser(user.moodleUserId, moodleData);
-          this.logger.log(`Synced user ${id} to Moodle (moodleId: ${user.moodleUserId})`);
+          this.logger.log(
+            `Synced user ${id} to Moodle (moodleId: ${user.moodleUserId})`,
+          );
         }
       } catch (error) {
-        this.logger.error(`Failed to sync user ${id} to Moodle: ${error.message}`);
+        this.logger.error(
+          `Failed to sync user ${id} to Moodle: ${error.message}`,
+        );
         // Don't throw — local update succeeded, Moodle sync failed
       }
     }
@@ -343,7 +361,9 @@ export class UsersService {
 
   async addRoleToUser(userId: number, roleCode: RoleCode): Promise<User> {
     const user = await this.findById(userId);
-    const role = await this.roleRepository.findOne({ where: { code: roleCode } });
+    const role = await this.roleRepository.findOne({
+      where: { code: roleCode },
+    });
 
     if (!role) {
       throw new NotFoundException(`Role ${roleCode} not found`);
@@ -368,7 +388,10 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  async updateProfile(userId: number, updateProfileDto: UpdateProfileDto): Promise<User> {
+  async updateProfile(
+    userId: number,
+    updateProfileDto: UpdateProfileDto,
+  ): Promise<User> {
     const user = await this.findById(userId);
 
     if (updateProfileDto.displayName !== undefined) {
@@ -393,7 +416,9 @@ export class UsersService {
         await this.moodleClient.updateUser(saved.moodleUserId, moodleData);
         this.logger.log(`Synced user profile ${userId} to Moodle`);
       } catch (error) {
-        this.logger.error(`Failed to sync user profile ${userId} to Moodle: ${error.message}`);
+        this.logger.error(
+          `Failed to sync user profile ${userId} to Moodle: ${error.message}`,
+        );
       }
     }
 
@@ -410,7 +435,9 @@ export class UsersService {
   /**
    * Get all users with teacher role
    */
-  async findTeachers(): Promise<{ id: number; email: string; displayName: string | null }[]> {
+  async findTeachers(): Promise<
+    { id: number; email: string; displayName: string | null }[]
+  > {
     const users = await this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.roles', 'role')
@@ -438,7 +465,11 @@ export class UsersService {
    *    todos sus datos (notas, cursos, etc.) queden accesibles.
    * 4. Si no encuentra nada → crear cuenta nueva con rol STUDENT.
    */
-  async findOrCreateSSOUser(profile: { email: string; displayName: string; microsoftId: string }): Promise<User> {
+  async findOrCreateSSOUser(profile: {
+    email: string;
+    displayName: string;
+    microsoftId: string;
+  }): Promise<User> {
     // 1. Buscar por email institucional exacto
     const existingByEmail = await this.userRepository.findOne({
       where: { email: profile.email },
@@ -449,7 +480,9 @@ export class UsersService {
       if (!existingByEmail.isActive) {
         throw new ConflictException('La cuenta de usuario está inactiva');
       }
-      this.logger.log(`SSO login: found existing user by email ${profile.email}`);
+      this.logger.log(
+        `SSO login: found existing user by email ${profile.email}`,
+      );
       return existingByEmail;
     }
 
@@ -462,7 +495,9 @@ export class UsersService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.roles', 'roles')
       .where('user.email ILIKE :pattern', { pattern: `${usernamePart}@%` })
-      .andWhere('user.email != :institutionalEmail', { institutionalEmail: profile.email })
+      .andWhere('user.email != :institutionalEmail', {
+        institutionalEmail: profile.email,
+      })
       .getOne();
 
     if (linkedUser) {
@@ -489,7 +524,10 @@ export class UsersService {
     // 4. No hay cuenta previa → crear usuario nuevo con rol STUDENT
     this.logger.log(`SSO provisioning new user: ${profile.email}`);
 
-    const dummyPasswordHash = await bcrypt.hash(profile.microsoftId + Date.now().toString(), 10);
+    const dummyPasswordHash = await bcrypt.hash(
+      profile.microsoftId + Date.now().toString(),
+      10,
+    );
 
     const newUser = this.userRepository.create({
       email: profile.email,
@@ -498,7 +536,9 @@ export class UsersService {
       isActive: true,
     });
 
-    const studentRole = await this.roleRepository.findOne({ where: { code: RoleCode.STUDENT } });
+    const studentRole = await this.roleRepository.findOne({
+      where: { code: RoleCode.STUDENT },
+    });
     if (studentRole) {
       newUser.roles = [studentRole];
     }
@@ -506,4 +546,3 @@ export class UsersService {
     return this.userRepository.save(newUser);
   }
 }
-

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MoodleIntegrationModule } from '../moodle-integration/moodle-integration.module';
-import { GradeEditSession } from './entities/grade-edit-session.entity';
-import { GradeEdit } from './entities/grade-edit.entity';
+import { GradeEditSession } from '../academic/entities/grade-edit-session.entity';
+import { GradeEdit } from '../academic/entities/grade-edit.entity';
 import { GradesController } from './grades.controller';
 import { GradesService } from './grades.service';
 
