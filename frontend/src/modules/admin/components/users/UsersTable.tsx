@@ -34,7 +34,7 @@ export function UsersTable({ data, isLoading, page, setPage, limit, setLimit, sh
       toast.success(`${entityName} eliminado correctamente`);
       setPage(1); // Refresh data
       window.location.reload(); // Simple refresh for now
-    } catch (error) {
+    } catch {
       toast.error(`Error al eliminar ${entityName.toLowerCase()}`);
     } finally {
       setIsDeleting(false);

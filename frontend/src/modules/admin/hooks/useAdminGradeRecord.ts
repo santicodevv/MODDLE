@@ -10,6 +10,37 @@ export interface UserSearchResult {
   moodleUserId: number | null;
 }
 
+export interface UserGradesData {
+  user: {
+    id: number;
+    email: string;
+    displayName: string | null;
+    username: string | null;
+  };
+  periods: Array<{
+    periodId: number;
+    periodName: string;
+    periodCode: string;
+    courses: Array<{
+      courseMoodleId: number;
+      courseName: string;
+      courseShortname: string;
+      courseCode: string | null;
+      courseSubjectName: string | null;
+      totalGrade: number | null;
+      comment: string | null;
+      sumGrade: number;
+      sumMax: number;
+      gradeItems: Array<{
+        itemMoodleId: number;
+        itemName: string;
+        grade: number | null;
+        gradeMax: number | null;
+      }>;
+    }>;
+  }>;
+}
+
 export interface CourseWithPeriod {
   periodId: number | null;
   periodName: string;
@@ -85,7 +116,7 @@ export function useAdminGradeRecord() {
         periodCode: period.periodCode,
       }))
     );
-  }, [userGrades?.periods]);
+  }, [userGrades]);
 
   const handleSelectUser = (user: UserSearchResult) => {
     setSelectedUserId(user.id);

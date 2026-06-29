@@ -133,7 +133,7 @@ export function useAdminTranscripts() {
       });
       downloadBlob(response.data, `${transcript.transcriptNumber}.pdf`);
       toast.success('Constancia descargada');
-    } catch (error) {
+    } catch {
       toast.error('Error al descargar la constancia');
     }
   };
