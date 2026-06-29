@@ -13,6 +13,7 @@ export function SettingsEstudiantes() {
   // Forzar que solo se muestren estudiantes
   useEffect(() => {
     usersHook.setFilterRole('STUDENT');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

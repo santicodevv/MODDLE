@@ -9,10 +9,10 @@ interface ReEnrolmentListProps {
   requests?: ReEnrolmentRequest[];
   statusFilter: string;
   viewDetail: (request: ReEnrolmentRequest) => void;
-  approveMutation: UseMutationResult<any, any, number, unknown>;
-  applyMutation: UseMutationResult<any, any, number, unknown>;
+  approveMutation: UseMutationResult<unknown, Error, number, unknown>;
+  applyMutation: UseMutationResult<unknown, Error, number, unknown>;
   openRejectModal: (id: number) => void;
-  rejectMutation: UseMutationResult<any, any, { id: number; reason: string }, unknown>;
+  rejectMutation: UseMutationResult<unknown, Error, { id: number; reason: string }, unknown>;
 }
 
 export function ReEnrolmentList({

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/app/providers';
-import { cn } from '@/shared/lib';
+import { cn, getCurrentDashboard } from '@/shared/lib';
 import { Menu, User, LogOut, ChevronDown, Shield, GraduationCap, BookOpen } from 'lucide-react';
 import type { RoleCode } from '@/shared/types';
 
@@ -23,19 +23,11 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Detectar dashboard actual basado en la ruta
-  const getCurrentDashboard = (): RoleCode | null => {
-    if (location.pathname.startsWith('/admin')) return 'ADMIN';
-    if (location.pathname.startsWith('/teacher')) return 'TEACHER';
-    if (location.pathname.startsWith('/student')) return 'STUDENT';
-    return null;
-  };
+  const currentDashboard = getCurrentDashboard(location.pathname);
+  const currentRole = currentDashboard ? (currentDashboard.toUpperCase() as RoleCode) : null;
 
-  const currentDashboard = getCurrentDashboard();
-
-  // Obtener otros dashboards disponibles (excluyendo el actual)
   const availableDashboards = roles.filter(
-    (role) => role !== currentDashboard
+    (role) => role !== currentRole
   );
 
   // Close dropdown when clicking outside

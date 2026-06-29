@@ -1,7 +1,7 @@
 import { Card, CardContent, Badge, Spinner } from '@/shared/components/ui';
 import { Users, AlertCircle } from 'lucide-react';
 import { getInitials, formatRelativeTime } from '../../hooks/useAdminDashboard';
-import type { ActiveStudent } from '../../hooks/useAdminDashboard';
+import type { ActiveStudent } from '../../types/dashboard.types';
 
 interface ActiveStudentsCardProps {
   activeStudents: ActiveStudent[] | undefined;

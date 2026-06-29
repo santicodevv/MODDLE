@@ -1,17 +1,43 @@
 
 import { User, Save, Lock, ClipboardList, Trash2 } from 'lucide-react';
 import { Card, CardContent, Input, Badge, Button } from '@/shared/components/ui';
+import { getGradeColor } from '@/shared/lib/utils';
 
-export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSaveGrade, saveGrade, deleteGrade, isEditingEnabled }: any) {
-  const getGradeColor = (grade: number | null, max: number) => {
-    if (grade === null) return 'text-gray-400';
-    const percentage = (grade / max) * 100;
-    if (percentage >= 90) return 'text-green-600';
-    if (percentage >= 70) return 'text-blue-600';
-    if (percentage >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+interface GradeParticipant {
+  studentMoodleId: number;
+  studentName: string;
+  studentEmail: string;
+  grades: Array<{
+    itemMoodleId: number;
+    gradeMax: number;
+    moodleGrade: number | null;
+    editedGrade: number | null;
+    editable: boolean;
+    wasEdited: boolean;
+    editId: number;
+  }>;
+}
 
+interface GradeEntryData {
+  participants: GradeParticipant[];
+  gradeItems: Array<{
+    itemMoodleId: number;
+    itemName: string;
+    gradeMax: number;
+  }>;
+}
+
+interface GradeEntryTableProps {
+  data: GradeEntryData;
+  localEdits: Map<string, { grade?: number }>;
+  handleGradeChange: (studentMoodleId: number, itemMoodleId: number, value: string, gradeMax: number) => void;
+  handleSaveGrade: (studentMoodleId: number, itemMoodleId: number) => void;
+  saveGrade: { isPending: boolean };
+  deleteGrade: { mutate: (editId: number) => void; isPending: boolean } | null;
+  isEditingEnabled: boolean;
+}
+
+export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSaveGrade, saveGrade, deleteGrade, isEditingEnabled }: GradeEntryTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -23,7 +49,7 @@ export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSav
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">
                     Estudiante
                   </th>
-                  {data.gradeItems.map((item: any) => (
+                  {data.gradeItems.map((item) => (
                     <th key={item.itemMoodleId} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase min-w-[140px]">
                       <div className="flex flex-col items-center">
                         <span className="truncate max-w-[120px]" title={item.itemName}>{item.itemName}</span>
@@ -34,7 +60,7 @@ export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSav
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.participants.map((participant: any) => (
+                {data.participants.map((participant) => (
                   <tr key={participant.studentMoodleId} className="hover:bg-gray-50">
                     <td className="px-4 py-3 sticky left-0 bg-white">
                       <div className="flex items-center gap-2">
@@ -47,7 +73,7 @@ export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSav
                         </div>
                       </div>
                     </td>
-                    {participant.grades.map((grade: any) => {
+                    {participant.grades.map((grade) => {
                       const key = `${participant.studentMoodleId}-${grade.itemMoodleId}`;
                       const localEdit = localEdits.get(key);
                       const displayGrade = localEdit?.grade ?? grade.editedGrade ?? grade.moodleGrade;
@@ -80,7 +106,7 @@ export function GradeEntryTable({ data, localEdits, handleGradeChange, handleSav
                           ) : (
                             <div className="flex flex-col items-center">
                               <div className="flex items-center gap-2">
-                                <span className={`font-medium ${getGradeColor(displayGrade, grade.gradeMax)}`}>
+                                <span className={`font-medium ${getGradeColor(displayGrade !== null ? Math.round((displayGrade / grade.gradeMax) * 100) : null)}`}>
                                   {displayGrade !== null ? displayGrade : '-'}
                                 </span>
                                 {grade.wasEdited && deleteGrade && (

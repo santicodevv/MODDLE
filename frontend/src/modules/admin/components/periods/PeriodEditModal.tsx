@@ -1,12 +1,21 @@
 import { Modal, ModalFooter, Button, Label, Input } from '@/shared/components/ui';
 import type { UseMutationResult } from '@tanstack/react-query';
 
+interface PeriodEditFormData {
+  id: number;
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  description: string;
+}
+
 interface PeriodEditModalProps {
   showEditForm: boolean;
   setShowEditForm: (show: boolean) => void;
-  editPeriodData: any;
-  setEditPeriodData: React.Dispatch<React.SetStateAction<any>>;
-  updatePeriodMutation: UseMutationResult<any, any, { id: number; data: any }, unknown>;
+  editPeriodData: PeriodEditFormData;
+  setEditPeriodData: React.Dispatch<React.SetStateAction<PeriodEditFormData>>;
+  updatePeriodMutation: UseMutationResult<unknown, Error, { id: number; data: PeriodEditFormData }, unknown>;
 }
 
 export function PeriodEditModal({

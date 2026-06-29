@@ -1,6 +1,6 @@
 import { Button, Input } from '@/shared/components/ui';
 import { Search, X, UserCheck, Plus } from 'lucide-react';
-import type { TeacherUser } from '../../hooks/useCourseDetail';
+import type { TeacherUser } from '../../types/user.types';
 import type { UseMutationResult } from '@tanstack/react-query';
 
 interface CourseAddTeacherModalProps {

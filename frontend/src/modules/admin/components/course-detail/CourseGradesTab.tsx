@@ -1,6 +1,6 @@
 import { Card, CardContent, Input, Spinner, Badge } from '@/shared/components/ui';
 import { ClipboardList, Search, GraduationCap } from 'lucide-react';
-import type { CourseGradeData } from '../../hooks/useCourseDetail';
+import type { CourseGradeData } from '../../types/course.types';
 
 interface CourseGradesTabProps {
   courseGrades: CourseGradeData[] | undefined;

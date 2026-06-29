@@ -1,11 +1,11 @@
 import { Card, CardContent, Button, Spinner } from '@/shared/components/ui';
 import { Download } from 'lucide-react';
 import { getEquivalence, calculateCumulativeIndex } from '../../hooks/useAdminGradeRecord';
-import type { CourseWithPeriod } from '../../hooks/useAdminGradeRecord';
+import type { CourseWithPeriod, UserGradesData } from '../../hooks/useAdminGradeRecord';
 
 interface GradeRecordPreviewProps {
   gradesLoading: boolean;
-  userGrades: any;
+  userGrades: UserGradesData | null | undefined;
   allCourses: CourseWithPeriod[];
   handlePrint: () => void;
   printRef: React.RefObject<HTMLDivElement | null>;

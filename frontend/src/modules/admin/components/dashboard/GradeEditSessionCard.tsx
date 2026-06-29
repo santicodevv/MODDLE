@@ -4,7 +4,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 
 interface GradeEditSessionCardProps {
   editSessionStatus: { isActive: boolean } | undefined;
-  toggleEditSession: UseMutationResult<any, Error, void>;
+  toggleEditSession: UseMutationResult<unknown, Error, void>;
 }
 
 export function GradeEditSessionCard({ editSessionStatus, toggleEditSession }: GradeEditSessionCardProps) {

@@ -1,6 +1,7 @@
 import { Card, CardContent, Button, Input, Spinner } from '@/shared/components/ui';
 import { BookOpen, CheckCircle, XCircle, Trash2, ChevronRight, Plus } from 'lucide-react';
 import type { AcademicPeriod } from '@/shared/types';
+import type { PeriodAvailableCourse } from '@/modules/admin/types/period.types';
 import type { MoodleCourse } from '../../hooks/useAdminPeriods';
 import type { UseMutationResult } from '@tanstack/react-query';
 
@@ -8,9 +9,9 @@ interface PeriodCoursesViewProps {
   selectedPeriod: AcademicPeriod;
   setViewMode: (mode: 'list' | 'detail' | 'courses') => void;
   loadingAvailableCourses: boolean;
-  availableCourses: any[] | undefined;
-  toggleCourseMutation: UseMutationResult<any, any, { periodId: number; courseMoodleId: number; enabled: boolean }, unknown>;
-  removeCoursesMutation: UseMutationResult<any, any, { periodId: number; courseMoodleIds: number[] }, unknown>;
+  availableCourses: PeriodAvailableCourse[] | undefined;
+  toggleCourseMutation: UseMutationResult<unknown, Error, { periodId: number; courseMoodleId: number; enabled: boolean }, unknown>;
+  removeCoursesMutation: UseMutationResult<unknown, Error, { periodId: number; courseMoodleIds: number[] }, unknown>;
   courseSearch: string;
   setCourseSearch: (val: string) => void;
   loadingMoodleCourses: boolean;
@@ -18,7 +19,7 @@ interface PeriodCoursesViewProps {
   selectedCoursesToAdd: number[];
   setSelectedCoursesToAdd: React.Dispatch<React.SetStateAction<number[]>>;
   handleAddCourses: () => void;
-  addCoursesMutation: UseMutationResult<any, any, { periodId: number; courses: { courseMoodleId: number; courseName?: string; courseShortname?: string; categoryMoodleId?: number }[] }, unknown>;
+  addCoursesMutation: UseMutationResult<unknown, Error, { periodId: number; courses: { courseMoodleId: number; courseName?: string; courseShortname?: string; categoryMoodleId?: number }[] }, unknown>;
 }
 
 export function PeriodCoursesView({

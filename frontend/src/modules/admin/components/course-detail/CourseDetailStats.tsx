@@ -1,8 +1,9 @@
 import { Card, CardContent } from '@/shared/components/ui';
 import { BookOpen, Hash, GraduationCap, UserCheck } from 'lucide-react';
+import type { Course } from '@/modules/admin/types/course.types';
 
 interface CourseDetailStatsProps {
-  course: any;
+  course: Course;
   studentsCount: number;
   teachersCount: number;
 }

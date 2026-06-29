@@ -1,15 +1,16 @@
 import { Button, Spinner } from '@/shared/components/ui';
 import { X, BookOpen, Minus, Plus } from 'lucide-react';
 import type { ReEnrolmentRequest } from '@/shared/types';
+import type { PeriodAvailableCourse } from '@/modules/admin/types/period.types';
 import type { UseMutationResult } from '@tanstack/react-query';
 
 interface EditCoursesModalProps {
   editCoursesModalOpen: boolean;
   setEditCoursesModalOpen: (open: boolean) => void;
   selectedRequest: ReEnrolmentRequest;
-  availableCourses: any[];
-  adminRemoveCoursesMutation: UseMutationResult<any, any, { id: number; courseMoodleIds: number[] }, unknown>;
-  adminAddCoursesMutation: UseMutationResult<any, any, { id: number; courses: { courseMoodleId: number }[] }, unknown>;
+  availableCourses: PeriodAvailableCourse[];
+  adminRemoveCoursesMutation: UseMutationResult<unknown, Error, { id: number; courseMoodleIds: number[] }, unknown>;
+  adminAddCoursesMutation: UseMutationResult<unknown, Error, { id: number; courses: { courseMoodleId: number }[] }, unknown>;
 }
 
 export function EditCoursesModal({

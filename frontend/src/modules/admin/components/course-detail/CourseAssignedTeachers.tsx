@@ -38,9 +38,7 @@ export function CourseAssignedTeachers({
           </div>
         ) : assignedTeachers && assignedTeachers.length > 0 ? (
           <div className="space-y-2">
-            {assignedTeachers.map((teacher) => {
-              const anyTeacher = teacher as any;
-              return (
+            {assignedTeachers.map((teacher) => (
               <div
                 key={teacher.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -52,8 +50,8 @@ export function CourseAssignedTeachers({
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium">
-                        {anyTeacher.teacher?.displayName ||
-                          anyTeacher.teacher?.email ||
+                        {teacher.teacher?.displayName ||
+                          teacher.teacher?.email ||
                           `ID: ${teacher.teacherId}`}
                       </p>
                       {teacher.isPrimary && (
@@ -64,7 +62,7 @@ export function CourseAssignedTeachers({
                       )}
                     </div>
                     <p className="text-sm text-gray-500">
-                      {anyTeacher.teacher?.email}
+                      {teacher.teacher?.email}
                     </p>
                   </div>
                 </div>
@@ -95,7 +93,7 @@ export function CourseAssignedTeachers({
                   </Button>
                 </div>
               </div>
-            )})}
+            ))}
           </div>
         ) : (
           <div className="text-center py-6 text-gray-500">

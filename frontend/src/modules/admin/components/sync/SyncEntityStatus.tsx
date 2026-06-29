@@ -8,7 +8,7 @@ interface SyncEntityStatusProps {
   syncLoading: boolean;
   integrationStatus?: IntegrationStatus;
   syncStatus?: SyncStatus;
-  triggerEntityMutation: UseMutationResult<any, any, string, unknown>;
+  triggerEntityMutation: UseMutationResult<unknown, Error, string, unknown>;
 }
 
 export function SyncEntityStatus({

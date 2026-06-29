@@ -30,7 +30,7 @@ export function useCourseGradeSection(
         totalGrade?: number | null | undefined;
         comment?: string | null | undefined;
       };
-    }) => gradesApi.updateStudentGrade(course.courseMoodleId, studentId, periodId, data as any),
+    }) => gradesApi.updateStudentGrade(course.courseMoodleId, studentId, periodId, data),
     onSuccess: (_, variables) => {
       const key = `${course.courseMoodleId}-${variables.studentId}`;
       setEditingGrades((prev) => {
@@ -46,7 +46,7 @@ export function useCourseGradeSection(
       });
       toast.success('Calificación guardada');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al guardar');
     },
   });

@@ -1,10 +1,11 @@
 import { Button, Badge } from '@/shared/components/ui';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import type { NavigateFunction } from 'react-router-dom';
+import type { Course } from '@/modules/admin/types/course.types';
 
 interface CourseDetailHeaderProps {
   navigate: NavigateFunction;
-  course: any;
+  course: Course;
 }
 
 export function CourseDetailHeader({ navigate, course }: CourseDetailHeaderProps) {

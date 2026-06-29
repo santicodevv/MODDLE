@@ -11,4 +11,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 300,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          tanstack: ['@tanstack/react-query', '@tanstack/react-table'],
+          ui: ['lucide-react', 'radix-ui', 'class-variance-authority'],
+        },
+      },
+    },
+    target: 'es2020',
+  },
 });

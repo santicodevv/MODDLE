@@ -14,7 +14,7 @@ export interface CreateStudentForm {
 
 interface CreateStudentResponse {
   moodleUserId?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function useNuevoEstudiante() {

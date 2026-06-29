@@ -1,53 +1,9 @@
-
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/lib/axios';
+import type { CourseGradesResponse } from '@/modules/teacher/types/grade.types';
 import toast from 'react-hot-toast';
-
-export interface GradeItem {
-  itemMoodleId: number;
-  itemName: string;
-  itemType: string;
-  gradeMax: number;
-  gradeMin: number;
-  weight: number | null;
-}
-
-export interface StudentGrade {
-  itemMoodleId: number;
-  itemName: string;
-  gradeMax: number;
-  gradeMin: number;
-  moodleGrade: number | null;
-  editedGrade: number | null;
-  feedback: string | null;
-  wasEdited: boolean;
-  editable: boolean;
-  editId?: number; // Added editId so we know what to delete
-}
-
-export interface Participant {
-  studentMoodleId: number;
-  studentName: string;
-  studentEmail: string;
-  grades: StudentGrade[];
-}
-
-export interface CourseGradesResponse {
-  course: {
-    moodleId: number;
-    fullname: string;
-    shortname: string;
-  } | null;
-  gradeItems: GradeItem[];
-  participants: Participant[];
-  editSession: {
-    id: number;
-    isActive: boolean;
-    activatedAt: string;
-  } | null;
-}
 
 export function useGradeEntry() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -85,7 +41,7 @@ export function useGradeEntry() {
       queryClient.invalidateQueries({ queryKey: ['teacher-course-grades', courseId] });
       toast.success('Nota guardada exitosamente');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al guardar la nota');
     },
   });
@@ -99,7 +55,7 @@ export function useGradeEntry() {
       queryClient.invalidateQueries({ queryKey: ['teacher-course-grades', courseId] });
       toast.success('Edición revertida exitosamente');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al revertir la nota');
     },
   });

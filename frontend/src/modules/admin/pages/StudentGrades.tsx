@@ -6,7 +6,7 @@ import { Button, Spinner } from '@/shared/components/ui';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { AddGradeModal } from '../components/grades/AddGradeModal';
 import { gradesApi } from '@/modules/teacher/api/grades.api';
-import type { User } from '@/modules/admin/types/user.types';
+import type { User, FlattenedGrade } from '@/modules/admin/types/user.types';
 
 export default function StudentGrades() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +34,7 @@ export default function StudentGrades() {
   });
 
   // Aplanar los datos para la tabla
-  const flattenedGrades: any[] = [];
+  const flattenedGrades: FlattenedGrade[] = [];
   if (gradeData && gradeData.periods) {
     gradeData.periods.forEach(period => {
       period.courses.forEach(course => {
@@ -105,7 +105,7 @@ export default function StudentGrades() {
                   </td>
                 </tr>
               ) : (
-                flattenedGrades.map((grade: any, i: number) => (
+                flattenedGrades.map((grade, i: number) => (
                   <tr key={i} className="hover:bg-gray-50/50">
                     <td className="px-6 py-4 text-gray-900">{grade.periodName || '-'}</td>
                     <td className="px-6 py-4 text-gray-600">{grade.courseCode || '-'}</td>

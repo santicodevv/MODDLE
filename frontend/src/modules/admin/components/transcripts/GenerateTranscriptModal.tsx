@@ -11,7 +11,7 @@ interface GenerateTranscriptModalProps {
   generateForm: { studentId: string; periodId: string };
   setGenerateForm: (form: { studentId: string; periodId: string }) => void;
   handleGenerate: () => void;
-  generateMutation: UseMutationResult<any, any, any, unknown>;
+  generateMutation: UseMutationResult<unknown, Error, { studentId: number; periodId?: number }, unknown>;
 }
 
 export function GenerateTranscriptModal({

@@ -135,3 +135,13 @@ export interface CoursesResponse {
   page: number;
   limit: number;
 }
+
+export interface CourseGradeData {
+  studentName: string;
+  studentEmail: string;
+  periodName: string | null;
+  moodleSumGrade: number | null;
+  moodleSumMax: number | null;
+  totalGrade: number | null;
+  comment: string | null;
+}

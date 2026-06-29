@@ -1,8 +1,15 @@
 import { Card, CardContent } from '@/shared/components/ui';
 import { Clock, CheckCircle, XCircle, Send, BarChart3 } from 'lucide-react';
 
+interface ReEnrolmentStatsData {
+  submitted: number;
+  approved: number;
+  rejected: number;
+  applied: number;
+}
+
 interface ReEnrolmentsStatsProps {
-  stats: any;
+  stats: ReEnrolmentStatsData | null | undefined;
 }
 
 export function ReEnrolmentsStats({ stats }: ReEnrolmentsStatsProps) {

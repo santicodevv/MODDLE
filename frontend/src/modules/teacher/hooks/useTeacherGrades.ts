@@ -45,7 +45,7 @@ export function useTeacherGrades() {
       queryClient.invalidateQueries({ queryKey: ['teacher-student-grades', courseId, effectivePeriodId] });
       toast.success('Calificacion guardada');
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Error al guardar');
     },
   });

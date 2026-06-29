@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/shared/components/ui';
 import { AlertCircle } from 'lucide-react';
 
 interface StudentCoursesErrorProps {
-  error: any;
+  error: { response?: { data?: { message?: string } } } | null;
 }
 
 export function StudentCoursesError({ error }: StudentCoursesErrorProps) {

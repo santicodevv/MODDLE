@@ -1,6 +1,6 @@
 import { Card, CardContent, Spinner } from '@/shared/components/ui';
 import { BookOpen, MessageSquare, GraduationCap } from 'lucide-react';
-import type { FlattenedCourse } from '../../hooks/useUserGrades';
+import type { FlattenedCourse } from '../../types/user.types';
 import { getGradeColor } from './utils';
 
 interface UserGradesTableProps {

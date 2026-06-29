@@ -111,7 +111,7 @@ export function useAdminSync() {
       const response = await api.post('/integrations/moodle/sync/bootstrap');
       return response.data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { syncedCounts?: { users?: number; courses?: number } }) => {
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
       queryClient.invalidateQueries({ queryKey: ['integration-status'] });
       toast.success(`Bootstrap completado: ${data.syncedCounts?.users || 0} usuarios, ${data.syncedCounts?.courses || 0} cursos`);
@@ -144,7 +144,7 @@ export function useAdminSync() {
       const response = await api.post('/sync/fix-teachers');
       return response.data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { results?: { teacherRolesAssigned?: number; courseTeachersCreated?: number } }) => {
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
       toast.success(
         `Profesores corregidos: ${data.results?.teacherRolesAssigned || 0} roles, ${data.results?.courseTeachersCreated || 0} asignaciones`

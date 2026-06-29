@@ -5,7 +5,7 @@ import type { AcademicPeriod } from '@/shared/types';
 interface AvailablePeriodsListProps {
   loadingPeriods: boolean;
   openPeriods?: AcademicPeriod[];
-  myRequests?: any[];
+  myRequests?: Array<{ periodId: number; status: string }>;
   handleSelectPeriod: (period: AcademicPeriod) => void;
 }
 

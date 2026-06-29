@@ -1,6 +1,6 @@
 import { Card, CardContent, Badge, Spinner, Button } from '@/shared/components/ui';
 import { User, Clock, AlertCircle, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import type { AuditLog } from '../../hooks/useAdminAudit';
+import type { AuditLog } from '../../types/audit.types';
 
 interface AuditLogListProps {
   logs?: AuditLog[];

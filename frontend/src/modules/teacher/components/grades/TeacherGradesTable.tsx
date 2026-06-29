@@ -2,17 +2,17 @@
 import { User, Calculator, CheckCircle, MessageSquare, Lock, Save } from 'lucide-react';
 import { Card, CardContent, Input, Badge, Button } from '@/shared/components/ui';
 import type { StudentGradeWithDetails } from '@/shared/types';
+import { getGradeColor } from '@/shared/lib/utils';
 
-export function TeacherGradesTable({ studentGrades, localEdits, handleGradeChange, handleSave, updateGradeMutation }: any) {
-  const getGradeColor = (grade: number | null) => {
-    if (grade === null) return 'text-gray-400';
-    if (grade <= 5) return 'text-red-600';
-    if (grade > 5 && grade < 7) return 'text-orange-500';
-    if (grade >= 7 && grade < 9) return 'text-yellow-600';
-    if (grade >= 9 && grade <= 10) return 'text-green-600';
-    return 'text-gray-600';
-  };
+interface TeacherGradesTableProps {
+  studentGrades: StudentGradeWithDetails[];
+  localEdits: Map<number, { totalGrade?: number; comment?: string }>;
+  handleGradeChange: (studentId: number, field: 'totalGrade' | 'comment', value: string) => void;
+  handleSave: (studentId: number) => void;
+  updateGradeMutation: { isPending: boolean };
+}
 
+export function TeacherGradesTable({ studentGrades, localEdits, handleGradeChange, handleSave, updateGradeMutation }: TeacherGradesTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -67,13 +67,13 @@ export function TeacherGradesTable({ studentGrades, localEdits, handleGradeChang
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`font-medium text-lg ${getGradeColor(student.moodleSumGrade)}`}>
+                        <span className={`font-medium text-lg ${getGradeColor(student.moodleSumGrade !== null ? Math.round(student.moodleSumGrade * 10) : null)}`}>
                           {student.moodleSumGrade !== null ? student.moodleSumGrade.toFixed(1) : '-'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {isLocked ? (
-                          <span className={`font-bold text-lg ${getGradeColor(student.totalGrade)}`}>{student.totalGrade}</span>
+                          <span className={`font-bold text-lg ${getGradeColor(student.totalGrade !== null ? Math.round(student.totalGrade * 10) : null)}`}>{student.totalGrade}</span>
                         ) : (
                           <Input
                             type="number"

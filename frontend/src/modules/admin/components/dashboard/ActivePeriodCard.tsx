@@ -1,6 +1,6 @@
 import { Card, CardContent, Badge } from '@/shared/components/ui';
 import { CheckCircle, Clock, Calendar, AlertCircle } from 'lucide-react';
-import type { DashboardStats } from '../../hooks/useAdminDashboard';
+import type { DashboardStats } from '../../types/dashboard.types';
 
 interface ActivePeriodCardProps {
   activePeriod: DashboardStats['activePeriod'] | undefined;

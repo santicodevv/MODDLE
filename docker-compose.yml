@@ -59,42 +59,7 @@ services:
     depends_on:
       - postgres
 
-  # NestJS Application
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: development
-    container_name: moddle-backend
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      PORT: ${PORT:-3000}
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-moddle_db}
-      DB_USER: ${DB_USER:-moddle_user}
-      DB_PASSWORD: ${DB_PASSWORD:-moddle_pass}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
-      MOODLE_URL: ${MOODLE_URL}
-      MOODLE_TOKEN: ${MOODLE_TOKEN}
-      MOODLE_WEBHOOK_SECRET: ${MOODLE_WEBHOOK_SECRET:-webhook-secret}
-    ports:
-      - "${PORT:-3000}:3000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    networks:
-      - moddle-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: npm run start:dev
+
 
 volumes:
   postgres_data:
