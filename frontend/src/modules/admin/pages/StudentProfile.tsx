@@ -52,7 +52,7 @@ export default function StudentProfile() {
         <div className="flex items-center gap-3">
           <Button 
             variant="outline"
-            onClick={() => window.open(`http://localhost/moodle/user/view.php?id=${user.moodleUserId || ''}`, '_blank')}
+            onClick={() => window.open(`${import.meta.env.VITE_MOODLE_URL || 'https://campus.sebti.edu.do'}/user/view.php?id=${user.moodleUserId || ''}`, '_blank')}
             disabled={!user.moodleUserId}
             className="flex items-center text-blue-600 hover:text-blue-700 hover:bg-blue-50"
           >
@@ -61,7 +61,7 @@ export default function StudentProfile() {
           </Button>
           <Button 
             variant="outline"
-            onClick={() => window.open(`http://localhost/moodle/user/edit.php?id=${user.moodleUserId || ''}`, '_blank')}
+            onClick={() => window.open(`${import.meta.env.VITE_MOODLE_URL || 'https://campus.sebti.edu.do'}/user/edit.php?id=${user.moodleUserId || ''}`, '_blank')}
             disabled={!user.moodleUserId}
             className="flex items-center text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
           >
