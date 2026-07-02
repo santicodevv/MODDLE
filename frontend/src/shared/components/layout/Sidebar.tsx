@@ -71,7 +71,7 @@ const navItems: NavItem[] = [
     roles: ['ADMIN'],
   },
   {
-    label: 'Estudiante Usuario',
+    label: 'Estudiantes',
     href: '/admin/users',
     icon: Users,
     roles: ['ADMIN'],
