@@ -21,7 +21,7 @@ export default function AdminUsers() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <UsersIcon className="h-7 w-7 text-blue-600" />
-            Estudiante Usuario
+            Estudiantes
           </h1>
           <p className="mt-1 text-gray-600">Listado y gestión de estudiantes</p>
         </div>
