@@ -61,8 +61,7 @@ export default function StudentProfile() {
           </Button>
           <Button 
             variant="outline"
-            onClick={() => window.open(`${import.meta.env.VITE_MOODLE_URL || 'https://campus.sebti.edu.do'}/user/edit.php?id=${user.moodleUserId || ''}`, '_blank')}
-            disabled={!user.moodleUserId}
+            onClick={() => navigate(`/admin/settings/estudiantes/${user.id}/editar`)}
             className="flex items-center text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
           >
             <UserCog className="h-4 w-4 mr-2" />
