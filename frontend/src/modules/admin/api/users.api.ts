@@ -75,7 +75,7 @@ export const usersApi = {
    * Get all available roles
    */
   async getRoles(): Promise<Role[]> {
-    const response = await api.get<Role[]>('/roles');
+    const response = await api.get<Role[]>('/users/roles');
     return response.data;
   },
 
