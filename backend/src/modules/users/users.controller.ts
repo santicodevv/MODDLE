@@ -3,10 +3,12 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
   ParseIntPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -92,6 +94,16 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
     return this.usersService.updateUser(id, updateUserDto);
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Delete(':id')
+  @HttpCode(200)
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.usersService.delete(id);
+    return { success: true, message: 'Usuario eliminado correctamente' };
   }
 
   @Roles(RoleCode.ADMIN)
