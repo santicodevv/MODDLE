@@ -41,6 +41,7 @@ const AdminGradesSummary = lazy(() => import('@/modules/admin/pages/GradesSummar
 const AdminPeriods = lazy(() => import('@/modules/admin/pages/Periods'));
 const AdminReEnrolments = lazy(() => import('@/modules/admin/pages/ReEnrolments'));
 // const AdminTranscripts = lazy(() => import('@/modules/admin/pages/Transcripts'));
+const AdminPayments = lazy(() => import('@/modules/admin/pages/Payments'));
 const AdminSync = lazy(() => import('@/modules/admin/pages/Sync'));
 const AdminAudit = lazy(() => import('@/modules/admin/pages/Audit'));
 const AdminCreateCourse = lazy(() => import('@/modules/admin/pages/CreateCourse'));
@@ -138,6 +139,7 @@ export const routes: RouteObject[] = [
               { path: 'periods', element: <AdminPeriods /> },
               { path: 'reenrolments', element: <AdminReEnrolments /> },
               // { path: 'transcripts', element: <AdminTranscripts /> }, // Temporalmente oculto
+              { path: 'payments', element: <AdminPayments /> },
               { path: 'sync', element: <AdminSync /> },
               { path: 'audit', element: <AdminAudit /> },
               // Settings routes

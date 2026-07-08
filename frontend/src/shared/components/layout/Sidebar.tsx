@@ -15,6 +15,7 @@ import {
   FileText,
   TableIcon,
   Settings,
+  DollarSign,
   UserRound,
   UserCog,
 } from 'lucide-react';
@@ -124,6 +125,12 @@ const navItems: NavItem[] = [
     label: 'Reinscripciones',
     href: '/admin/reenrolments',
     icon: RefreshCw,
+    roles: ['ADMIN'],
+  },
+  {
+    label: 'Pagos',
+    href: '/admin/payments',
+    icon: DollarSign,
     roles: ['ADMIN'],
   },
   {
