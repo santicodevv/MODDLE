@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -6,6 +6,8 @@ import { usersApi } from '@/modules/admin/api/users.api';
 import { Spinner, Badge, Button } from '@/shared/components/ui';
 import { Modal, ModalFooter } from '@/shared/components/ui/Modal';
 import { formatDate } from '@/shared/lib/utils';
+import { buildPageRange } from '../../hooks/useUsersTable';
+import { UsersTablePagination } from './UsersTablePagination';
 import type { User } from '@/modules/admin/types/user.types';
 
 interface UsersTableProps {
@@ -15,13 +17,22 @@ interface UsersTableProps {
   data?: { users: User[]; total: number; page: number };
   isLoading: boolean;
   page: number;
-  setPage: (p: number) => void;
+  setPage: (p: number | ((prev: number) => number)) => void;
   limit: number;
   setLimit: (l: number) => void;
 }
 
 export function UsersTable({ data, isLoading, page, setPage, limit, setLimit, showSettingsActions = false, editBasePath = '/admin/settings/estudiantes', entityName = 'Estudiante' }: UsersTableProps) {
   const navigate = useNavigate();
+  const [jumpInput, setJumpInput] = useState('');
+  const totalPages = data ? Math.ceil(data.total / limit) : 1;
+  const handleJumpPage = useMemo(() => () => {
+    const n = parseInt(jumpInput, 10);
+    if (!isNaN(n) && n >= 1 && n <= totalPages) {
+      setPage(n);
+      setJumpInput('');
+    }
+  }, [jumpInput, totalPages, setPage]);
 
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -117,43 +128,18 @@ export function UsersTable({ data, isLoading, page, setPage, limit, setLimit, sh
         </table>
       </div>
 
-      <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span>Mostrando</span>
-          <select
-            value={limit}
-            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-            className="border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500"
-          >
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="0">Todos</option>
-          </select>
-          <span>de {data.total} registros</span>
-        </div>
-
-        {limit > 0 && data.total > limit && (
-          <div className="flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page * limit >= data.total}
-              onClick={() => setPage(page + 1)}
-            >
-              Siguiente
-            </Button>
-          </div>
-        )}
-      </div>
+      <UsersTablePagination
+        total={data.total}
+        limit={limit}
+        setLimit={setLimit}
+        page={page}
+        setPage={setPage}
+        totalPages={Math.ceil(data.total / limit)}
+        pageRange={buildPageRange(page, Math.ceil(data.total / limit))}
+        jumpInput={jumpInput}
+        setJumpInput={setJumpInput}
+        handleJumpPage={handleJumpPage}
+      />
 
       <Modal
         isOpen={deleteId !== null}

@@ -8,3 +8,4 @@ export * from '@/modules/admin/types/sync.types';
 export * from '@/modules/teacher/types/grade.types';
 export * from '@/modules/student/types/reenrolment.types';
 export * from '@/modules/student/types/transcript.types';
+export * from '@/modules/admin/types/payment.types';
