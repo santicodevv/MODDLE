@@ -18,6 +18,7 @@ const StudentDashboard = lazy(() => import('@/modules/student/pages/Dashboard'))
 const StudentGrades = lazy(() => import('@/modules/student/pages/Grades'));
 const StudentCourses = lazy(() => import('@/modules/student/pages/Courses'));
 const StudentReEnrolment = lazy(() => import('@/modules/student/pages/ReEnrolment'));
+const StudentPayments = lazy(() => import('@/modules/student/pages/Payments'));
 // const StudentTranscripts = lazy(() => import('@/modules/student/pages/Transcripts'));
 
 // Teacher pages
@@ -97,6 +98,7 @@ export const routes: RouteObject[] = [
               { path: 'grades', element: <StudentGrades /> },
               { path: 'courses', element: <StudentCourses /> },
               { path: 'reenrolment', element: <StudentReEnrolment /> },
+              { path: 'payments', element: <StudentPayments /> },
               // { path: 'transcripts', element: <StudentTranscripts /> }, // Temporalmente oculto
             ],
           },

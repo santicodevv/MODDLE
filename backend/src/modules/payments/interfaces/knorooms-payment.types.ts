@@ -28,6 +28,15 @@ export interface KnoroomPayment {
   createdAt?: string;
 }
 
+export interface PaymentDetail {
+  id: string;
+  monto: number;
+  moneda: string;
+  metodo: string;
+  fecha: string;
+  estado: string;
+}
+
 export interface PaymentDashboardItem {
   estudiante: string;
   factura: string;
@@ -37,4 +46,6 @@ export interface PaymentDashboardItem {
   estado: 'Pagado' | 'Parcial' | 'Pendiente';
   invoiceId: string;
   fecha?: string;
+  contactEmail?: string;
+  pagos: PaymentDetail[];
 }

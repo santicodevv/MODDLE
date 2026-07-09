@@ -1,13 +1,18 @@
+import { useState } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { useAdminPayments } from '../hooks/useAdminPayments';
 import { PaymentsHeader } from '../components/payments/PaymentsHeader';
 import { PaymentsStatsCards } from '../components/payments/PaymentsStatsCards';
 import { PaymentsFilters } from '../components/payments/PaymentsFilters';
 import { PaymentsTable } from '../components/payments/PaymentsTable';
+import { PaymentDetailModal } from '../components/payments/PaymentDetailModal';
 import { PaymentsPagination } from '../components/payments/PaymentsPagination';
 import { Alert, Button } from '@/shared/components/ui';
+import type { PaymentDashboardItem } from '../types/payment.types';
 
 export default function AdminPayments() {
+  const [selectedInvoice, setSelectedInvoice] = useState<PaymentDashboardItem | null>(null);
+
   const {
     items,
     stats,
@@ -56,7 +61,7 @@ export default function AdminPayments() {
             {total > 0 && `${total} factura${total !== 1 ? 's' : ''}`}
           </div>
 
-          <PaymentsTable items={items} isLoading={isLoading} />
+          <PaymentsTable items={items} isLoading={isLoading} onViewDetail={setSelectedInvoice} />
 
           {!isLoading && items.length > 0 && (
             <PaymentsPagination
@@ -69,6 +74,13 @@ export default function AdminPayments() {
             />
           )}
         </>
+      )}
+
+      {selectedInvoice && (
+        <PaymentDetailModal
+          item={selectedInvoice}
+          onClose={() => setSelectedInvoice(null)}
+        />
       )}
     </div>
   );
