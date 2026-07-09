@@ -18,6 +18,7 @@ import {
   DollarSign,
   UserRound,
   UserCog,
+  Receipt,
 } from 'lucide-react';
 import type { RoleCode } from '@/shared/types';
 import { SidebarLogo } from './SidebarLogo';
@@ -47,6 +48,12 @@ const navItems: NavItem[] = [
     label: 'Reinscripción',
     href: '/student/reenrolment',
     icon: RefreshCw,
+    roles: ['STUDENT'],
+  },
+  {
+    label: 'Mis Facturas',
+    href: '/student/payments',
+    icon: Receipt,
     roles: ['STUDENT'],
   },
 

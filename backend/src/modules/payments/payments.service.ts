@@ -108,6 +108,15 @@ export class PaymentsService {
         estado,
         invoiceId: inv._id,
         fecha: inv.createdAt,
+        contactEmail: inv.contactDetails?.email,
+        pagos: pagosFactura.map((p) => ({
+          id: p.id,
+          monto: p.amount,
+          moneda: p.currency || 'RD$',
+          metodo: p.method || 'Desconocido',
+          fecha: p.createdAt || '',
+          estado: p.status,
+        })),
       };
     });
 
@@ -149,6 +158,80 @@ export class PaymentsService {
     return stats;
   }
 
+  async getInvoiceDetail(invoiceId: string): Promise<PaymentDashboardItem | null> {
+    const [invoices, payments] = await Promise.all([
+      this.getInvoices(),
+      this.getPayments(),
+    ]);
+
+    const inv = invoices.find((i) => i._id === invoiceId);
+    if (!inv) return null;
+
+    const pagosFactura = payments.filter((p) => p.invoiceId === inv._id && p.status === 'success');
+    const totalPagado = pagosFactura.reduce((sum, p) => sum + p.amount, 0);
+    const pendiente = Math.max(0, (inv.amountDue ?? inv.total) - totalPagado);
+
+    return {
+      estudiante: inv.contactDetails?.name || 'Desconocido',
+      factura: inv.invoiceNumber ? `Factura #${inv.invoiceNumber}` : inv.title || `Factura #${inv._id}`,
+      total: inv.total,
+      pagado: totalPagado,
+      pendiente,
+      estado: pendiente <= 0 ? 'Pagado' : totalPagado > 0 ? 'Parcial' : 'Pendiente',
+      invoiceId: inv._id,
+      fecha: inv.createdAt,
+      contactEmail: inv.contactDetails?.email,
+      pagos: pagosFactura.map((p) => ({
+        id: p.id,
+        monto: p.amount,
+        moneda: p.currency || 'RD$',
+        metodo: p.method || 'Desconocido',
+        fecha: p.createdAt || '',
+        estado: p.status,
+      })),
+    };
+  }
+
+  async getMyInvoices(user: { displayName?: string | null; email: string }): Promise<PaymentDashboardItem[]> {
+    const invoices = await this.getInvoices();
+    const payments = await this.getPayments();
+
+    const name = user.displayName?.toLowerCase() || '';
+    const email = user.email?.toLowerCase() || '';
+
+    const matched = invoices.filter((inv) => {
+      const cName = inv.contactDetails?.name?.toLowerCase() || '';
+      const cEmail = inv.contactDetails?.email?.toLowerCase() || '';
+      return (name && cName.includes(name)) || (name && name.includes(cName)) || (email && cEmail === email);
+    });
+
+    return matched.map((inv) => {
+      const pagosFactura = payments.filter((p) => p.invoiceId === inv._id && p.status === 'success');
+      const totalPagado = pagosFactura.reduce((sum, p) => sum + p.amount, 0);
+      const pendiente = Math.max(0, (inv.amountDue ?? inv.total) - totalPagado);
+
+      return {
+        estudiante: inv.contactDetails?.name || 'Desconocido',
+        factura: inv.invoiceNumber ? `Factura #${inv.invoiceNumber}` : inv.title || `Factura #${inv._id}`,
+        total: inv.total,
+        pagado: totalPagado,
+        pendiente,
+        estado: pendiente <= 0 ? 'Pagado' : totalPagado > 0 ? 'Parcial' : 'Pendiente',
+        invoiceId: inv._id,
+        fecha: inv.createdAt,
+        contactEmail: inv.contactDetails?.email,
+        pagos: pagosFactura.map((p) => ({
+          id: p.id,
+          monto: p.amount,
+          moneda: p.currency || 'RD$',
+          metodo: p.method || 'Desconocido',
+          fecha: p.createdAt || '',
+          estado: p.status,
+        })),
+      };
+    });
+  }
+
   async getStudentInvoices(search: string): Promise<PaymentDashboardItem[]> {
     const invoices = await this.getInvoices();
     const payments = await this.getPayments();
@@ -176,6 +259,15 @@ export class PaymentsService {
         estado: pendiente <= 0 ? 'Pagado' : totalPagado > 0 ? 'Parcial' : 'Pendiente',
         invoiceId: inv._id,
         fecha: inv.createdAt,
+        contactEmail: inv.contactDetails?.email,
+        pagos: pagosFactura.map((p) => ({
+          id: p.id,
+          monto: p.amount,
+          moneda: p.currency || 'RD$',
+          metodo: p.method || 'Desconocido',
+          fecha: p.createdAt || '',
+          estado: p.status,
+        })),
       };
     });
   }
