@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { X, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { Badge, Button, Modal } from '@/shared/components/ui';
 import type { PaymentDashboardItem } from '../../types/payment.types';
 
