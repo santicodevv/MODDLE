@@ -1,5 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, IsNull, Not } from 'typeorm';
 import axios, { AxiosInstance } from 'axios';
 import type {
   KnoroomInvoice,
@@ -7,6 +9,7 @@ import type {
   PaymentDashboardItem,
 } from './interfaces/knorooms-payment.types';
 import type { PaymentsQueryDto, PaymentStatsDto } from './dto/payments.dto';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -14,7 +17,10 @@ export class PaymentsService {
   private readonly apiClient: AxiosInstance;
   private readonly locationId: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
+  ) {
     const baseURL =
       this.configService.get<string>('PAYMENTS_API_URL') ||
       'https://services.leadconnectorhq.com';
@@ -44,6 +50,49 @@ export class PaymentsService {
       params.altType = 'location';
     }
     return params;
+  }
+
+  private async buildContactMoodleMap(): Promise<Map<string, string>> {
+    const users = await this.userRepo.find({
+      where: { moodleUserId: Not(IsNull()) },
+      select: ['email', 'displayName', 'moodleUserId'],
+    });
+
+    const map = new Map<string, string>();
+    for (const user of users) {
+      const code = String(user.moodleUserId);
+      if (user.email) {
+        map.set(user.email.toLowerCase().trim(), code);
+      }
+      if (user.displayName) {
+        map.set(user.displayName.toLowerCase().trim(), code);
+      }
+    }
+    return map;
+  }
+
+  private enrichItem(
+    item: PaymentDashboardItem,
+    contactMap: Map<string, string>,
+  ): PaymentDashboardItem {
+    const email = item.contactEmail?.toLowerCase().trim();
+    const name = item.estudiante?.toLowerCase().trim();
+
+    let moodleCode: string | undefined;
+    if (email && contactMap.has(email)) {
+      moodleCode = contactMap.get(email);
+    } else if (name && contactMap.has(name)) {
+      moodleCode = contactMap.get(name);
+    }
+
+    return { ...item, moodleCode };
+  }
+
+  private enrichItems(
+    items: PaymentDashboardItem[],
+    contactMap: Map<string, string>,
+  ): PaymentDashboardItem[] {
+    return items.map((item) => this.enrichItem(item, contactMap));
   }
 
   async getInvoices(): Promise<KnoroomInvoice[]> {
@@ -80,9 +129,10 @@ export class PaymentsService {
     page: number;
     limit: number;
   }> {
-    const [invoices, payments] = await Promise.all([
+    const [invoices, payments, contactMap] = await Promise.all([
       this.getInvoices(),
       this.getPayments(),
+      this.buildContactMoodleMap(),
     ]);
 
     const items: PaymentDashboardItem[] = invoices.map((inv) => {
@@ -120,7 +170,9 @@ export class PaymentsService {
       };
     });
 
-    let filtered = items;
+    const enriched = this.enrichItems(items, contactMap);
+
+    let filtered = enriched;
     if (query.search) {
       const s = query.search.toLowerCase();
       filtered = filtered.filter(
@@ -136,12 +188,12 @@ export class PaymentsService {
     }
 
     const stats: PaymentStatsDto = {
-      totalFacturado: items.reduce((s, i) => s + i.total, 0),
-      totalCobrado: items.reduce((s, i) => s + i.pagado, 0),
-      totalPendiente: items.reduce((s, i) => s + i.pendiente, 0),
-      facturasPagadas: items.filter((i) => i.estado === 'Pagado').length,
-      facturasParciales: items.filter((i) => i.estado === 'Parcial').length,
-      facturasPendientes: items.filter((i) => i.estado === 'Pendiente').length,
+      totalFacturado: enriched.reduce((s, i) => s + i.total, 0),
+      totalCobrado: enriched.reduce((s, i) => s + i.pagado, 0),
+      totalPendiente: enriched.reduce((s, i) => s + i.pendiente, 0),
+      facturasPagadas: enriched.filter((i) => i.estado === 'Pagado').length,
+      facturasParciales: enriched.filter((i) => i.estado === 'Parcial').length,
+      facturasPendientes: enriched.filter((i) => i.estado === 'Pendiente').length,
     };
 
     const total = filtered.length;
@@ -159,9 +211,10 @@ export class PaymentsService {
   }
 
   async getInvoiceDetail(invoiceId: string): Promise<PaymentDashboardItem | null> {
-    const [invoices, payments] = await Promise.all([
+    const [invoices, payments, contactMap] = await Promise.all([
       this.getInvoices(),
       this.getPayments(),
+      this.buildContactMoodleMap(),
     ]);
 
     const inv = invoices.find((i) => i._id === invoiceId);
@@ -171,7 +224,7 @@ export class PaymentsService {
     const totalPagado = pagosFactura.reduce((sum, p) => sum + p.amount, 0);
     const pendiente = Math.max(0, (inv.amountDue ?? inv.total) - totalPagado);
 
-    return {
+    const item: PaymentDashboardItem = {
       estudiante: inv.contactDetails?.name || 'Desconocido',
       factura: inv.invoiceNumber ? `Factura #${inv.invoiceNumber}` : inv.title || `Factura #${inv._id}`,
       total: inv.total,
@@ -190,11 +243,16 @@ export class PaymentsService {
         estado: p.status,
       })),
     };
+
+    return this.enrichItem(item, contactMap);
   }
 
   async getMyInvoices(user: { displayName?: string | null; email: string }): Promise<PaymentDashboardItem[]> {
-    const invoices = await this.getInvoices();
-    const payments = await this.getPayments();
+    const [invoices, payments, contactMap] = await Promise.all([
+      this.getInvoices(),
+      this.getPayments(),
+      this.buildContactMoodleMap(),
+    ]);
 
     const name = user.displayName?.toLowerCase() || '';
     const email = user.email?.toLowerCase() || '';
@@ -205,7 +263,7 @@ export class PaymentsService {
       return (name && cName.includes(name)) || (name && name.includes(cName)) || (email && cEmail === email);
     });
 
-    return matched.map((inv) => {
+    const items: PaymentDashboardItem[] = matched.map((inv) => {
       const pagosFactura = payments.filter((p) => p.invoiceId === inv._id && p.status === 'success');
       const totalPagado = pagosFactura.reduce((sum, p) => sum + p.amount, 0);
       const pendiente = Math.max(0, (inv.amountDue ?? inv.total) - totalPagado);
@@ -230,11 +288,16 @@ export class PaymentsService {
         })),
       };
     });
+
+    return this.enrichItems(items, contactMap);
   }
 
   async getStudentInvoices(search: string): Promise<PaymentDashboardItem[]> {
-    const invoices = await this.getInvoices();
-    const payments = await this.getPayments();
+    const [invoices, payments, contactMap] = await Promise.all([
+      this.getInvoices(),
+      this.getPayments(),
+      this.buildContactMoodleMap(),
+    ]);
     const s = search.toLowerCase();
 
     const filtered = invoices.filter(
@@ -243,7 +306,7 @@ export class PaymentsService {
         inv._id?.toLowerCase().includes(s),
     );
 
-    return filtered.map((inv) => {
+    const items: PaymentDashboardItem[] = filtered.map((inv) => {
       const pagosFactura = payments.filter(
         (p) => p.invoiceId === inv._id && p.status === 'success',
       );
@@ -270,5 +333,7 @@ export class PaymentsService {
         })),
       };
     });
+
+    return this.enrichItems(items, contactMap);
   }
 }

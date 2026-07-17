@@ -80,7 +80,10 @@ export function PaymentsTable({ items, isLoading, onViewDetail }: PaymentsTableP
                 </button>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {item.estudiante}
+                <div>{item.estudiante}</div>
+                {item.moodleCode && (
+                  <div className="text-xs text-gray-400 font-normal">ID: {item.moodleCode}</div>
+                )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                 {item.factura}

@@ -73,6 +73,9 @@ export default function StudentPayments() {
                 <div>
                   <h3 className="font-semibold text-gray-900">{item.factura}</h3>
                   <p className="text-sm text-gray-500">{formatDate(item.fecha)}</p>
+                  {item.moodleCode && (
+                    <p className="text-xs text-gray-400 mt-0.5">ID: {item.moodleCode}</p>
+                  )}
                 </div>
                 <Badge variant={statusBadge[item.estado]}>{item.estado}</Badge>
               </div>
