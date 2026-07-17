@@ -47,5 +47,6 @@ export interface PaymentDashboardItem {
   invoiceId: string;
   fecha?: string;
   contactEmail?: string;
+  moodleCode?: string;
   pagos: PaymentDetail[];
 }

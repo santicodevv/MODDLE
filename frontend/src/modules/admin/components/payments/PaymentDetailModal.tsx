@@ -77,7 +77,7 @@ export function PaymentDetailModal({ item, onClose }: PaymentDetailModalProps) {
         </head>
         <body>
           <h1>${item.factura}</h1>
-          <div class="subtitle">${item.estudiante}${item.contactEmail ? ` &mdash; ${item.contactEmail}` : ''}</div>
+          <div class="subtitle">${item.estudiante}${item.moodleCode ? ` <span style="color:#9ca3af;font-size:12px;">(ID: ${item.moodleCode})</span>` : ''}${item.contactEmail ? ` &mdash; ${item.contactEmail}` : ''}</div>
           <div class="grid">
             <div>
               <div class="label">Fecha de emisi\u00f3n</div>
@@ -109,7 +109,10 @@ export function PaymentDetailModal({ item, onClose }: PaymentDetailModalProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{item.factura}</h2>
-            <p className="text-sm text-gray-500">{item.estudiante}</p>
+            <p className="text-sm text-gray-500">
+              {item.estudiante}
+              {item.moodleCode && <span className="ml-2 text-xs text-gray-400">(ID: {item.moodleCode})</span>}
+            </p>
           </div>
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-1" />
@@ -122,6 +125,9 @@ export function PaymentDetailModal({ item, onClose }: PaymentDetailModalProps) {
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider">Estudiante</p>
               <p className="text-sm font-medium text-gray-900">{item.estudiante}</p>
+              {item.moodleCode && (
+                <p className="text-xs text-gray-400 mt-0.5">ID Moodle: {item.moodleCode}</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider">Contacto</p>
