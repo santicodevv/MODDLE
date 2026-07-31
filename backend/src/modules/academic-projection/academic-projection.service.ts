@@ -100,12 +100,12 @@ export class ProjectionService {
             where: moodleIds.map((id) => ({ moodleId: id })),
           })
         : [];
-    const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
+    const courseMap = new Map(courses.map((c) => [String(c.moodleId), c]));
     return plans.map((plan) => ({
       ...plan,
       courseName:
-        courseMap.get(plan.courseMoodleId)?.fullname ||
-        courseMap.get(plan.courseMoodleId)?.subjectName ||
+        courseMap.get(String(plan.courseMoodleId))?.fullname ||
+        courseMap.get(String(plan.courseMoodleId))?.subjectName ||
         'Unknown',
     }));
   }
@@ -233,7 +233,7 @@ export class ProjectionService {
             where: courseIds.map((id) => ({ moodleId: id })),
           })
         : [];
-    const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
+    const courseMap = new Map(courses.map((c) => [String(c.moodleId), c]));
 
     for (const p of pending) {
       if (p.status === 'approved') continue;
@@ -242,8 +242,8 @@ export class ProjectionService {
           pendingCount: 0,
           failedCount: 0,
           courseName:
-            courseMap.get(p.courseMoodleId)?.fullname ||
-            courseMap.get(p.courseMoodleId)?.subjectName ||
+            courseMap.get(String(p.courseMoodleId))?.fullname ||
+            courseMap.get(String(p.courseMoodleId))?.subjectName ||
             `Course ${p.courseMoodleId}`,
         });
       }
@@ -306,7 +306,7 @@ export class ProjectionService {
             where: courseIds.map((id) => ({ moodleId: id })),
           })
         : [];
-    const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
+    const courseMap = new Map(courses.map((c) => [String(c.moodleId), c]));
 
     for (const p of pending) {
       if (!students.has(p.studentId)) {
@@ -318,8 +318,8 @@ export class ProjectionService {
       students.get(p.studentId)!.courses.push({
         courseMoodleId: p.courseMoodleId,
         courseName:
-          courseMap.get(p.courseMoodleId)?.fullname ||
-          courseMap.get(p.courseMoodleId)?.subjectName ||
+          courseMap.get(String(p.courseMoodleId))?.fullname ||
+          courseMap.get(String(p.courseMoodleId))?.subjectName ||
           `Course ${p.courseMoodleId}`,
         status: p.status === 'approved' ? 'approved' : 'pending',
       });
