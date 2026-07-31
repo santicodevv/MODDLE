@@ -20,6 +20,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { TranscriptsModule } from './modules/transcripts/transcripts.module';
 import { HealthModule } from './modules/health/health.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { AcademicProjectionModule } from './modules/academic-projection/academic-projection.module';
 
 // Guards globales
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -67,6 +68,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     TranscriptsModule,
     HealthModule,
     PaymentsModule,
+    AcademicProjectionModule,
   ],
   controllers: [AppController],
   providers: [
