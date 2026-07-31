@@ -42,6 +42,9 @@ export class User {
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
 
+  @Column({ type: 'boolean', default: false, name: 'locally_edited' })
+  locallyEdited: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

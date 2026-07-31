@@ -57,6 +57,18 @@ export class MoodleSyncService {
           where: { moodleId: mUser.id },
         });
 
+        // A user edited locally in the app is authoritative: the sync must
+        // not overwrite its data with the Moodle snapshot.
+        if (existingUser) {
+          const appUserForMoodle = await this.appUserRepository.findOne({
+            where: { moodleUserId: mUser.id },
+          });
+          if (appUserForMoodle?.locallyEdited) {
+            syncedCount++;
+            continue;
+          }
+        }
+
         const userType = this.determineUserType(mUser);
         const userData = {
           moodleId: mUser.id,
@@ -129,12 +141,14 @@ export class MoodleSyncService {
         moodleUser.username;
 
       if (existingAppUser) {
-        // Update existing app_user
-        existingAppUser.email = moodleUser.email;
-        existingAppUser.username =
-          moodleUser.username || existingAppUser.username;
-        existingAppUser.displayName = displayName;
-        existingAppUser.isActive = !moodleUser.suspended;
+        // Update existing app_user, unless it was edited locally (authoritative)
+        if (!existingAppUser.locallyEdited) {
+          existingAppUser.email = moodleUser.email;
+          existingAppUser.username =
+            moodleUser.username || existingAppUser.username;
+          existingAppUser.displayName = displayName;
+          existingAppUser.isActive = !moodleUser.suspended;
+        }
 
         // Add role if not already assigned
         if (!existingAppUser.roles.some((r) => r.code === roleCode)) {
