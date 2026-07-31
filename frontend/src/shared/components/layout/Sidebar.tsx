@@ -19,6 +19,7 @@ import {
   UserRound,
   UserCog,
   Receipt,
+  BarChart3,
 } from 'lucide-react';
 import type { RoleCode } from '@/shared/types';
 import { SidebarLogo } from './SidebarLogo';
@@ -150,6 +151,12 @@ const navItems: NavItem[] = [
     label: 'Auditoría',
     href: '/admin/audit',
     icon: FileSearch,
+    roles: ['ADMIN'],
+  },
+  {
+    label: 'Proyección Académica',
+    href: '/admin/academic-projection',
+    icon: BarChart3,
     roles: ['ADMIN'],
   },
   {

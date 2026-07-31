@@ -29,6 +29,11 @@ import { CourseTeacher } from '../modules/academic/entities/course-teacher.entit
 // Entidades de certificados
 import { Transcript } from '../modules/transcripts/entities/transcript.entity';
 
+// Entidades de proyección académica
+import { AcademicProgram } from '../modules/academic-projection/entities/academic-program.entity';
+import { StudyPlan } from '../modules/academic-projection/entities/study-plan.entity';
+import { StudentProgram } from '../modules/academic-projection/entities/student-program.entity';
+
 export const entities = [
   // Users
   User,
@@ -56,4 +61,8 @@ export const entities = [
   CourseTeacher,
   // Transcripts
   Transcript,
+  // Academic Projection
+  AcademicProgram,
+  StudyPlan,
+  StudentProgram,
 ];

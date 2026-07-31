@@ -7,3 +7,4 @@ export * from '@/modules/admin/api/sync.api';
 export * from '@/modules/teacher/api/grades.api';
 export * from '@/modules/student/api/reenrolments.api';
 export * from '@/modules/student/api/transcripts.api';
+export * from '@/modules/admin/api/projection.api';
