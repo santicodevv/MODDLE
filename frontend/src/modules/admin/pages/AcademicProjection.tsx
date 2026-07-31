@@ -8,6 +8,7 @@ import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
 import { coursesApi } from '../api/courses.api';
 import type { AcademicProgram } from '../types/projection.types';
+import type { MoodleCourse } from '../types/course.types';
 
 const TABS = [
   { id: 'programs', label: 'Programas' },
@@ -319,7 +320,13 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
     enabled: !!selectedProgramId,
   });
 
-  const moodleCourses = moodleCoursesData?.data ?? [];
+  const moodleCourses =
+    (moodleCoursesData as unknown as { courses: MoodleCourse[] } | undefined)
+      ?.courses ?? [];
+
+  const asignaturaOptions = moodleCourses.filter(
+    (c) => c.visible === true || (c.code && c.code.trim().length > 0),
+  );
 
   const addMutation = useMutation({
     mutationFn: () => {
@@ -363,7 +370,7 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[240px]"
                 >
                   <option value="">Seleccionar curso...</option>
-                  {moodleCourses.map((c) => (
+                  {asignaturaOptions.map((c) => (
                     <option key={c.id} value={c.moodleId}>
                       {c.shortname} - {c.fullname}
                     </option>
