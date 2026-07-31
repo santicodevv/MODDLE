@@ -14,6 +14,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { MoodleClientService } from '../moodle-integration/moodle-client.service';
+import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
 
 @Injectable()
 export class UsersService {
@@ -24,6 +25,8 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
+    @InjectRepository(MoodleUser)
+    private readonly moodleUserRepository: Repository<MoodleUser>,
     private readonly moodleClient: MoodleClientService,
   ) {}
 
@@ -324,6 +327,16 @@ export class UsersService {
       user.roles = roles;
     }
 
+    // A local identity edit makes this user authoritative in the app:
+    // future Moodle syncs must not overwrite it.
+    const identityChanged =
+      updateDto.email !== undefined ||
+      updateDto.displayName !== undefined ||
+      updateDto.isActive !== undefined;
+    if (identityChanged) {
+      user.locallyEdited = true;
+    }
+
     const saved = await this.userRepository.save(user);
 
     // Sync to Moodle if user is linked
@@ -353,6 +366,32 @@ export class UsersService {
           `Failed to sync user ${id} to Moodle: ${error.message}`,
         );
         // Don't throw — local update succeeded, Moodle sync failed
+      }
+    }
+
+    // Keep the moodle_users mirror in sync so reports/views reflect the edit
+    // immediately instead of showing the stale Moodle snapshot.
+    if (user.moodleUserId && identityChanged) {
+      try {
+        const mirrorUpdate: any = {};
+        if (updateDto.email !== undefined) mirrorUpdate.email = updateDto.email;
+        if (updateDto.isActive !== undefined)
+          mirrorUpdate.suspended = !updateDto.isActive;
+        if (updateDto.displayName !== undefined) {
+          const parts = updateDto.displayName.trim().split(/\s+/);
+          mirrorUpdate.firstname = parts[0] || '';
+          mirrorUpdate.lastname = parts.slice(1).join(' ') || '';
+        }
+        if (Object.keys(mirrorUpdate).length > 0) {
+          await this.moodleUserRepository.update(
+            { moodleId: user.moodleUserId },
+            mirrorUpdate,
+          );
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to update moodle_users mirror: ${error.message}`,
+        );
       }
     }
 
