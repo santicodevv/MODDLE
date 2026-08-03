@@ -78,9 +78,19 @@ export default function CreateCoursePage() {
   // Sync categories mutation
   const syncCategoriesMutation = useMutation({
     mutationFn: () => coursesApi.syncCategories(),
-    onSuccess: () => {
+    onSuccess: (result) => {
       refetchCategories();
+      if (result.programsCreated > 0) {
+        toast.success(
+          `Categorías sincronizadas (${result.synced}). Programas creados: ${result.programsCreated}. Puedes editarlos en Proyección Académica.`,
+        );
+      } else {
+        toast.success(
+          `Categorías sincronizadas (${result.synced}). No se crearon programas nuevos.`,
+        );
+      }
     },
+    onError: () => toast.error('Error al sincronizar categorías'),
   });
 
   // Create course mutation

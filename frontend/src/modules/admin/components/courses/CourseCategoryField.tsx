@@ -8,7 +8,12 @@ interface CourseCategoryFieldProps {
   categoriesLoading: boolean;
   categoryId: number;
   handleInputChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  syncCategoriesMutation: UseMutationResult<{ synced: number }, Error, void, unknown>;
+  syncCategoriesMutation: UseMutationResult<
+    { synced: number; programsCreated: number },
+    Error,
+    void,
+    unknown
+  >;
 }
 
 export function CourseCategoryField({

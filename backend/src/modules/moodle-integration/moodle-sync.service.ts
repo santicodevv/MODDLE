@@ -8,6 +8,8 @@ import { MoodleCourse } from './entities/moodle-course.entity';
 import { MoodleEnrolment } from './entities/moodle-enrolment.entity';
 import { MoodleGradeItem } from './entities/moodle-grade-item.entity';
 import { MoodleGrade } from './entities/moodle-grade.entity';
+import { MoodleCategory } from './entities/moodle-category.entity';
+import { AcademicProgram } from '../academic-projection/entities/academic-program.entity';
 import { User } from '../users/entities/user.entity';
 import { Role, RoleCode } from '../users/entities/role.entity';
 import { CourseTeacher } from '../academic/entities/course-teacher.entity';
@@ -28,6 +30,10 @@ export class MoodleSyncService {
     private readonly moodleGradeItemRepository: Repository<MoodleGradeItem>,
     @InjectRepository(MoodleGrade)
     private readonly moodleGradeRepository: Repository<MoodleGrade>,
+    @InjectRepository(MoodleCategory)
+    private readonly moodleCategoryRepository: Repository<MoodleCategory>,
+    @InjectRepository(AcademicProgram)
+    private readonly programRepository: Repository<AcademicProgram>,
     @InjectRepository(User)
     private readonly appUserRepository: Repository<User>,
     @InjectRepository(Role)
@@ -782,12 +788,147 @@ export class MoodleSyncService {
     this.logger.log('Starting full sync...');
 
     await this.syncUsers();
+    await this.syncCategories();
     await this.syncCourses();
     await this.syncAllEnrolments();
     await this.syncAllGradeItems();
     await this.syncAllGrades();
 
     this.logger.log('Full sync completed!');
+  }
+
+  /**
+   * Sync categories from Moodle into moodle_categories and also create/update
+   * Academic Programs (sga_programs) from those categories. Each Moodle category
+   * becomes a Program of the "Proyección de Oferta Académica".
+   *
+   * Programs already linked to a category (or manually edited) are never
+   * overwritten: their name/code can be edited by the admin afterwards.
+   */
+  async syncCategories(): Promise<{
+    synced: number;
+    programsCreated: number;
+  }> {
+    this.logger.log('Starting categories sync from Moodle...');
+
+    const moodleCategories = await this.moodleClient.getCategories();
+
+    this.logger.log(
+      `Received ${moodleCategories?.length || 0} categories from Moodle`,
+    );
+
+    if (!Array.isArray(moodleCategories) || moodleCategories.length === 0) {
+      this.logger.warn('No categories received from Moodle');
+      return { synced: 0, programsCreated: 0 };
+    }
+
+    let synced = 0;
+    let programsCreated = 0;
+
+    for (const mCat of moodleCategories) {
+      let category = await this.moodleCategoryRepository.findOne({
+        where: { moodleId: mCat.id },
+      });
+
+      const categoryData = {
+        moodleId: mCat.id,
+        name: mCat.name,
+        parent: mCat.parent,
+        description: mCat.description || '',
+        depth: mCat.depth,
+        path: mCat.path,
+        coursecount: mCat.coursecount,
+        visible: mCat.visible === 1,
+        timemodified: mCat.timemodified
+          ? new Date(mCat.timemodified * 1000)
+          : null,
+        lastSyncedAt: new Date(),
+      };
+
+      if (category) {
+        await this.moodleCategoryRepository.update(category.id, categoryData);
+      } else {
+        category = this.moodleCategoryRepository.create(categoryData);
+        await this.moodleCategoryRepository.save(category);
+      }
+
+      synced++;
+
+      // Solo crear un Programa si la categoría contiene cursos
+      if (Number(mCat.coursecount) > 0) {
+        const created = await this.upsertProgramFromCategory(mCat);
+        if (created) programsCreated++;
+      }
+    }
+
+    this.logger.log(
+      `Categories sync completed. Synced: ${synced}, programs created: ${programsCreated}`,
+    );
+    return { synced, programsCreated };
+  }
+
+  /**
+   * Create (or link) an AcademicProgram for a Moodle category.
+   * Returns true if a new program was created.
+   */
+  private async upsertProgramFromCategory(category: any): Promise<boolean> {
+    // Ya existe un programa vinculado a esta categoría: no lo sobreescribimos
+    const linked = await this.programRepository.findOne({
+      where: { moodleCategoryId: category.id },
+    });
+    if (linked) return false;
+
+    // Un programa manual pre-existente con el mismo nombre pasa a vincularse
+    const byName = await this.programRepository
+      .createQueryBuilder('p')
+      .where('LOWER(p.name) = LOWER(:name)', { name: category.name })
+      .andWhere('p.moodleCategoryId IS NULL')
+      .getOne();
+    if (byName) {
+      byName.moodleCategoryId = category.id;
+      await this.programRepository.save(byName);
+      this.logger.log(
+        `Linked existing program "${byName.name}" to Moodle category ${category.id}`,
+      );
+      return false;
+    }
+
+    const baseCode = this.generateDefaultCode(category.name);
+    let code = baseCode;
+    let suffix = 2;
+    while (await this.programRepository.findOne({ where: { code } })) {
+      code = `${baseCode}-${suffix++}`;
+    }
+
+    await this.programRepository.save(
+      this.programRepository.create({
+        code,
+        name: category.name,
+        description: `Sincronizado desde la categoría de Moodle "${category.name}"`,
+        moodleCategoryId: category.id,
+      }),
+    );
+    this.logger.log(
+      `Created AcademicProgram "${category.name}" (${code}) from Moodle category ${category.id}`,
+    );
+    return true;
+  }
+
+  /**
+   * Genera un código por defecto a partir del nombre de la categoría.
+   * Ej: DIPLOMATURA -> DIPL, LICENCIATURA MINISTERIO -> LIC-MIN
+   */
+  private generateDefaultCode(name: string): string {
+    const normalized = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim();
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length === 1) {
+      return words[0].slice(0, 4);
+    }
+    return words.map((w) => w.slice(0, 3)).join('-');
   }
 
   private determineUserType(moodleUser: any): string {

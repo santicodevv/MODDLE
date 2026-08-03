@@ -81,10 +81,12 @@ export const coursesApi = {
   },
 
   /**
-   * Sync categories from Moodle
+   * Sync categories from Moodle (also creates Academic Programs)
    */
-  async syncCategories(): Promise<{ synced: number }> {
-    const response = await api.post<{ synced: number }>('/courses/categories/sync');
+  async syncCategories(): Promise<{ synced: number; programsCreated: number }> {
+    const response = await api.post<{ synced: number; programsCreated: number }>(
+      '/courses/categories/sync',
+    );
     return response.data;
   },
 
