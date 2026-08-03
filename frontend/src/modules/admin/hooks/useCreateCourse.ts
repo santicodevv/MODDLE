@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { coursesApi } from '@/modules/admin/api/courses.api';
 import { periodsApi } from '@/modules/admin/api/periods.api';
 import { usersApi } from '@/modules/admin/api/users.api';
@@ -52,9 +53,19 @@ export function useCreateCourse({ isOpen, onClose, onSuccess }: UseCreateCourseP
   // Sync categories mutation
   const syncCategoriesMutation = useMutation({
     mutationFn: () => coursesApi.syncCategories(),
-    onSuccess: () => {
+    onSuccess: (result) => {
       refetchCategories();
+      if (result.programsCreated > 0) {
+        toast.success(
+          `Categorías sincronizadas (${result.synced}). Programas creados: ${result.programsCreated}. Puedes editarlos en Proyección Académica.`,
+        );
+      } else {
+        toast.success(
+          `Categorías sincronizadas (${result.synced}). No se crearon programas nuevos.`,
+        );
+      }
     },
+    onError: () => toast.error('Error al sincronizar categorías'),
   });
 
   // Create course mutation

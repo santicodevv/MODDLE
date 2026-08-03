@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download,
+  BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download, RefreshCw,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { cn, downloadBlob } from '@/shared/lib';
 import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
@@ -194,9 +195,35 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['academic-programs'] }),
   });
 
+  const syncCategoriesMutation = useMutation({
+    mutationFn: () => coursesApi.syncCategories(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['academic-programs'] });
+      if (result.programsCreated > 0) {
+        toast.success(
+          `Categorías sincronizadas (${result.synced}). Programas creados: ${result.programsCreated}.`,
+        );
+      } else {
+        toast.success(
+          `Categorías sincronizadas (${result.synced}). No se crearon programas nuevos.`,
+        );
+      }
+    },
+    onError: () => toast.error('Error al sincronizar categorías'),
+  });
+
   return (
     <div>
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-2 mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => syncCategoriesMutation.mutate()}
+          isLoading={syncCategoriesMutation.isPending}
+          leftIcon={<RefreshCw className="w-4 h-4" />}
+        >
+          Sincronizar categorías
+        </Button>
         <Button
           onClick={() => { setEditing(null); setModalOpen(true); }}
           leftIcon={<Plus className="w-4 h-4" />}
@@ -226,7 +253,19 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
               programs.map((program) => (
                 <tr key={program.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{program.code}</td>
-                  <td className="px-4 py-3 text-gray-700">{program.name}</td>
+                  <td className="px-4 py-3 text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <span>{program.name}</span>
+                      {program.moodleCategoryId != null && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
+                          title="Programa sincronizado desde una categoría de Moodle"
+                        >
+                          Moodle
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
                     {program.description || '-'}
                   </td>

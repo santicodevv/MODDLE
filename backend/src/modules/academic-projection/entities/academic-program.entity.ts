@@ -23,6 +23,9 @@ export class AcademicProgram {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ type: 'bigint', nullable: true, unique: true, name: 'moodle_category_id' })
+  moodleCategoryId: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -11,6 +11,7 @@ import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolm
 import { MoodleCategory } from '../../moodle-integration/entities/moodle-category.entity';
 import { MoodleUser } from '../../moodle-integration/entities/moodle-user.entity';
 import { MoodleClientService } from '../../moodle-integration/moodle-client.service';
+import { MoodleSyncService } from '../../moodle-integration/moodle-sync.service';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CourseTeacher } from '../entities/course-teacher.entity';
 import { User } from '../../users/entities/user.entity';
@@ -60,6 +61,7 @@ export class CoursesService {
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
     private readonly moodleClient: MoodleClientService,
+    private readonly moodleSyncService: MoodleSyncService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -197,69 +199,13 @@ export class CoursesService {
 
   /**
    * Sync categories from Moodle
+   * Also creates Academic Programs (sga_programs) from the categories
    */
   async syncCategories() {
     this.logger.log('Starting categories sync from Moodle...');
-
-    const moodleCategories = await this.moodleClient.getCategories();
-
-    this.logger.log(
-      `Received ${moodleCategories?.length || 0} categories from Moodle`,
-    );
-    this.logger.debug(`Categories data: ${JSON.stringify(moodleCategories)}`);
-
-    if (
-      !moodleCategories ||
-      !Array.isArray(moodleCategories) ||
-      moodleCategories.length === 0
-    ) {
-      this.logger.warn('No categories received from Moodle');
-      return { synced: 0 };
-    }
-
-    const rawCategories = moodleCategories;
-    for (const mCat of rawCategories) {
-      let category = await this.categoryRepository.findOne({
-        where: { moodleId: mCat.id },
-      });
-
-      if (category) {
-        category.name = mCat.name;
-        category.parent = mCat.parent;
-        category.description = mCat.description || '';
-        category.depth = mCat.depth;
-        category.path = mCat.path;
-        category.coursecount = mCat.coursecount;
-        category.visible = mCat.visible === 1;
-        category.timemodified = mCat.timemodified
-          ? new Date(mCat.timemodified * 1000)
-          : null;
-        category.lastSyncedAt = new Date();
-      } else {
-        category = this.categoryRepository.create({
-          moodleId: mCat.id,
-          name: mCat.name,
-          parent: mCat.parent,
-          description: mCat.description || '',
-          depth: mCat.depth,
-          path: mCat.path,
-          coursecount: mCat.coursecount,
-          visible: mCat.visible === 1,
-          lastSyncedAt: new Date(),
-        });
-        if (mCat.timemodified) {
-          category.timemodified = new Date(mCat.timemodified * 1000);
-        }
-      }
-
-      await this.categoryRepository.save(category);
-      this.logger.log(`Saved category: ${mCat.name} (Moodle ID: ${mCat.id})`);
-    }
-
-    this.logger.log(
-      `Categories sync completed. Total synced: ${moodleCategories.length}`,
-    );
-    return { synced: moodleCategories.length };
+    const result = await this.moodleSyncService.syncCategories();
+    this.logger.log(`Categories sync completed: ${JSON.stringify(result)}`);
+    return result;
   }
 
   /**

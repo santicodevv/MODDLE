@@ -3,6 +3,7 @@ export interface AcademicProgram {
   code: string;
   name: string;
   description?: string | null;
+  moodleCategoryId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
