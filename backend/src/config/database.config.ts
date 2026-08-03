@@ -1,9 +1,14 @@
 import { registerAs } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { join } from 'path';
 import { entities } from './entities';
 
 export default registerAs('database', (): TypeOrmModuleOptions => {
   const isProduction = process.env.NODE_ENV === 'production';
+
+  // En producción TypeORM no sincroniza el esquema: las migraciones se aplican
+  // automáticamente al iniciar la aplicación (migrationsRun).
+  const migrations = [join(__dirname, '..', 'migrations', '*.{ts,js}')];
 
   // Si hay DATABASE_URL, usarla directamente (Railway, Neon, etc.)
   if (process.env.DATABASE_URL) {
@@ -14,6 +19,8 @@ export default registerAs('database', (): TypeOrmModuleOptions => {
       synchronize: !isProduction,
       logging: !isProduction,
       ssl: { rejectUnauthorized: false },
+      migrations,
+      migrationsRun: isProduction,
     };
   }
 
@@ -33,5 +40,7 @@ export default registerAs('database', (): TypeOrmModuleOptions => {
     logging: !isProduction,
     // Neon y otros proveedores cloud requieren SSL; localhost no
     ssl: isLocalHost ? false : { rejectUnauthorized: false },
+    migrations,
+    migrationsRun: isProduction,
   };
 });
