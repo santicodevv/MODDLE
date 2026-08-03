@@ -30,6 +30,7 @@ export class SyncSchedulerService {
 
     try {
       await this.syncUsersIncremental();
+      await this.syncCategoriesIncremental();
       await this.syncCoursesIncremental();
       await this.syncEnrolmentsIncremental();
       await this.syncGradeItemsIncremental();
@@ -73,6 +74,17 @@ export class SyncSchedulerService {
     // Actualizar checkpoint con timestamp actual
     await this.updateSyncState(
       SyncEntity.USERS,
+      Math.floor(Date.now() / 1000).toString(),
+    );
+  }
+
+  private async syncCategoriesIncremental() {
+    this.logger.log('Syncing categories...');
+
+    await this.moodleSyncService.syncCategories();
+
+    await this.updateSyncState(
+      SyncEntity.CATEGORIES,
       Math.floor(Date.now() / 1000).toString(),
     );
   }
@@ -182,6 +194,9 @@ export class SyncSchedulerService {
       switch (entity) {
         case SyncEntity.USERS:
           await this.moodleSyncService.syncUsers();
+          break;
+        case SyncEntity.CATEGORIES:
+          await this.syncCategoriesIncremental();
           break;
         case SyncEntity.COURSES:
           await this.moodleSyncService.syncCourses();

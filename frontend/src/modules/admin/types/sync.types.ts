@@ -1,6 +1,6 @@
 // Sync types
 
-export type SyncEntityType = 'users' | 'courses' | 'enrolments' | 'grade_items' | 'grades';
+export type SyncEntityType = 'users' | 'categories' | 'courses' | 'enrolments' | 'grade_items' | 'grades';
 
 export interface SyncState {
   id: number;

@@ -31,6 +31,7 @@ export interface IntegrationStatus {
   };
   mirror: {
     users: number;
+    categories: number;
     courses: number;
     enrolments: number;
     gradeItems: number;
