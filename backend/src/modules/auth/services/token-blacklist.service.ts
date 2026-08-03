@@ -8,6 +8,7 @@ export class TokenBlacklistService {
   private blacklist = new Set<string>();
   private redisClient: ReturnType<typeof createClient> | null = null;
   private redisAvailable = false;
+  private redisErrorLogged = false;
   private readonly PREFIX = 'blacklist:';
 
   constructor(private readonly configService: ConfigService) {
@@ -15,19 +16,33 @@ export class TokenBlacklistService {
   }
 
   private async initRedis(): Promise<void> {
+    const host = this.configService.get<string>('REDIS_HOST');
+    const url =
+      this.configService.get<string>('REDIS_URL') ||
+      (host
+        ? `redis://${host}:${this.configService.get<number>('REDIS_PORT') || 6379}`
+        : null);
+
+    if (!url) {
+      this.logger.log('Redis not configured, using in-memory blacklist');
+      return;
+    }
+
     try {
-      const host = this.configService.get<string>('REDIS_HOST') || 'localhost';
-      const port = this.configService.get<number>('REDIS_PORT') || 6379;
-      this.redisClient = createClient({ url: `redis://${host}:${port}` });
+      this.redisClient = createClient({ url });
       this.redisClient.on('error', (err) => {
         this.redisAvailable = false;
-        this.logger.warn(
-          'Redis unavailable, falling back to in-memory blacklist',
-          err,
-        );
+        if (!this.redisErrorLogged) {
+          this.redisErrorLogged = true;
+          this.logger.warn(
+            'Redis unavailable, falling back to in-memory blacklist',
+            err,
+          );
+        }
       });
       this.redisClient.on('ready', () => {
         this.redisAvailable = true;
+        this.redisErrorLogged = false;
       });
       await this.redisClient.connect();
       this.redisAvailable = true;
