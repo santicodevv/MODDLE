@@ -7,6 +7,7 @@ import {
 
 export enum SyncEntity {
   USERS = 'users',
+  CATEGORIES = 'categories',
   COURSES = 'courses',
   ENROLMENTS = 'enrolments',
   GRADES = 'grades',

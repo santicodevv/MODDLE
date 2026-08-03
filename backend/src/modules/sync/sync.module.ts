@@ -10,6 +10,7 @@ import { OutboxEvent } from './entities/outbox-event.entity';
 import { SyncState } from './entities/sync-state.entity';
 import { AuditLog } from './entities/audit-log.entity';
 import { MoodleGradeItem } from '../moodle-integration/entities/moodle-grade-item.entity';
+import { MoodleCategory } from '../moodle-integration/entities/moodle-category.entity';
 
 // Commands
 import { SyncMoodleCommand } from './commands/sync-moodle.command';
@@ -39,6 +40,7 @@ import { IntegrationController } from './controllers/integration.controller';
       SyncState,
       AuditLog,
       MoodleGradeItem,
+      MoodleCategory,
     ]),
     BullModule.registerQueue({ name: 'outbox' }, { name: 'moodle-inbound' }),
   ],

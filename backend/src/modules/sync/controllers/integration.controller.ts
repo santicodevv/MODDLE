@@ -20,6 +20,7 @@ import { MoodleCourse } from '../../moodle-integration/entities/moodle-course.en
 import { MoodleEnrolment } from '../../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleGradeItem } from '../../moodle-integration/entities/moodle-grade-item.entity';
 import { MoodleGrade } from '../../moodle-integration/entities/moodle-grade.entity';
+import { MoodleCategory } from '../../moodle-integration/entities/moodle-category.entity';
 import { AuditService } from '../services/audit.service';
 
 @Controller('integrations/moodle')
@@ -41,6 +42,8 @@ export class IntegrationController {
     private readonly moodleGradeItemRepository: Repository<MoodleGradeItem>,
     @InjectRepository(MoodleGrade)
     private readonly moodleGradeRepository: Repository<MoodleGrade>,
+    @InjectRepository(MoodleCategory)
+    private readonly moodleCategoryRepository: Repository<MoodleCategory>,
   ) {}
 
   /**
@@ -92,12 +95,14 @@ export class IntegrationController {
     // Get counts from mirror tables
     const [
       usersCount,
+      categoriesCount,
       coursesCount,
       enrolmentsCount,
       gradeItemsCount,
       gradesCount,
     ] = await Promise.all([
       this.moodleUserRepository.count(),
+      this.moodleCategoryRepository.count(),
       this.moodleCourseRepository.count(),
       this.moodleEnrolmentRepository.count(),
       this.moodleGradeItemRepository.count(),
@@ -122,6 +127,7 @@ export class IntegrationController {
       },
       mirror: {
         users: usersCount,
+        categories: categoriesCount,
         courses: coursesCount,
         enrolments: enrolmentsCount,
         gradeItems: gradeItemsCount,
@@ -169,12 +175,14 @@ export class IntegrationController {
       // Get updated counts
       const [
         usersCount,
+        categoriesCount,
         coursesCount,
         enrolmentsCount,
         gradeItemsCount,
         gradesCount,
       ] = await Promise.all([
         this.moodleUserRepository.count(),
+        this.moodleCategoryRepository.count(),
         this.moodleCourseRepository.count(),
         this.moodleEnrolmentRepository.count(),
         this.moodleGradeItemRepository.count(),
@@ -186,6 +194,7 @@ export class IntegrationController {
         message: 'Bootstrap sync completed successfully',
         syncedCounts: {
           users: usersCount,
+          categories: categoriesCount,
           courses: coursesCount,
           enrolments: enrolmentsCount,
           gradeItems: gradeItemsCount,
@@ -231,6 +240,7 @@ export class IntegrationController {
       // Get counts before reconciliation
       const beforeCounts = {
         users: await this.moodleUserRepository.count(),
+        categories: await this.moodleCategoryRepository.count(),
         courses: await this.moodleCourseRepository.count(),
         enrolments: await this.moodleEnrolmentRepository.count(),
         gradeItems: await this.moodleGradeItemRepository.count(),
@@ -243,6 +253,7 @@ export class IntegrationController {
       // Get counts after reconciliation
       const afterCounts = {
         users: await this.moodleUserRepository.count(),
+        categories: await this.moodleCategoryRepository.count(),
         courses: await this.moodleCourseRepository.count(),
         enrolments: await this.moodleEnrolmentRepository.count(),
         gradeItems: await this.moodleGradeItemRepository.count(),
@@ -252,6 +263,7 @@ export class IntegrationController {
       // Calculate differences
       const differences = {
         users: afterCounts.users - beforeCounts.users,
+        categories: afterCounts.categories - beforeCounts.categories,
         courses: afterCounts.courses - beforeCounts.courses,
         enrolments: afterCounts.enrolments - beforeCounts.enrolments,
         gradeItems: afterCounts.gradeItems - beforeCounts.gradeItems,

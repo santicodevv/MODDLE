@@ -1,4 +1,4 @@
-import { Users, BookOpen, UserPlus, ClipboardList } from 'lucide-react';
+import { Users, BookOpen, UserPlus, ClipboardList, FolderTree } from 'lucide-react';
 
 export const entityConfig: Record<
   string,
@@ -9,6 +9,12 @@ export const entityConfig: Record<
     icon: Users,
     color: 'text-blue-600',
     bgColor: 'bg-blue-100',
+  },
+  categories: {
+    label: 'Categorías',
+    icon: FolderTree,
+    color: 'text-teal-600',
+    bgColor: 'bg-teal-100',
   },
   courses: {
     label: 'Cursos',
