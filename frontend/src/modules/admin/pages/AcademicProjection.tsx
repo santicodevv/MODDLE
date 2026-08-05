@@ -375,23 +375,25 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
     <div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => autoAssignMutation.mutate()}
-          isLoading={autoAssignMutation.isPending}
-          disabled={!selectedProgramId}
-          leftIcon={<RefreshCw className="w-4 h-4" />}
-        >
-          Asignar automáticamente
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => navigate('/admin/courses/create')}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          Crear Curso
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => autoAssignMutation.mutate()}
+            isLoading={autoAssignMutation.isPending}
+            disabled={!selectedProgramId}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            Asignar automáticamente
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => navigate('/admin/courses/create')}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Crear Curso
+          </Button>
+        </div>
       </div>
 
       {!selectedProgramId && <EmptyState message="Selecciona un programa para ver su plan de estudio" />}

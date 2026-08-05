@@ -115,6 +115,13 @@ export class ProjectionController {
     return this.projectionService.autoAssignCoursesToPrograms();
   }
 
+  @Get('study-plans/by-course/:courseMoodleId')
+  async getProgramsByCourse(
+    @Param('courseMoodleId', ParseIntPipe) courseMoodleId: number,
+  ) {
+    return this.projectionService.getProgramsByCourse(courseMoodleId);
+  }
+
   // ========== STUDENT PROGRAM ==========
 
   @Roles(RoleCode.ADMIN)
