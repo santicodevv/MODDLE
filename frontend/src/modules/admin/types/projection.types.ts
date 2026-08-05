@@ -81,6 +81,25 @@ export interface CreateStudyPlanRequest {
   level: number;
 }
 
+export interface CreateProgramCourseRequest {
+  fullname: string;
+  shortname: string;
+  level: number;
+  subjectName?: string;
+  code?: string;
+  idnumber?: string;
+  summary?: string;
+  visible?: boolean;
+  startdate?: string;
+  enddate?: string;
+}
+
+export interface AutoAssignResult {
+  programsProcessed: number;
+  coursesAssigned: number;
+  coursesSkipped: number;
+}
+
 export interface AssignStudentProgramRequest {
   userId: number;
   programId: number;
