@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download, RefreshCw,
@@ -8,9 +9,7 @@ import { cn, downloadBlob } from '@/shared/lib';
 import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
 import { coursesApi } from '../api/courses.api';
-import { CreateCourseForm } from '../components/courses/CreateCourseForm';
 import type { AcademicProgram } from '../types/projection.types';
-import type { MoodleCourse } from '../types/course.types';
 
 const TABS = [
   { id: 'programs', label: 'Programas' },
@@ -343,12 +342,9 @@ function ProgramSelector({
 }
 
 function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
-  const [courseMoodleId, setCourseMoodleId] = useState('');
-  const [level, setLevel] = useState('');
-  const [mode, setMode] = useState<'existing' | 'new'>('existing');
-  const [newLevel, setNewLevel] = useState('1');
 
   const { data: studyPlans = [], isLoading, isError } = useQuery({
     queryKey: ['study-plans', selectedProgramId],
@@ -356,60 +352,9 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
     enabled: !!selectedProgramId,
   });
 
-  const selectedProgram =
-    programs.find((p) => p.id === selectedProgramId) ?? null;
-
-  const { data: moodleCoursesData } = useQuery({
-    queryKey: ['moodle-courses'],
-    queryFn: () => coursesApi.getAll({ limit: 200 }),
-    enabled: !!selectedProgramId,
-  });
-
-  const moodleCourses =
-    (moodleCoursesData as unknown as { courses: MoodleCourse[] } | undefined)
-      ?.courses ?? [];
-
-  const asignaturaOptions = moodleCourses.filter(
-    (c) => c.visible === true || (c.code && c.code.trim().length > 0),
-  );
-
-  const addMutation = useMutation({
-    mutationFn: () => {
-      if (!selectedProgramId) throw new Error('No program selected');
-      return projectionApi.addStudyPlan(selectedProgramId, {
-        courseMoodleId: Number(courseMoodleId),
-        level: Number(level),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] });
-      setCourseMoodleId('');
-      setLevel('');
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Error al agregar asignatura'),
-  });
-
   const removeMutation = useMutation({
     mutationFn: projectionApi.removeStudyPlan,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] }),
-  });
-
-  const addCreatedCourseMutation = useMutation({
-    mutationFn: (courseMoodleId: number) => {
-      if (!selectedProgramId) throw new Error('No program selected');
-      return projectionApi.addStudyPlan(selectedProgramId, {
-        courseMoodleId,
-        level: Number(newLevel),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] });
-      queryClient.invalidateQueries({ queryKey: ['moodle-courses'] });
-      toast.success('Curso creado y agregado al plan de estudio');
-      setMode('existing');
-      setNewLevel('1');
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Error al agregar el curso al plan'),
   });
 
   const autoAssignMutation = useMutation({
@@ -425,9 +370,6 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
     },
     onError: () => toast.error('Error al asignar cursos automáticamente'),
   });
-
-  const inputClass =
-    'border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
 
   return (
     <div>
@@ -445,8 +387,7 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
         </Button>
         <Button
           size="sm"
-          onClick={() => setMode('new')}
-          disabled={!selectedProgramId}
+          onClick={() => navigate('/admin/courses/create')}
           leftIcon={<Plus className="w-4 h-4" />}
         >
           Crear Curso
@@ -459,143 +400,46 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
       {isError && <ErrorState message="Error al cargar el plan de estudio" />}
 
       {selectedProgramId && !isLoading && !isError && (
-        <>
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Agregar Asignatura</h3>
-            <div className="flex gap-1 mb-4">
-              <button
-                type="button"
-                onClick={() => setMode('existing')}
-                className={cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  mode === 'existing'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-                )}
-              >
-                Asignatura existente
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('new')}
-                className={cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  mode === 'new'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-                )}
-              >
-                Nuevo curso
-              </button>
-            </div>
-
-            {mode === 'existing' ? (
-              <div className="flex flex-wrap gap-3 items-end">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Curso</label>
-                  <select
-                    value={courseMoodleId}
-                    onChange={(e) => setCourseMoodleId(e.target.value)}
-                    className={`${inputClass} min-w-[240px]`}
-                  >
-                    <option value="">Seleccionar curso...</option>
-                    {asignaturaOptions.map((c) => (
-                      <option key={c.id} value={c.moodleId}>
-                        {c.shortname} - {c.fullname}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nivel</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value)}
-                    className={`${inputClass} w-20`}
-                    placeholder="1"
-                  />
-                </div>
-                <Button
-                  onClick={() => addMutation.mutate()}
-                  disabled={!courseMoodleId || !level}
-                  isLoading={addMutation.isPending}
-                  leftIcon={<Plus className="w-4 h-4" />}
-                  size="sm"
-                >
-                  Agregar
-                </Button>
-              </div>
-            ) : (
-              <div>
-                <div className="flex flex-wrap gap-3 items-end mb-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Nivel en el plan de estudio</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={newLevel}
-                      onChange={(e) => setNewLevel(e.target.value)}
-                      className={`${inputClass} w-24`}
-                      placeholder="1"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 max-w-sm">
-                    El curso se creará en Moodle y se agregará automáticamente al plan de estudio del programa.
-                  </p>
-                </div>
-                <CreateCourseForm
-                  defaultCategoryId={selectedProgram?.moodleCategoryId ?? undefined}
-                  submitLabel="Crear y agregar al plan"
-                  onCancel={() => setMode('existing')}
-                  onSuccess={(course) => addCreatedCourseMutation.mutate(course.moodleId)}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Curso</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Nivel</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {studyPlans.length === 0 ? (
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Curso</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Nivel</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Acciones</th>
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                    No hay asignaturas en el plan de estudio. Usa "Asignar automáticamente" para importar los cursos del programa desde Moodle.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {studyPlans.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                      No hay asignaturas en el plan de estudio
+              ) : (
+                studyPlans.map((sp) => (
+                  <tr key={sp.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-700">{sp.courseName ?? `Curso #${sp.courseMoodleId}`}</td>
+                    <td className="px-4 py-3 text-gray-700">Nivel {sp.level}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('¿Eliminar esta asignatura del plan de estudio?')) {
+                            removeMutation.mutate(sp.id);
+                          }
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  studyPlans.map((sp) => (
-                    <tr key={sp.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-700">{sp.courseName ?? `Curso #${sp.courseMoodleId}`}</td>
-                      <td className="px-4 py-3 text-gray-700">Nivel {sp.level}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => {
-                            if (window.confirm('¿Eliminar esta asignatura del plan de estudio?')) {
-                              removeMutation.mutate(sp.id);
-                            }
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
