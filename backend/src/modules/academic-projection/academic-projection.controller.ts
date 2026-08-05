@@ -16,6 +16,7 @@ import { ProjectionExcelService } from './services/projection-excel.service';
 import { CreateAcademicProgramDto } from './dto/create-academic-program.dto';
 import { UpdateAcademicProgramDto } from './dto/update-academic-program.dto';
 import { CreateStudyPlanDto } from './dto/create-study-plan.dto';
+import { CreateProgramCourseDto } from './dto/create-program-course.dto';
 import { AssignStudentProgramDto } from './dto/assign-student-program.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleCode } from '../users/entities/role.entity';
@@ -95,6 +96,23 @@ export class ProjectionController {
   async removeStudyPlan(@Param('id', ParseIntPipe) id: number) {
     await this.projectionService.removeStudyPlan(id);
     return { success: true };
+  }
+
+  // ========== PROGRAM COURSES ==========
+
+  @Roles(RoleCode.ADMIN)
+  @Post('programs/:id/courses')
+  async createProgramCourse(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateProgramCourseDto,
+  ) {
+    return this.projectionService.createCourseForProgram(id, dto);
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Post('study-plans/auto-assign')
+  async autoAssignCoursesToPrograms() {
+    return this.projectionService.autoAssignCoursesToPrograms();
   }
 
   // ========== STUDENT PROGRAM ==========

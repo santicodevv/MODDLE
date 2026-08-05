@@ -1,5 +1,6 @@
 import { api } from '@/shared/lib';
 import type { SuccessResponse } from '@/shared/types';
+import type { Course } from '../types/course.types';
 import type {
   AcademicProgram,
   StudyPlan,
@@ -12,6 +13,8 @@ import type {
   UpdateAcademicProgramRequest,
   CreateStudyPlanRequest,
   AssignStudentProgramRequest,
+  CreateProgramCourseRequest,
+  AutoAssignResult,
 } from '../types/projection.types';
 
 export const projectionApi = {
@@ -52,6 +55,16 @@ export const projectionApi = {
 
   async removeStudyPlan(id: number): Promise<SuccessResponse> {
     const response = await api.delete<SuccessResponse>(`/academic-projection/study-plans/${id}`);
+    return response.data;
+  },
+
+  async createProgramCourse(programId: number, data: CreateProgramCourseRequest): Promise<{ course: Course }> {
+    const response = await api.post<{ course: Course }>(`/academic-projection/programs/${programId}/courses`, data);
+    return response.data;
+  },
+
+  async autoAssignCoursesToPrograms(): Promise<AutoAssignResult> {
+    const response = await api.post<AutoAssignResult>('/academic-projection/study-plans/auto-assign');
     return response.data;
   },
 

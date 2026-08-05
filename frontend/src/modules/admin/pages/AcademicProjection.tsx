@@ -346,6 +346,14 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
   const [courseMoodleId, setCourseMoodleId] = useState('');
   const [level, setLevel] = useState('');
+  const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const [newCourse, setNewCourse] = useState({
+    fullname: '',
+    shortname: '',
+    subjectName: '',
+    code: '',
+    level: '',
+  });
 
   const { data: studyPlans = [], isLoading, isError } = useQuery({
     queryKey: ['study-plans', selectedProgramId],
@@ -380,6 +388,7 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
       setCourseMoodleId('');
       setLevel('');
     },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Error al agregar asignatura'),
   });
 
   const removeMutation = useMutation({
@@ -387,9 +396,59 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] }),
   });
 
+  const createCourseMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedProgramId) throw new Error('No program selected');
+      return projectionApi.createProgramCourse(selectedProgramId, {
+        fullname: newCourse.fullname.trim(),
+        shortname: newCourse.shortname.trim(),
+        level: Number(newCourse.level),
+        subjectName: newCourse.subjectName.trim() || undefined,
+        code: newCourse.code.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] });
+      queryClient.invalidateQueries({ queryKey: ['moodle-courses'] });
+      toast.success('Curso creado y agregado al plan de estudio');
+      setNewCourse({ fullname: '', shortname: '', subjectName: '', code: '', level: '' });
+      setMode('existing');
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Error al crear el curso'),
+  });
+
+  const autoAssignMutation = useMutation({
+    mutationFn: projectionApi.autoAssignCoursesToPrograms,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] });
+      queryClient.invalidateQueries({ queryKey: ['moodle-courses'] });
+      if (result.coursesAssigned > 0) {
+        toast.success(`Cursos asignados automáticamente: ${result.coursesAssigned}`);
+      } else {
+        toast.success('No había cursos nuevos por asignar');
+      }
+    },
+    onError: () => toast.error('Error al asignar cursos automáticamente'),
+  });
+
+  const inputClass =
+    'border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
+
   return (
     <div>
-      <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => autoAssignMutation.mutate()}
+          isLoading={autoAssignMutation.isPending}
+          disabled={!selectedProgramId}
+          leftIcon={<RefreshCw className="w-4 h-4" />}
+        >
+          Asignar automáticamente
+        </Button>
+      </div>
 
       {!selectedProgramId && <EmptyState message="Selecciona un programa para ver su plan de estudio" />}
 
@@ -400,43 +459,135 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
         <>
           <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Agregar Asignatura</h3>
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Curso</label>
-                <select
-                  value={courseMoodleId}
-                  onChange={(e) => setCourseMoodleId(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[240px]"
-                >
-                  <option value="">Seleccionar curso...</option>
-                  {asignaturaOptions.map((c) => (
-                    <option key={c.id} value={c.moodleId}>
-                      {c.shortname} - {c.fullname}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nivel</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={level}
-                  onChange={(e) => setLevel(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm w-20 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="1"
-                />
-              </div>
-              <Button
-                onClick={() => addMutation.mutate()}
-                disabled={!courseMoodleId || !level}
-                isLoading={addMutation.isPending}
-                leftIcon={<Plus className="w-4 h-4" />}
-                size="sm"
+            <div className="flex gap-1 mb-4">
+              <button
+                type="button"
+                onClick={() => setMode('existing')}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  mode === 'existing'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                )}
               >
-                Agregar
-              </Button>
+                Asignatura existente
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('new')}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  mode === 'new'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                )}
+              >
+                Nuevo curso
+              </button>
             </div>
+
+            {mode === 'existing' ? (
+              <div className="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Curso</label>
+                  <select
+                    value={courseMoodleId}
+                    onChange={(e) => setCourseMoodleId(e.target.value)}
+                    className={`${inputClass} min-w-[240px]`}
+                  >
+                    <option value="">Seleccionar curso...</option>
+                    {asignaturaOptions.map((c) => (
+                      <option key={c.id} value={c.moodleId}>
+                        {c.shortname} - {c.fullname}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Nivel</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={level}
+                    onChange={(e) => setLevel(e.target.value)}
+                    className={`${inputClass} w-20`}
+                    placeholder="1"
+                  />
+                </div>
+                <Button
+                  onClick={() => addMutation.mutate()}
+                  disabled={!courseMoodleId || !level}
+                  isLoading={addMutation.isPending}
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  size="sm"
+                >
+                  Agregar
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Nombre completo del curso</label>
+                  <input
+                    type="text"
+                    value={newCourse.fullname}
+                    onChange={(e) => setNewCourse((c) => ({ ...c, fullname: e.target.value }))}
+                    className={`${inputClass} w-full`}
+                    placeholder="Ej: Hermenéutica I"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Grupo (shortname)</label>
+                  <input
+                    type="text"
+                    value={newCourse.shortname}
+                    onChange={(e) => setNewCourse((c) => ({ ...c, shortname: e.target.value }))}
+                    className={`${inputClass} w-full`}
+                    placeholder="Ej: HERM-1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Nombre de asignatura</label>
+                  <input
+                    type="text"
+                    value={newCourse.subjectName}
+                    onChange={(e) => setNewCourse((c) => ({ ...c, subjectName: e.target.value }))}
+                    className={`${inputClass} w-full`}
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Código</label>
+                  <input
+                    type="text"
+                    value={newCourse.code}
+                    onChange={(e) => setNewCourse((c) => ({ ...c, code: e.target.value }))}
+                    className={`${inputClass} w-full`}
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Nivel</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newCourse.level}
+                    onChange={(e) => setNewCourse((c) => ({ ...c, level: e.target.value }))}
+                    className={`${inputClass} w-20`}
+                    placeholder="1"
+                  />
+                </div>
+                <Button
+                  onClick={() => createCourseMutation.mutate()}
+                  disabled={!newCourse.fullname.trim() || !newCourse.shortname.trim() || !newCourse.level}
+                  isLoading={createCourseMutation.isPending}
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  size="sm"
+                >
+                  Crear curso
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">

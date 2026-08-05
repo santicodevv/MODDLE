@@ -2,17 +2,21 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
 import { AcademicProgram } from './entities/academic-program.entity';
 import { StudyPlan } from './entities/study-plan.entity';
 import { StudentProgram } from './entities/student-program.entity';
 import { MoodleCourse } from '../moodle-integration/entities/moodle-course.entity';
 import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
+import { MoodleCategory } from '../moodle-integration/entities/moodle-category.entity';
+import { MoodleClientService } from '../moodle-integration/moodle-client.service';
 import { CreateAcademicProgramDto } from './dto/create-academic-program.dto';
 import { UpdateAcademicProgramDto } from './dto/update-academic-program.dto';
 import { CreateStudyPlanDto } from './dto/create-study-plan.dto';
+import { CreateProgramCourseDto } from './dto/create-program-course.dto';
 import { AssignStudentProgramDto } from './dto/assign-student-program.dto';
 
 @Injectable()
@@ -28,6 +32,9 @@ export class ProjectionService {
     private readonly courseRepository: Repository<MoodleCourse>,
     @InjectRepository(MoodleUser)
     private readonly moodleUserRepository: Repository<MoodleUser>,
+    @InjectRepository(MoodleCategory)
+    private readonly moodleCategoryRepository: Repository<MoodleCategory>,
+    private readonly moodleClient: MoodleClientService,
   ) {}
 
   // ========== PROGRAMS CRUD ==========
@@ -126,6 +133,156 @@ export class ProjectionService {
     if (!plan)
       throw new NotFoundException(`Study plan entry with ID ${id} not found`);
     await this.studyPlanRepository.remove(plan);
+  }
+
+  /**
+   * Crea un curso nuevo en Moodle usando la categoría del programa y lo
+   * agrega al plan de estudio del programa en un solo paso.
+   */
+  async createCourseForProgram(
+    programId: number,
+    dto: CreateProgramCourseDto,
+  ): Promise<any> {
+    const program = await this.findProgramById(programId);
+
+    if (program.moodleCategoryId == null) {
+      throw new BadRequestException(
+        `El programa "${program.name}" no está vinculado a una categoría de Moodle. Sincroniza las categorías primero.`,
+      );
+    }
+
+    const categoryId = Number(program.moodleCategoryId);
+
+    const category = await this.moodleCategoryRepository.findOne({
+      where: { moodleId: categoryId },
+    });
+    if (!category) {
+      throw new BadRequestException(
+        `La categoría de Moodle ${categoryId} no existe. Sincroniza las categorías primero.`,
+      );
+    }
+
+    const moodlePayload = {
+      fullname: dto.fullname,
+      shortname: dto.shortname,
+      categoryid: categoryId,
+      idnumber: dto.idnumber,
+      summary: dto.summary,
+      visible: dto.visible === false ? 0 : 1,
+      startdate: dto.startdate
+        ? Math.floor(new Date(dto.startdate).getTime() / 1000)
+        : undefined,
+      enddate: dto.enddate
+        ? Math.floor(new Date(dto.enddate).getTime() / 1000)
+        : undefined,
+    };
+
+    let moodleResult;
+    try {
+      moodleResult = await this.moodleClient.createCourse(moodlePayload);
+    } catch (error) {
+      throw new BadRequestException(
+        `Error al crear el curso en Moodle: ${error.message}`,
+      );
+    }
+
+    if (!moodleResult || moodleResult.length === 0) {
+      throw new BadRequestException(
+        'Error al crear el curso en Moodle: respuesta vacía',
+      );
+    }
+
+    const createdMoodleCourse = moodleResult[0];
+
+    const course = this.courseRepository.create({
+      moodleId: createdMoodleCourse.id,
+      shortname: dto.shortname,
+      fullname: dto.fullname,
+      categoryId,
+      visible: dto.visible !== false,
+      lastSyncedAt: new Date(),
+    });
+
+    if (dto.idnumber) course.idnumber = dto.idnumber;
+    if (dto.summary) course.summary = dto.summary;
+    if (dto.startdate) course.startdate = new Date(dto.startdate);
+    if (dto.enddate) course.enddate = new Date(dto.enddate);
+    if (dto.subjectName) course.subjectName = dto.subjectName;
+    if (dto.code) course.code = dto.code;
+
+    await this.courseRepository.save(course);
+
+    const existing = await this.studyPlanRepository.findOne({
+      where: { programId, courseMoodleId: course.moodleId },
+    });
+    if (!existing) {
+      await this.studyPlanRepository.save(
+        this.studyPlanRepository.create({
+          programId,
+          courseMoodleId: course.moodleId,
+          level: dto.level,
+        }),
+      );
+    }
+
+    return {
+      course: { ...course, studentCount: 0, teacherCount: 0 },
+    };
+  }
+
+  /**
+   * Asigna automáticamente a cada programa los cursos de Moodle que ya
+   * pertenecen a su categoría (MoodleCourse.categoryId === Program.moodleCategoryId)
+   * y aún no están en el plan de estudio. El nivel por defecto es 1.
+   */
+  async autoAssignCoursesToPrograms(): Promise<{
+    programsProcessed: number;
+    coursesAssigned: number;
+    coursesSkipped: number;
+  }> {
+    const programs = await this.programRepository.find({
+      where: { moodleCategoryId: Not(IsNull()) },
+    });
+
+    let programsProcessed = 0;
+    let coursesAssigned = 0;
+    let coursesSkipped = 0;
+
+    for (const program of programs) {
+      const moodleCategoryId = Number(program.moodleCategoryId);
+      const courses = await this.courseRepository.find({
+        where: { categoryId: moodleCategoryId },
+      });
+
+      if (courses.length === 0) continue;
+
+      programsProcessed++;
+
+      const existingPlans = await this.studyPlanRepository.find({
+        where: { programId: program.id },
+      });
+      const existingCourseIds = new Set(
+        existingPlans.map((p) => String(p.courseMoodleId)),
+      );
+
+      for (const course of courses) {
+        const courseKey = String(course.moodleId);
+        if (existingCourseIds.has(courseKey)) {
+          coursesSkipped++;
+          continue;
+        }
+        await this.studyPlanRepository.save(
+          this.studyPlanRepository.create({
+            programId: program.id,
+            courseMoodleId: course.moodleId,
+            level: 1,
+          }),
+        );
+        coursesAssigned++;
+      }
+    }
+
+    return { programsProcessed, coursesAssigned, coursesSkipped };
   }
 
   // ========== STUDENT PROGRAM ==========
