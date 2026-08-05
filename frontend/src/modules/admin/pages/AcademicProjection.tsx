@@ -8,6 +8,7 @@ import { cn, downloadBlob } from '@/shared/lib';
 import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
 import { coursesApi } from '../api/courses.api';
+import { CreateCourseForm } from '../components/courses/CreateCourseForm';
 import type { AcademicProgram } from '../types/projection.types';
 import type { MoodleCourse } from '../types/course.types';
 
@@ -347,19 +348,16 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
   const [courseMoodleId, setCourseMoodleId] = useState('');
   const [level, setLevel] = useState('');
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
-  const [newCourse, setNewCourse] = useState({
-    fullname: '',
-    shortname: '',
-    subjectName: '',
-    code: '',
-    level: '',
-  });
+  const [newLevel, setNewLevel] = useState('1');
 
   const { data: studyPlans = [], isLoading, isError } = useQuery({
     queryKey: ['study-plans', selectedProgramId],
     queryFn: () => projectionApi.getStudyPlans(selectedProgramId!),
     enabled: !!selectedProgramId,
   });
+
+  const selectedProgram =
+    programs.find((p) => p.id === selectedProgramId) ?? null;
 
   const { data: moodleCoursesData } = useQuery({
     queryKey: ['moodle-courses'],
@@ -396,25 +394,22 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] }),
   });
 
-  const createCourseMutation = useMutation({
-    mutationFn: () => {
+  const addCreatedCourseMutation = useMutation({
+    mutationFn: (courseMoodleId: number) => {
       if (!selectedProgramId) throw new Error('No program selected');
-      return projectionApi.createProgramCourse(selectedProgramId, {
-        fullname: newCourse.fullname.trim(),
-        shortname: newCourse.shortname.trim(),
-        level: Number(newCourse.level),
-        subjectName: newCourse.subjectName.trim() || undefined,
-        code: newCourse.code.trim() || undefined,
+      return projectionApi.addStudyPlan(selectedProgramId, {
+        courseMoodleId,
+        level: Number(newLevel),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] });
       queryClient.invalidateQueries({ queryKey: ['moodle-courses'] });
       toast.success('Curso creado y agregado al plan de estudio');
-      setNewCourse({ fullname: '', shortname: '', subjectName: '', code: '', level: '' });
       setMode('existing');
+      setNewLevel('1');
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Error al crear el curso'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Error al agregar el curso al plan'),
   });
 
   const autoAssignMutation = useMutation({
@@ -447,6 +442,14 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
           leftIcon={<RefreshCw className="w-4 h-4" />}
         >
           Asignar automáticamente
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => setMode('new')}
+          disabled={!selectedProgramId}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
+          Crear Curso
         </Button>
       </div>
 
@@ -525,67 +528,29 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nombre completo del curso</label>
-                  <input
-                    type="text"
-                    value={newCourse.fullname}
-                    onChange={(e) => setNewCourse((c) => ({ ...c, fullname: e.target.value }))}
-                    className={`${inputClass} w-full`}
-                    placeholder="Ej: Hermenéutica I"
-                  />
+              <div>
+                <div className="flex flex-wrap gap-3 items-end mb-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Nivel en el plan de estudio</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={newLevel}
+                      onChange={(e) => setNewLevel(e.target.value)}
+                      className={`${inputClass} w-24`}
+                      placeholder="1"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 max-w-sm">
+                    El curso se creará en Moodle y se agregará automáticamente al plan de estudio del programa.
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Grupo (shortname)</label>
-                  <input
-                    type="text"
-                    value={newCourse.shortname}
-                    onChange={(e) => setNewCourse((c) => ({ ...c, shortname: e.target.value }))}
-                    className={`${inputClass} w-full`}
-                    placeholder="Ej: HERM-1"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nombre de asignatura</label>
-                  <input
-                    type="text"
-                    value={newCourse.subjectName}
-                    onChange={(e) => setNewCourse((c) => ({ ...c, subjectName: e.target.value }))}
-                    className={`${inputClass} w-full`}
-                    placeholder="Opcional"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Código</label>
-                  <input
-                    type="text"
-                    value={newCourse.code}
-                    onChange={(e) => setNewCourse((c) => ({ ...c, code: e.target.value }))}
-                    className={`${inputClass} w-full`}
-                    placeholder="Opcional"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nivel</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={newCourse.level}
-                    onChange={(e) => setNewCourse((c) => ({ ...c, level: e.target.value }))}
-                    className={`${inputClass} w-20`}
-                    placeholder="1"
-                  />
-                </div>
-                <Button
-                  onClick={() => createCourseMutation.mutate()}
-                  disabled={!newCourse.fullname.trim() || !newCourse.shortname.trim() || !newCourse.level}
-                  isLoading={createCourseMutation.isPending}
-                  leftIcon={<Plus className="w-4 h-4" />}
-                  size="sm"
-                >
-                  Crear curso
-                </Button>
+                <CreateCourseForm
+                  defaultCategoryId={selectedProgram?.moodleCategoryId ?? undefined}
+                  submitLabel="Crear y agregar al plan"
+                  onCancel={() => setMode('existing')}
+                  onSuccess={(course) => addCreatedCourseMutation.mutate(course.moodleId)}
+                />
               </div>
             )}
           </div>
