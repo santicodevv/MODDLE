@@ -117,6 +117,23 @@ export class ProjectionService {
     }));
   }
 
+  /**
+   * Obtiene los programas que ya tienen asignado este curso en su plan de estudio.
+   */
+  async getProgramsByCourse(
+    courseMoodleId: number,
+  ): Promise<AcademicProgram[]> {
+    const plans = await this.studyPlanRepository.find({
+      where: { courseMoodleId },
+    });
+    if (plans.length === 0) return [];
+    const programIds = [...new Set(plans.map((p) => p.programId))];
+    return this.programRepository.find({
+      where: programIds.map((id) => ({ id })),
+      order: { name: 'ASC' },
+    });
+  }
+
   async updateStudyPlan(
     id: number,
     dto: Partial<CreateStudyPlanDto>,

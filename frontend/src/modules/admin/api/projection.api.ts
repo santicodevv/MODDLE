@@ -58,6 +58,13 @@ export const projectionApi = {
     return response.data;
   },
 
+  async getProgramsByCourse(courseMoodleId: number): Promise<AcademicProgram[]> {
+    const response = await api.get<AcademicProgram[]>(
+      `/academic-projection/study-plans/by-course/${courseMoodleId}`,
+    );
+    return response.data;
+  },
+
   async createProgramCourse(programId: number, data: CreateProgramCourseRequest): Promise<{ course: Course }> {
     const response = await api.post<{ course: Course }>(`/academic-projection/programs/${programId}/courses`, data);
     return response.data;

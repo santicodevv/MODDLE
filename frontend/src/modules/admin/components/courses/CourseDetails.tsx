@@ -1,10 +1,12 @@
 
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Trash2 } from 'lucide-react';
 import { Card, CardContent, Button } from '@/shared/components/ui';
 import type { UseMutationResult } from '@tanstack/react-query';
 import type { Course } from '@/modules/admin/types/course.types';
 import { useCourseDetails } from '../../hooks/useCourseDetails';
+import { projectionApi } from '../../api/projection.api';
 import { EditableField } from './EditableField';
 import { CourseStats } from './CourseStats';
 import { CourseEmptyState } from './CourseEmptyState';
@@ -47,6 +49,12 @@ export function CourseDetails({
 
   const course = selectedCourse;
 
+  const { data: coursePrograms = [] } = useQuery({
+    queryKey: ['course-programs', course?.moodleId],
+    queryFn: () => projectionApi.getProgramsByCourse(course!.moodleId),
+    enabled: !!course,
+  });
+
   return (
     <div className="lg:col-span-1">
       <Card>
@@ -88,6 +96,27 @@ export function CourseDetails({
                   <InfoField label="ID Moodle" value={course.moodleId} valueClassName="" />
                   <InfoField label="Categoría" value={course.categoryId} valueClassName="" />
                 </div>
+
+                <InfoField
+                  label="Programa"
+                  value={
+                    coursePrograms.length > 0 ? (
+                      <span className="inline-flex flex-wrap gap-1.5">
+                        {coursePrograms.map((p) => (
+                          <span
+                            key={p.id}
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full"
+                          >
+                            {p.code} - {p.name}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Sin asignar</span>
+                    )
+                  }
+                  valueClassName="text-sm"
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <InfoField 
