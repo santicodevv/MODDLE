@@ -15,6 +15,8 @@ import type {
   AssignStudentProgramRequest,
   CreateProgramCourseRequest,
   AutoAssignResult,
+  PagedProjectionStudents,
+  ToggleStudentProgramResult,
 } from '../types/projection.types';
 
 export const projectionApi = {
@@ -80,6 +82,24 @@ export const projectionApi = {
 
   async removeStudentProgram(id: number): Promise<SuccessResponse> {
     const response = await api.delete<SuccessResponse>(`/academic-projection/student-program/${id}`);
+    return response.data;
+  },
+
+  async getStudents(page: number, limit: number, search?: string): Promise<PagedProjectionStudents> {
+    const params = {
+      page,
+      limit,
+      ...(search && search.trim() ? { search: search.trim() } : {}),
+    };
+    const response = await api.get<PagedProjectionStudents>('/academic-projection/students', { params });
+    return response.data;
+  },
+
+  async toggleStudentProgram(userId: number, programId: number): Promise<ToggleStudentProgramResult> {
+    const response = await api.post<ToggleStudentProgramResult>('/academic-projection/student-program/toggle', {
+      userId,
+      programId,
+    });
     return response.data;
   },
 

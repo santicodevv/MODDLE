@@ -448,161 +448,181 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
 function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
   const queryClient = useQueryClient();
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
-  const [searchUserId, setSearchUserId] = useState('');
-  const [lookupUserId, setLookupUserId] = useState<string | null>(null);
-  const [userId, setUserId] = useState('');
-  const [entryDate, setEntryDate] = useState('');
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const PAGE_SIZE = 10;
 
-  const { data: studentPrograms = [], isLoading, isError } = useQuery({
-    queryKey: ['student-programs', lookupUserId],
-    queryFn: () => projectionApi.getStudentPrograms(Number(lookupUserId)),
-    enabled: !!lookupUserId,
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['projection-students', page, search],
+    queryFn: () => projectionApi.getStudents(page, PAGE_SIZE, search || undefined),
   });
 
-  const addMutation = useMutation({
-    mutationFn: () => {
-      if (!selectedProgramId) throw new Error('No program selected');
-      return projectionApi.assignStudent({
-        userId: Number(userId),
-        programId: selectedProgramId,
-        entryDate: entryDate || undefined,
-      });
-    },
+  const toggleMutation = useMutation({
+    mutationFn: ({ userId, programId }: { userId: number; programId: number }) =>
+      projectionApi.toggleStudentProgram(userId, programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-programs'] });
-      setUserId('');
-      setEntryDate('');
+      queryClient.invalidateQueries({ queryKey: ['projection-students'] });
     },
+    onError: () => toast.error('Error al actualizar la asignación de programa'),
   });
 
-  const removeMutation = useMutation({
-    mutationFn: projectionApi.removeStudentProgram,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['student-programs'] }),
-  });
+  const students = data?.students ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const handleSearch = () => {
+    setPage(1);
+    setSearch(searchInput.trim());
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+  };
 
   return (
     <div>
       <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Asignar Estudiante</h3>
         <div className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">ID de Usuario</label>
+          <div className="flex-1 min-w-60">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Buscar estudiante</label>
             <input
-              type="number"
-              min={1}
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="ID"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Fecha de Ingreso</label>
-            <input
-              type="date"
-              value={entryDate}
-              onChange={(e) => setEntryDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSearch();
+              }}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Nombre, apellido, matrícula o correo"
             />
           </div>
           <Button
-            onClick={() => addMutation.mutate()}
-            disabled={!userId || !selectedProgramId}
-            isLoading={addMutation.isPending}
-            leftIcon={<Plus className="w-4 h-4" />}
-            size="sm"
-          >
-            Asignar
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Consultar Programas de un Estudiante</h3>
-        <div className="flex gap-3 items-end">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">ID de Estudiante</label>
-            <input
-              type="number"
-              min={1}
-              value={searchUserId}
-              onChange={(e) => setSearchUserId(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="ID"
-            />
-          </div>
-          <Button
-            onClick={() => setLookupUserId(searchUserId)}
-            disabled={!searchUserId}
+            onClick={handleSearch}
+            disabled={!searchInput.trim()}
             leftIcon={<Search className="w-4 h-4" />}
             size="sm"
-            variant="outline"
           >
             Buscar
           </Button>
+          {search && (
+            <Button onClick={handleClearSearch} size="sm" variant="outline">
+              Limpiar
+            </Button>
+          )}
         </div>
       </div>
 
-      {lookupUserId && (
-        <>
-          {isLoading && <LoadingSpinner />}
-          {isError && <ErrorState message="Error al consultar los programas del estudiante" />}
-          {!isLoading && !isError && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
+      {isLoading && <LoadingSpinner />}
+      {isError && <ErrorState message="Error al cargar los estudiantes" />}
+
+      {!isLoading && !isError && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Estudiante</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Matrícula</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Estado</th>
+                  {programs.map((program) => (
+                    <th
+                      key={program.id}
+                      className="text-center px-4 py-3 font-medium text-gray-600 whitespace-nowrap"
+                      title={program.name}
+                    >
+                      {program.code} - {program.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {students.length === 0 ? (
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Programa</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Fecha de Ingreso</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Asignado Desde</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">Acciones</th>
+                    <td colSpan={3 + programs.length} className="px-4 py-8 text-center text-gray-500">
+                      {search ? 'No hay estudiantes que coincidan con la búsqueda' : 'No hay estudiantes registrados'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {studentPrograms.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                        El estudiante no está asignado a ningún programa
+                ) : (
+                  students.map((student) => (
+                    <tr key={student.moodleId} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900">{student.studentName}</p>
+                        {student.email && <p className="text-xs text-gray-400">{student.email}</p>}
                       </td>
+                      <td className="px-4 py-3 text-gray-700">{student.matriculation ?? '-'}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                            student.suspended
+                              ? 'bg-gray-100 text-gray-600'
+                              : 'bg-emerald-100 text-emerald-700',
+                          )}
+                        >
+                          {student.suspended ? 'Inactivo' : 'Activo'}
+                        </span>
+                      </td>
+                      {programs.map((program) => {
+                        const checked = student.programIds.includes(program.id);
+                        return (
+                          <td key={program.id} className="px-4 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={toggleMutation.isPending}
+                              onChange={() =>
+                                toggleMutation.mutate({
+                                  userId: student.moodleId,
+                                  programId: program.id,
+                                })
+                              }
+                              className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
+                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al programa ${program.code}`}
+                            />
+                          </td>
+                        );
+                      })}
                     </tr>
-                  ) : (
-                    studentPrograms.map((sp) => {
-                      const program = programs.find((p) => p.id === sp.programId);
-                      return (
-                        <tr key={sp.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">
-                            {program ? `${program.code} - ${program.name}` : `Programa #${sp.programId}`}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">
-                            {sp.entryDate ? new Date(sp.entryDate).toLocaleDateString('es-VE') : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {new Date(sp.createdAt).toLocaleDateString('es-VE')}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => {
-                                if (window.confirm('¿Remover este estudiante del programa?')) {
-                                  removeMutation.mutate(sp.id);
-                                }
-                              }}
-                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                              title="Remover"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {total > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs text-gray-500">
+                Mostrando {(page - 1) * PAGE_SIZE + 1} – {Math.min(page * PAGE_SIZE, total)} de {total} estudiantes
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <span className="text-xs text-gray-600">
+                  Página {page} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Siguiente
+                </Button>
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
