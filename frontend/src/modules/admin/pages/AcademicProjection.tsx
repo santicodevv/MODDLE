@@ -447,7 +447,6 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
 
 function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
   const queryClient = useQueryClient();
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -484,8 +483,6 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
 
   return (
     <div>
-      <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
-
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-60">
