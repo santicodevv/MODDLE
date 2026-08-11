@@ -285,8 +285,14 @@ export class MoodleSyncService {
       const enrolledUsers =
         await this.moodleClient.getEnrolledUsers(courseMoodleId);
 
+      // Track the (user, role) pairs Moodle currently reports so that
+      // stale local enrolments (de-enrolled in Moodle) can be deactivated.
+      const moodleKeys = new Set<string>();
+
       for (const enrollment of enrolledUsers) {
         for (const role of enrollment.roles || []) {
+          moodleKeys.add(`${enrollment.id}:${role.shortname}`);
+
           const existingEnrolment =
             await this.moodleEnrolmentRepository.findOne({
               where: {
@@ -325,6 +331,26 @@ export class MoodleSyncService {
             await this.ensureCourseTeacher(courseMoodleId, enrollment.id);
           }
         }
+      }
+
+      // Deactivate enrolments that no longer exist in Moodle so the app
+      // keeps matching the source of truth.
+      const localEnrolments = await this.moodleEnrolmentRepository.find({
+        where: { courseMoodleId, enrolStatus: 'active' },
+      });
+      let deactivated = 0;
+      for (const local of localEnrolments) {
+        if (!moodleKeys.has(`${local.userMoodleId}:${local.roleCode}`)) {
+          await this.moodleEnrolmentRepository.update(local.id, {
+            enrolStatus: 'inactive',
+          });
+          deactivated++;
+        }
+      }
+      if (deactivated > 0) {
+        this.logger.log(
+          `Deactivated ${deactivated} stale enrolments for course ${courseMoodleId}`,
+        );
       }
 
       this.logger.log(`Synced enrolments for course ${courseMoodleId}`);
