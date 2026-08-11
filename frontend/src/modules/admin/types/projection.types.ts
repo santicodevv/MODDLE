@@ -105,3 +105,25 @@ export interface AssignStudentProgramRequest {
   programId: number;
   entryDate?: string;
 }
+
+export interface ProjectionStudent {
+  moodleId: number;
+  studentName: string;
+  username: string | null;
+  matriculation: string | null;
+  email: string | null;
+  suspended: boolean;
+  programIds: number[];
+}
+
+export interface PagedProjectionStudents {
+  students: ProjectionStudent[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ToggleStudentProgramResult {
+  assigned: boolean;
+  studentProgram?: StudentProgram;
+}

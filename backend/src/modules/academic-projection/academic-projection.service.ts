@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, IsNull } from 'typeorm';
+import { Repository, Not, IsNull, In } from 'typeorm';
 import { AcademicProgram } from './entities/academic-program.entity';
 import { StudyPlan } from './entities/study-plan.entity';
 import { StudentProgram } from './entities/student-program.entity';
@@ -341,6 +341,92 @@ export class ProjectionService {
         `Student program assignment with ID ${id} not found`,
       );
     await this.studentProgramRepository.remove(sp);
+  }
+
+  async toggleStudentProgram(
+    dto: AssignStudentProgramDto,
+  ): Promise<{ assigned: boolean; studentProgram?: StudentProgram }> {
+    await this.findProgramById(dto.programId);
+    const existing = await this.studentProgramRepository.findOne({
+      where: { userId: dto.userId, programId: dto.programId },
+    });
+
+    if (existing) {
+      await this.studentProgramRepository.remove(existing);
+      return { assigned: false };
+    }
+
+    const sp = this.studentProgramRepository.create({
+      userId: dto.userId,
+      programId: dto.programId,
+      entryDate: dto.entryDate ?? new Date().toISOString().slice(0, 10),
+    });
+    const saved = await this.studentProgramRepository.save(sp);
+    return { assigned: true, studentProgram: saved };
+  }
+
+  async findStudentsPaginated(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+  ): Promise<{
+    students: any[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const qb = this.moodleUserRepository
+      .createQueryBuilder('mu')
+      .where(
+        `EXISTS (SELECT 1 FROM moodle_enrolments me WHERE me.user_moodle_id = mu.moodle_id AND me.role_code = 'student')`,
+      );
+
+    if (search && search.trim()) {
+      qb.andWhere(
+        '(mu.firstname ILIKE :search OR mu.lastname ILIKE :search OR mu.email ILIKE :search OR mu.username ILIKE :search)',
+        { search: `%${search.trim()}%` },
+      );
+    }
+
+    qb.orderBy('mu.suspended', 'ASC')
+      .addOrderBy('mu.firstname', 'ASC')
+      .addOrderBy('mu.lastname', 'ASC');
+
+    const total = await qb.getCount();
+    const users = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    const students = users.map((u) => ({
+      moodleId: Number(u.moodleId),
+      studentName:
+        [u.firstname, u.lastname].filter(Boolean).join(' ').trim() ||
+        u.email ||
+        `User ${u.moodleId}`,
+      username: u.username,
+      matriculation: u.username && /^\d+$/.test(u.username) ? u.username : null,
+      email: u.email,
+      suspended: u.suspended,
+      programIds: [] as number[],
+    }));
+
+    if (students.length > 0) {
+      const assignments = await this.studentProgramRepository.find({
+        where: { userId: In(students.map((s) => s.moodleId)) },
+      });
+      const byUser = new Map<number, number[]>();
+      for (const a of assignments) {
+        const key = Number(a.userId);
+        if (!byUser.has(key)) byUser.set(key, []);
+        byUser.get(key)!.push(Number(a.programId));
+      }
+      for (const s of students) {
+        s.programIds = byUser.get(s.moodleId) ?? [];
+      }
+    }
+
+    return { students, total, page, limit };
   }
 
   // ========== PROJECTION LOGIC ==========

@@ -130,6 +130,25 @@ export class ProjectionController {
     return this.projectionService.assignStudentToProgram(dto);
   }
 
+  @Roles(RoleCode.ADMIN)
+  @Post('student-program/toggle')
+  async toggleStudentProgram(@Body() dto: AssignStudentProgramDto) {
+    return this.projectionService.toggleStudentProgram(dto);
+  }
+
+  @Get('students')
+  async findAllStudents(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.projectionService.findStudentsPaginated(
+      page ? Math.max(1, parseInt(page, 10)) : 1,
+      limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 10,
+      search?.trim() || undefined,
+    );
+  }
+
   @Get('student-program/student/:userId')
   async getStudentPrograms(@Param('userId', ParseIntPipe) userId: number) {
     return this.projectionService.getStudentPrograms(userId);

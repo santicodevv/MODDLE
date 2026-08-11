@@ -47,6 +47,104 @@ export class ReEnrolmentService {
     private readonly moodleClient: MoodleClientService,
   ) {}
 
+  /**
+   * Valida que el estudiante tenga permiso (sga_student_programs) en los
+   * programas (sga_programs) a los que pertenecen los cursos solicitados
+   * (sga_study_plans). Si un curso pertenece a al menos un programa y el
+   * estudiante no está asignado a ninguno de ellos, bloquea la reinscripción.
+   */
+  private async assertProgramAccess(
+    studentUserId: number,
+    courseMoodleIds: number[],
+  ): Promise<void> {
+    if (!courseMoodleIds || courseMoodleIds.length === 0) return;
+
+    const users = await this.enrolmentRepository.manager.query(
+      `SELECT moodle_user_id FROM app_users WHERE id = $1`,
+      [studentUserId],
+    );
+    const moodleUserId = users[0]?.moodle_user_id
+      ? Number(users[0].moodle_user_id)
+      : null;
+
+    if (moodleUserId === null) return;
+
+    const plans: { course_moodle_id: string; program_id: string }[] =
+      await this.enrolmentRepository.manager.query(
+        `SELECT sp.course_moodle_id, sp.program_id
+         FROM sga_study_plans sp
+         WHERE sp.course_moodle_id = ANY($1)`,
+        [courseMoodleIds],
+      );
+
+    if (plans.length === 0) return;
+
+    const programIds = [...new Set(plans.map((p) => Number(p.program_id)))];
+
+    const assignments: { user_id: string; program_id: string }[] =
+      await this.enrolmentRepository.manager.query(
+        `SELECT user_id, program_id FROM sga_student_programs
+         WHERE user_id = $1 AND program_id = ANY($2)`,
+        [moodleUserId, programIds],
+      );
+
+    const assignedPrograms = new Set(
+      assignments.map((a) => Number(a.program_id)),
+    );
+
+    const blockedCourses = new Map<string, number[]>();
+
+    for (const courseMoodleId of courseMoodleIds) {
+      const coursePlans = plans.filter(
+        (p) => Number(p.course_moodle_id) === Number(courseMoodleId),
+      );
+      if (coursePlans.length === 0) continue;
+
+      const hasAccess = coursePlans.some((p) =>
+        assignedPrograms.has(Number(p.program_id)),
+      );
+      if (!hasAccess) {
+        blockedCourses.set(
+          String(courseMoodleId),
+          coursePlans.map((p) => Number(p.program_id)),
+        );
+      }
+    }
+
+    if (blockedCourses.size === 0) return;
+
+    const programs: { id: string; name: string }[] =
+      await this.enrolmentRepository.manager.query(
+        `SELECT id, name FROM sga_programs WHERE id = ANY($1)`,
+        [[...programIds]],
+      );
+    const programNames = new Map(programs.map((p) => [Number(p.id), p.name]));
+
+    const courses: { moodle_id: string; fullname: string }[] =
+      await this.enrolmentRepository.manager.query(
+        `SELECT moodle_id, fullname FROM moodle_courses WHERE moodle_id = ANY($1)`,
+        [[...blockedCourses.keys()].map(Number)],
+      );
+    const courseNames = new Map(
+      courses.map((c) => [Number(c.moodle_id), c.fullname]),
+    );
+
+    const details = [...blockedCourses.entries()]
+      .map(([courseId, pids]) => {
+        const courseName =
+          courseNames.get(Number(courseId)) ?? `Curso ${courseId}`;
+        const programList = pids
+          .map((pid) => programNames.get(pid) ?? `Programa ${pid}`)
+          .join(', ');
+        return `"${courseName}" (${programList})`;
+      })
+      .join('; ');
+
+    throw new BadRequestException(
+      `No puedes reinscribirte en ${details}. Debes estar asignado al programa correspondiente para poder reinscribirte en sus cursos.`,
+    );
+  }
+
   async create(
     studentUserId: number,
     createDto: CreateReEnrolmentDto,
@@ -132,6 +230,9 @@ export class ReEnrolmentService {
           `The following courses are already requested: ${duplicateValidation.alreadyRequestedCourses.join(', ')}`,
         );
       }
+
+      // Verificar permiso de programa para cada curso solicitado
+      await this.assertProgramAccess(studentUserId, courseMoodleIds);
     }
 
     // Crear solicitud
@@ -407,6 +508,12 @@ export class ReEnrolmentService {
       throw new BadRequestException('Cannot submit request without courses');
     }
 
+    // Verificar permiso de programa para cada curso de la solicitud
+    await this.assertProgramAccess(
+      studentUserId,
+      request.lines.map((l) => Number(l.courseMoodleId)),
+    );
+
     const beforeData = { ...request };
     request.status = ReEnrolmentStatus.SUBMITTED;
     request.submittedAt = new Date();
@@ -669,6 +776,9 @@ export class ReEnrolmentService {
           `The following courses are already requested: ${duplicateValidation.alreadyRequestedCourses.join(', ')}`,
         );
       }
+
+      // Verificar permiso de programa para cada curso solicitado
+      await this.assertProgramAccess(studentUserId, courseMoodleIds);
     }
 
     // Eliminar líneas existentes
@@ -761,6 +871,9 @@ export class ReEnrolmentService {
         `The following courses are already requested: ${duplicateValidation.alreadyRequestedCourses.join(', ')}`,
       );
     }
+
+    // Verificar permiso de programa para cada curso solicitado
+    await this.assertProgramAccess(studentUserId, courseMoodleIds);
 
     // Agregar solo los que no existen
     const existingIds = request.lines.map((l) => l.courseMoodleId);
