@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download, RefreshCw,
-  ChevronRight, ChevronDown, Folder, FolderOpen, BookOpen, FileText,
+  ChevronRight, ChevronDown, BookOpen,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn, downloadBlob } from '@/shared/lib';
@@ -168,214 +168,52 @@ function ProgramModal({
   );
 }
 
-// Componente recursivo para mostrar la jerarquía de categorías
-function CategoryTreeNode({
-  node,
-  level = 0,
-  expandedNodes,
-  toggleExpanded,
-}: {
-  node: CategoryHierarchyNode;
-  level?: number;
-  expandedNodes: Set<number>;
-  toggleExpanded: (moodleId: number) => void;
-}) {
-  const isExpanded = expandedNodes.has(node.moodleId);
-  const hasChildren = node.children.length > 0;
-  const hasCourses = node.courses.length > 0;
-  const isExpandable = hasChildren || hasCourses;
+function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
+  const queryClient = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<AcademicProgram | null>(null);
+  const [expandedPrograms, setExpandedPrograms] = useState<Set<number>>(new Set());
+  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
 
-  // Determinar el tipo de nodo para el ícono y estilo
-  const getNodeStyle = () => {
-    if (level === 0) return { icon: isExpanded ? FolderOpen : Folder, color: 'text-indigo-600', bg: 'bg-indigo-50' };
-    if (level === 1) return { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' };
-    return { icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' };
-  };
-
-  const style = getNodeStyle();
-  const Icon = style.icon;
-
-  return (
-    <div className="select-none">
-      <div
-        className={cn(
-          'flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-colors',
-          isExpandable ? 'hover:bg-gray-100' : 'hover:bg-gray-50',
-          isExpanded && style.bg
-        )}
-        style={{ paddingLeft: `${level * 24 + 12}px` }}
-        onClick={() => isExpandable && toggleExpanded(node.moodleId)}
-      >
-        {isExpandable ? (
-          <span className="w-4 h-4 flex items-center justify-center text-gray-400">
-            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </span>
-        ) : (
-          <span className="w-4 h-4" />
-        )}
-        <Icon className={cn('w-5 h-5', style.color)} />
-        <span className={cn('font-medium', level === 0 ? 'text-gray-900' : 'text-gray-700')}>
-          {node.name}
-        </span>
-        {node.coursecount > 0 && (
-          <span className="text-xs text-gray-400 ml-2">
-            ({node.coursecount} cursos)
-          </span>
-        )}
-        {level === 0 && (
-          <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
-            Programa
-          </span>
-        )}
-        {level === 1 && (
-          <span className="ml-auto text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-            Curso
-          </span>
-        )}
-        {level >= 2 && (
-          <span className="ml-auto text-xs font-medium text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
-            Materia
-          </span>
-        )}
-      </div>
-
-      {isExpanded && (
-        <div className="border-l-2 border-gray-200 ml-6">
-          {/* Mostrar subcategorías (hijos) */}
-          {node.children.map((child) => (
-            <CategoryTreeNode
-              key={child.moodleId}
-              node={child}
-              level={level + 1}
-              expandedNodes={expandedNodes}
-              toggleExpanded={toggleExpanded}
-            />
-          ))}
-          {/* Mostrar cursos directos de esta categoría */}
-          {node.courses.length > 0 && (
-            <div className="py-1">
-              {node.courses.map((course) => (
-                <div
-                  key={course.moodleId}
-                  className="flex items-center gap-2 py-1.5 px-3 text-sm text-gray-600 hover:bg-gray-50 rounded"
-                  style={{ paddingLeft: `${(level + 1) * 24 + 12}px` }}
-                >
-                  <span className="w-4 h-4" />
-                  <FileText className="w-4 h-4 text-gray-400" />
-                  <span>{course.fullname}</span>
-                  <span className="text-xs text-gray-400">({course.shortname})</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CategoryHierarchyView() {
-  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
-
-  const { data: hierarchy = [], isLoading, isError } = useQuery({
+  // Obtener jerarquía de categorías para los despliegues
+  const { data: hierarchy = [] } = useQuery({
     queryKey: ['category-hierarchy'],
     queryFn: projectionApi.getCategoryHierarchy,
   });
 
-  const toggleExpanded = (moodleId: number) => {
-    setExpandedNodes((prev) => {
+  // Mapear categorías por moodleCategoryId para acceso rápido
+  const categoryMap = new Map<number, CategoryHierarchyNode>();
+  const buildCategoryMap = (nodes: CategoryHierarchyNode[]) => {
+    for (const node of nodes) {
+      categoryMap.set(node.moodleId, node);
+      buildCategoryMap(node.children);
+    }
+  };
+  buildCategoryMap(hierarchy);
+
+  const toggleProgram = (programId: number) => {
+    setExpandedPrograms((prev) => {
       const next = new Set(prev);
-      if (next.has(moodleId)) {
-        next.delete(moodleId);
+      if (next.has(programId)) {
+        next.delete(programId);
       } else {
-        next.add(moodleId);
+        next.add(programId);
       }
       return next;
     });
   };
 
-  const expandAll = () => {
-    const allIds = new Set<number>();
-    const collectIds = (nodes: CategoryHierarchyNode[]) => {
-      for (const node of nodes) {
-        allIds.add(node.moodleId);
-        collectIds(node.children);
+  const toggleCourse = (courseId: number) => {
+    setExpandedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        next.delete(courseId);
+      } else {
+        next.add(courseId);
       }
-    };
-    collectIds(hierarchy);
-    setExpandedNodes(allIds);
+      return next;
+    });
   };
-
-  const collapseAll = () => {
-    setExpandedNodes(new Set());
-  };
-
-  if (isLoading) return <LoadingSpinner />;
-  if (isError) return <ErrorState message="Error al cargar la jerarquía de categorías" />;
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 className="font-medium text-gray-900">Estructura Jerárquica de Moodle</h3>
-        <div className="flex gap-2">
-          <button
-            onClick={expandAll}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-          >
-            Expandir todo
-          </button>
-          <span className="text-gray-300">|</span>
-          <button
-            onClick={collapseAll}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-          >
-            Contraer todo
-          </button>
-        </div>
-      </div>
-
-      <div className="p-2 max-h-[500px] overflow-y-auto">
-        {hierarchy.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No hay categorías sincronizadas desde Moodle.</p>
-            <p className="text-sm mt-1">Sincroniza las categorías para ver la estructura jerárquica.</p>
-          </div>
-        ) : (
-          hierarchy.map((node) => (
-            <CategoryTreeNode
-              key={node.moodleId}
-              node={node}
-              expandedNodes={expandedNodes}
-              toggleExpanded={toggleExpanded}
-            />
-          ))
-        )}
-      </div>
-
-      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-        <div className="flex items-center gap-4 text-xs text-gray-500">
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-indigo-100 border border-indigo-200" />
-            <span>Programa</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200" />
-            <span>Curso</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-amber-100 border border-amber-200" />
-            <span>Materia</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
-  const queryClient = useQueryClient();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<AcademicProgram | null>(null);
 
   const createMutation = useMutation({
     mutationFn: projectionApi.createProgram,
@@ -438,15 +276,51 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     onError: () => toast.error('Error al limpiar programas'),
   });
 
-  return (
-    <div className="space-y-6">
-      {/* Vista jerárquica de categorías */}
-      <CategoryHierarchyView />
+  // Renderizar filas de cursos (hijos de un programa)
+  const renderCourseRows = (children: CategoryHierarchyNode[], level: number = 1) => {
+    return children.map((course) => {
+      const isExpanded = expandedCourses.has(course.moodleId);
+      const hasChildren = course.children.length > 0;
 
-      {/* Sección de gestión de programas */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-3">Gestión de Programas</h3>
-        <div className="flex justify-end gap-2 mb-4">
+      return (
+        <React.Fragment key={`course-${course.moodleId}`}>
+          <tr className="bg-emerald-50/50 hover:bg-emerald-50">
+            <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: `${level * 24 + 16}px` }}>
+              <div className="flex items-center gap-2">
+                {hasChildren ? (
+                  <button
+                    onClick={() => toggleCourse(course.moodleId)}
+                    className="p-0.5 hover:bg-emerald-100 rounded"
+                  >
+                    {isExpanded ? <ChevronDown className="w-4 h-4 text-emerald-600" /> : <ChevronRight className="w-4 h-4 text-emerald-600" />}
+                  </button>
+                ) : (
+                  <span className="w-5" />
+                )}
+                <BookOpen className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Curso</span>
+              </div>
+            </td>
+            <td className="px-4 py-2 text-gray-700">{course.name}</td>
+            <td className="px-4 py-2 text-gray-400 text-xs">{course.coursecount} cursos</td>
+            <td></td>
+          </tr>
+          {isExpanded && hasChildren && renderCourseRows(course.children, level + 1)}
+          {isExpanded && course.children.length === 0 && (
+            <tr className="bg-amber-50/50">
+              <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic" style={{ paddingLeft: `${(level + 1) * 24 + 16}px` }}>
+                Sin materias registradas
+              </td>
+            </tr>
+          )}
+        </React.Fragment>
+      );
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-end gap-2 mb-4">
         <Button
           variant="outline"
           size="sm"
@@ -495,53 +369,87 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                 </td>
               </tr>
             ) : (
-              programs.map((program) => (
-                <tr key={program.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{program.code}</td>
-                  <td className="px-4 py-3 text-gray-700">
-                    <div className="flex items-center gap-2">
-                      <span>{program.name}</span>
-                      {program.moodleCategoryId != null && (
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
-                          title="Programa sincronizado desde una categoría de Moodle"
-                        >
-                          Moodle
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
-                    {program.description || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => { setEditing(program); setModalOpen(true); }}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Eliminar el programa "${program.name}"?`)) {
-                            deleteMutation.mutate(program.id);
-                          }
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              programs.map((program) => {
+                const isExpanded = expandedPrograms.has(program.id);
+                const categoryData = program.moodleCategoryId ? categoryMap.get(Number(program.moodleCategoryId)) : null;
+                const hasCourses = categoryData && categoryData.children.length > 0;
+
+                return (
+                  <React.Fragment key={program.id}>
+                    <tr className={cn('hover:bg-gray-50', isExpanded && 'bg-indigo-50/50')}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {hasCourses ? (
+                            <button
+                              onClick={() => toggleProgram(program.id)}
+                              className="p-0.5 hover:bg-indigo-100 rounded"
+                            >
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600" /> : <ChevronRight className="w-4 h-4 text-indigo-600" />}
+                            </button>
+                          ) : (
+                            <span className="w-5" />
+                          )}
+                          <span className="font-medium text-gray-900">{program.code}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <span>{program.name}</span>
+                          {program.moodleCategoryId != null && (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
+                              title="Programa sincronizado desde una categoría de Moodle"
+                            >
+                              Moodle
+                            </span>
+                          )}
+                          {hasCourses && (
+                            <span className="text-xs text-gray-400">
+                              ({categoryData.children.length} cursos)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
+                        {program.description || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => { setEditing(program); setModalOpen(true); }}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`¿Eliminar el programa "${program.name}"?`)) {
+                                deleteMutation.mutate(program.id);
+                              }
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && categoryData && renderCourseRows(categoryData.children)}
+                    {isExpanded && categoryData && categoryData.children.length === 0 && (
+                      <tr className="bg-gray-50">
+                        <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic pl-12">
+                          Sin cursos registrados en este programa
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
-        </div>
       </div>
 
       <ProgramModal
