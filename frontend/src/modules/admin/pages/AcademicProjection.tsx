@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download, RefreshCw,
-  ChevronRight, ChevronDown, BookOpen,
+  ChevronRight, ChevronDown, BookOpen, FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn, downloadBlob } from '@/shared/lib';
@@ -278,18 +278,20 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
 
   // Renderizar filas de cursos (hijos de un programa)
   const renderCourseRows = (children: CategoryHierarchyNode[], level: number = 1) => {
-    return children.map((course) => {
-      const isExpanded = expandedCourses.has(course.moodleId);
-      const hasChildren = course.children.length > 0;
+    return children.map((category) => {
+      const isExpanded = expandedCourses.has(category.moodleId);
+      const hasChildren = category.children.length > 0;
+      const hasMoodleCourses = category.courses.length > 0;
+      const isExpandable = hasChildren || hasMoodleCourses;
 
       return (
-        <React.Fragment key={`course-${course.moodleId}`}>
+        <React.Fragment key={`category-${category.moodleId}`}>
           <tr className="bg-emerald-50/50 hover:bg-emerald-50">
             <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: `${level * 24 + 16}px` }}>
               <div className="flex items-center gap-2">
-                {hasChildren ? (
+                {isExpandable ? (
                   <button
-                    onClick={() => toggleCourse(course.moodleId)}
+                    onClick={() => toggleCourse(category.moodleId)}
                     className="p-0.5 hover:bg-emerald-100 rounded"
                   >
                     {isExpanded ? <ChevronDown className="w-4 h-4 text-emerald-600" /> : <ChevronRight className="w-4 h-4 text-emerald-600" />}
@@ -301,15 +303,36 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                 <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Curso</span>
               </div>
             </td>
-            <td className="px-4 py-2 text-gray-700">{course.name}</td>
-            <td className="px-4 py-2 text-gray-400 text-xs">{course.coursecount} cursos</td>
+            <td className="px-4 py-2 text-gray-700">{category.name}</td>
+            <td className="px-4 py-2 text-gray-400 text-xs">
+              {category.coursecount > 0 && `${category.coursecount} materias`}
+              {category.coursecount > 0 && category.children.length > 0 && ' · '}
+              {category.children.length > 0 && `${category.children.length} subcategorías`}
+            </td>
             <td></td>
           </tr>
-          {isExpanded && hasChildren && renderCourseRows(course.children, level + 1)}
-          {isExpanded && course.children.length === 0 && (
-            <tr className="bg-amber-50/50">
+          {/* Renderizar subcategorías hijas */}
+          {isExpanded && hasChildren && renderCourseRows(category.children, level + 1)}
+          {/* Renderizar cursos de Moodle (materias) dentro de esta categoría */}
+          {isExpanded && hasMoodleCourses && category.courses.map((materia) => (
+            <tr key={`materia-${materia.moodleId}`} className="bg-amber-50/50 hover:bg-amber-50">
+              <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: `${(level + 1) * 24 + 16}px` }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-5" />
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Materia</span>
+                </div>
+              </td>
+              <td className="px-4 py-2 text-gray-700">{materia.fullname}</td>
+              <td className="px-4 py-2 text-gray-400 text-xs">{materia.shortname}</td>
+              <td></td>
+            </tr>
+          ))}
+          {/* Mensaje si está expandido pero no tiene nada */}
+          {isExpanded && !hasChildren && !hasMoodleCourses && (
+            <tr className="bg-gray-50">
               <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic" style={{ paddingLeft: `${(level + 1) * 24 + 16}px` }}>
-                Sin materias registradas
+                Sin materias ni subcategorías registradas
               </td>
             </tr>
           )}
@@ -372,14 +395,16 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
               programs.map((program) => {
                 const isExpanded = expandedPrograms.has(program.id);
                 const categoryData = program.moodleCategoryId ? categoryMap.get(Number(program.moodleCategoryId)) : null;
-                const hasCourses = categoryData && categoryData.children.length > 0;
+                const hasSubcategories = categoryData && categoryData.children.length > 0;
+                const hasMoodleCourses = categoryData && categoryData.courses.length > 0;
+                const isExpandable = hasSubcategories || hasMoodleCourses;
 
                 return (
                   <React.Fragment key={program.id}>
                     <tr className={cn('hover:bg-gray-50', isExpanded && 'bg-indigo-50/50')}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {hasCourses ? (
+                          {isExpandable ? (
                             <button
                               onClick={() => toggleProgram(program.id)}
                               className="p-0.5 hover:bg-indigo-100 rounded"
@@ -403,9 +428,11 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                               Moodle
                             </span>
                           )}
-                          {hasCourses && (
+                          {categoryData && (hasSubcategories || hasMoodleCourses) && (
                             <span className="text-xs text-gray-400">
-                              ({categoryData.children.length} cursos)
+                              ({categoryData.children.length > 0 ? `${categoryData.children.length} cursos` : ''}
+                              {categoryData.children.length > 0 && categoryData.courses.length > 0 ? ', ' : ''}
+                              {categoryData.courses.length > 0 ? `${categoryData.courses.length} materias` : ''})
                             </span>
                           )}
                         </div>
@@ -436,11 +463,28 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                         </div>
                       </td>
                     </tr>
-                    {isExpanded && categoryData && renderCourseRows(categoryData.children)}
-                    {isExpanded && categoryData && categoryData.children.length === 0 && (
+                    {/* Renderizar subcategorías (cursos) del programa */}
+                    {isExpanded && categoryData && hasSubcategories && renderCourseRows(categoryData.children)}
+                    {/* Renderizar materias directas del programa (si las hay) */}
+                    {isExpanded && categoryData && hasMoodleCourses && categoryData.courses.map((materia) => (
+                      <tr key={`program-materia-${materia.moodleId}`} className="bg-amber-50/50 hover:bg-amber-50">
+                        <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: '40px' }}>
+                          <div className="flex items-center gap-2">
+                            <span className="w-5" />
+                            <FileText className="w-4 h-4 text-amber-600" />
+                            <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Materia</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{materia.fullname}</td>
+                        <td className="px-4 py-2 text-gray-400 text-xs">{materia.shortname}</td>
+                        <td></td>
+                      </tr>
+                    ))}
+                    {/* Mensaje si está expandido pero no tiene nada */}
+                    {isExpanded && categoryData && !hasSubcategories && !hasMoodleCourses && (
                       <tr className="bg-gray-50">
                         <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic pl-12">
-                          Sin cursos registrados en este programa
+                          Sin cursos ni materias registradas en este programa
                         </td>
                       </tr>
                     )}
