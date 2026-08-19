@@ -17,11 +17,30 @@ import type {
   AutoAssignResult,
   PagedProjectionStudents,
   ToggleStudentProgramResult,
+  CategoryHierarchyNode,
 } from '../types/projection.types';
 
 export const projectionApi = {
+  async getCategoryHierarchy(): Promise<CategoryHierarchyNode[]> {
+    const response = await api.get<CategoryHierarchyNode[]>('/academic-projection/categories/hierarchy');
+    return response.data;
+  },
+
   async getPrograms(): Promise<AcademicProgram[]> {
     const response = await api.get<AcademicProgram[]>('/academic-projection/programs');
+    return response.data;
+  },
+
+  async cleanupInvalidPrograms(): Promise<{
+    deleted: number;
+    skipped: number;
+    details: { id: number; name: string; reason: string }[];
+  }> {
+    const response = await api.post<{
+      deleted: number;
+      skipped: number;
+      details: { id: number; name: string; reason: string }[];
+    }>('/academic-projection/programs/cleanup-invalid');
     return response.data;
   },
 

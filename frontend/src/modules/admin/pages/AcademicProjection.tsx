@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download, RefreshCw,
+  ChevronRight, ChevronDown, Folder, FolderOpen, BookOpen, FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn, downloadBlob } from '@/shared/lib';
 import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
 import { coursesApi } from '../api/courses.api';
-import type { AcademicProgram } from '../types/projection.types';
+import type { AcademicProgram, CategoryHierarchyNode } from '../types/projection.types';
 
 const TABS = [
   { id: 'programs', label: 'Programas' },
@@ -167,6 +168,210 @@ function ProgramModal({
   );
 }
 
+// Componente recursivo para mostrar la jerarquía de categorías
+function CategoryTreeNode({
+  node,
+  level = 0,
+  expandedNodes,
+  toggleExpanded,
+}: {
+  node: CategoryHierarchyNode;
+  level?: number;
+  expandedNodes: Set<number>;
+  toggleExpanded: (moodleId: number) => void;
+}) {
+  const isExpanded = expandedNodes.has(node.moodleId);
+  const hasChildren = node.children.length > 0;
+  const hasCourses = node.courses.length > 0;
+  const isExpandable = hasChildren || hasCourses;
+
+  // Determinar el tipo de nodo para el ícono y estilo
+  const getNodeStyle = () => {
+    if (level === 0) return { icon: isExpanded ? FolderOpen : Folder, color: 'text-indigo-600', bg: 'bg-indigo-50' };
+    if (level === 1) return { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    return { icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' };
+  };
+
+  const style = getNodeStyle();
+  const Icon = style.icon;
+
+  return (
+    <div className="select-none">
+      <div
+        className={cn(
+          'flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-colors',
+          isExpandable ? 'hover:bg-gray-100' : 'hover:bg-gray-50',
+          isExpanded && style.bg
+        )}
+        style={{ paddingLeft: `${level * 24 + 12}px` }}
+        onClick={() => isExpandable && toggleExpanded(node.moodleId)}
+      >
+        {isExpandable ? (
+          <span className="w-4 h-4 flex items-center justify-center text-gray-400">
+            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </span>
+        ) : (
+          <span className="w-4 h-4" />
+        )}
+        <Icon className={cn('w-5 h-5', style.color)} />
+        <span className={cn('font-medium', level === 0 ? 'text-gray-900' : 'text-gray-700')}>
+          {node.name}
+        </span>
+        {node.coursecount > 0 && (
+          <span className="text-xs text-gray-400 ml-2">
+            ({node.coursecount} cursos)
+          </span>
+        )}
+        {level === 0 && (
+          <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
+            Programa
+          </span>
+        )}
+        {level === 1 && (
+          <span className="ml-auto text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+            Curso
+          </span>
+        )}
+        {level >= 2 && (
+          <span className="ml-auto text-xs font-medium text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+            Materia
+          </span>
+        )}
+      </div>
+
+      {isExpanded && (
+        <div className="border-l-2 border-gray-200 ml-6">
+          {/* Mostrar subcategorías (hijos) */}
+          {node.children.map((child) => (
+            <CategoryTreeNode
+              key={child.moodleId}
+              node={child}
+              level={level + 1}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
+            />
+          ))}
+          {/* Mostrar cursos directos de esta categoría */}
+          {node.courses.length > 0 && (
+            <div className="py-1">
+              {node.courses.map((course) => (
+                <div
+                  key={course.moodleId}
+                  className="flex items-center gap-2 py-1.5 px-3 text-sm text-gray-600 hover:bg-gray-50 rounded"
+                  style={{ paddingLeft: `${(level + 1) * 24 + 12}px` }}
+                >
+                  <span className="w-4 h-4" />
+                  <FileText className="w-4 h-4 text-gray-400" />
+                  <span>{course.fullname}</span>
+                  <span className="text-xs text-gray-400">({course.shortname})</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CategoryHierarchyView() {
+  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+
+  const { data: hierarchy = [], isLoading, isError } = useQuery({
+    queryKey: ['category-hierarchy'],
+    queryFn: projectionApi.getCategoryHierarchy,
+  });
+
+  const toggleExpanded = (moodleId: number) => {
+    setExpandedNodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(moodleId)) {
+        next.delete(moodleId);
+      } else {
+        next.add(moodleId);
+      }
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    const allIds = new Set<number>();
+    const collectIds = (nodes: CategoryHierarchyNode[]) => {
+      for (const node of nodes) {
+        allIds.add(node.moodleId);
+        collectIds(node.children);
+      }
+    };
+    collectIds(hierarchy);
+    setExpandedNodes(allIds);
+  };
+
+  const collapseAll = () => {
+    setExpandedNodes(new Set());
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+  if (isError) return <ErrorState message="Error al cargar la jerarquía de categorías" />;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 className="font-medium text-gray-900">Estructura Jerárquica de Moodle</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={expandAll}
+            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Expandir todo
+          </button>
+          <span className="text-gray-300">|</span>
+          <button
+            onClick={collapseAll}
+            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Contraer todo
+          </button>
+        </div>
+      </div>
+
+      <div className="p-2 max-h-[500px] overflow-y-auto">
+        {hierarchy.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>No hay categorías sincronizadas desde Moodle.</p>
+            <p className="text-sm mt-1">Sincroniza las categorías para ver la estructura jerárquica.</p>
+          </div>
+        ) : (
+          hierarchy.map((node) => (
+            <CategoryTreeNode
+              key={node.moodleId}
+              node={node}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+        <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-indigo-100 border border-indigo-200" />
+            <span>Programa</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200" />
+            <span>Curso</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-amber-100 border border-amber-200" />
+            <span>Materia</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
@@ -199,6 +404,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     mutationFn: () => coursesApi.syncCategories(),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['academic-programs'] });
+      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] });
       if (result.programsCreated > 0) {
         toast.success(
           `Categorías sincronizadas (${result.synced}). Programas creados: ${result.programsCreated}.`,
@@ -212,9 +418,48 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     onError: () => toast.error('Error al sincronizar categorías'),
   });
 
+  const cleanupMutation = useMutation({
+    mutationFn: () => projectionApi.cleanupInvalidPrograms(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['academic-programs'] });
+      queryClient.invalidateQueries({ queryKey: ['category-hierarchy'] });
+      if (result.deleted > 0) {
+        toast.success(
+          `Limpieza completada. ${result.deleted} programas eliminados, ${result.skipped} omitidos.`,
+        );
+      } else if (result.skipped > 0) {
+        toast.success(
+          `No se eliminaron programas. ${result.skipped} programas tienen estudiantes asignados.`,
+        );
+      } else {
+        toast.success('No hay programas inválidos para limpiar.');
+      }
+    },
+    onError: () => toast.error('Error al limpiar programas'),
+  });
+
   return (
-    <div>
-      <div className="flex justify-end gap-2 mb-4">
+    <div className="space-y-6">
+      {/* Vista jerárquica de categorías */}
+      <CategoryHierarchyView />
+
+      {/* Sección de gestión de programas */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-3">Gestión de Programas</h3>
+        <div className="flex justify-end gap-2 mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (window.confirm('¿Eliminar programas creados desde categorías que no son raíz? Esta acción no se puede deshacer.')) {
+              cleanupMutation.mutate();
+            }
+          }}
+          isLoading={cleanupMutation.isPending}
+          leftIcon={<Trash2 className="w-4 h-4" />}
+        >
+          Limpiar inválidos
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -296,6 +541,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <ProgramModal
