@@ -396,15 +396,13 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                 const isExpanded = expandedPrograms.has(program.id);
                 const categoryData = program.moodleCategoryId ? categoryMap.get(Number(program.moodleCategoryId)) : null;
                 const hasSubcategories = categoryData && categoryData.children.length > 0;
-                const hasMoodleCourses = categoryData && categoryData.courses.length > 0;
-                const isExpandable = hasSubcategories || hasMoodleCourses;
 
                 return (
                   <React.Fragment key={program.id}>
                     <tr className={cn('hover:bg-gray-50', isExpanded && 'bg-indigo-50/50')}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {isExpandable ? (
+                          {hasSubcategories ? (
                             <button
                               onClick={() => toggleProgram(program.id)}
                               className="p-0.5 hover:bg-indigo-100 rounded"
@@ -428,11 +426,9 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                               Moodle
                             </span>
                           )}
-                          {categoryData && (hasSubcategories || hasMoodleCourses) && (
+                          {hasSubcategories && (
                             <span className="text-xs text-gray-400">
-                              ({categoryData.children.length > 0 ? `${categoryData.children.length} cursos` : ''}
-                              {categoryData.children.length > 0 && categoryData.courses.length > 0 ? ', ' : ''}
-                              {categoryData.courses.length > 0 ? `${categoryData.courses.length} materias` : ''})
+                              ({categoryData.children.length} cursos)
                             </span>
                           )}
                         </div>
@@ -465,26 +461,11 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                     </tr>
                     {/* Renderizar subcategorías (cursos) del programa */}
                     {isExpanded && categoryData && hasSubcategories && renderCourseRows(categoryData.children)}
-                    {/* Renderizar materias directas del programa (si las hay) */}
-                    {isExpanded && categoryData && hasMoodleCourses && categoryData.courses.map((materia) => (
-                      <tr key={`program-materia-${materia.moodleId}`} className="bg-amber-50/50 hover:bg-amber-50">
-                        <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: '40px' }}>
-                          <div className="flex items-center gap-2">
-                            <span className="w-5" />
-                            <FileText className="w-4 h-4 text-amber-600" />
-                            <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Materia</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-gray-700">{materia.fullname}</td>
-                        <td className="px-4 py-2 text-gray-400 text-xs">{materia.shortname}</td>
-                        <td></td>
-                      </tr>
-                    ))}
-                    {/* Mensaje si está expandido pero no tiene nada */}
-                    {isExpanded && categoryData && !hasSubcategories && !hasMoodleCourses && (
+                    {/* Mensaje si está expandido pero no tiene cursos */}
+                    {isExpanded && categoryData && !hasSubcategories && (
                       <tr className="bg-gray-50">
                         <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic pl-12">
-                          Sin cursos ni materias registradas en este programa
+                          Sin cursos registrados en este programa
                         </td>
                       </tr>
                     )}
