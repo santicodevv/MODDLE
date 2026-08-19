@@ -127,3 +127,23 @@ export interface ToggleStudentProgramResult {
   assigned: boolean;
   studentProgram?: StudentProgram;
 }
+
+export interface CategoryCourse {
+  moodleId: number;
+  shortname: string;
+  fullname: string;
+  categoryId: number;
+  visible: boolean;
+}
+
+export interface CategoryHierarchyNode {
+  id: number;
+  moodleId: number;
+  name: string;
+  parent: number;
+  depth: number;
+  coursecount: number;
+  visible: boolean;
+  courses: CategoryCourse[];
+  children: CategoryHierarchyNode[];
+}

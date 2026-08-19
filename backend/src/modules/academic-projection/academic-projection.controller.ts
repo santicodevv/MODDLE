@@ -31,6 +31,19 @@ export class ProjectionController {
     private readonly excelService: ProjectionExcelService,
   ) {}
 
+  // ========== CATEGORY HIERARCHY ==========
+
+  @Get('categories/hierarchy')
+  async getCategoryHierarchy() {
+    return this.projectionService.getCategoryHierarchy();
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Post('programs/cleanup-invalid')
+  async cleanupInvalidPrograms() {
+    return this.projectionService.cleanupInvalidPrograms();
+  }
+
   // ========== PROGRAMS ==========
 
   @Get('programs')

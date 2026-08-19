@@ -607,4 +607,128 @@ export class ProjectionService {
       return { ...row, studentName };
     });
   }
+
+  // ========== CATEGORY HIERARCHY ==========
+
+  /**
+   * Obtiene la estructura jerárquica completa de categorías de Moodle.
+   * Retorna un árbol donde:
+   * - Nivel 0 (parent=0): Programas (Tecnicatura, Diplomatura, etc.)
+   * - Nivel 1: Cursos dentro del programa
+   * - Nivel 2: Materias dentro del curso
+   */
+  async getCategoryHierarchy(): Promise<any[]> {
+    const allCategories = await this.moodleCategoryRepository.find({
+      order: { parent: 'ASC', name: 'ASC' },
+    });
+
+    // También obtenemos los cursos para mostrar cuántos hay en cada categoría
+    const courses = await this.courseRepository.find();
+    const coursesByCategory = new Map<number, typeof courses>();
+    for (const course of courses) {
+      const catId = Number(course.categoryId);
+      if (!coursesByCategory.has(catId)) {
+        coursesByCategory.set(catId, []);
+      }
+      coursesByCategory.get(catId)!.push(course);
+    }
+
+    // Construir el mapa de categorías
+    const categoryMap = new Map<number, any>();
+    for (const cat of allCategories) {
+      categoryMap.set(Number(cat.moodleId), {
+        id: cat.id,
+        moodleId: Number(cat.moodleId),
+        name: cat.name,
+        parent: Number(cat.parent),
+        depth: cat.depth,
+        coursecount: cat.coursecount,
+        visible: cat.visible,
+        courses: coursesByCategory.get(Number(cat.moodleId)) || [],
+        children: [],
+      });
+    }
+
+    // Construir el árbol
+    const rootCategories: any[] = [];
+    for (const cat of categoryMap.values()) {
+      if (cat.parent === 0) {
+        rootCategories.push(cat);
+      } else {
+        const parentCat = categoryMap.get(cat.parent);
+        if (parentCat) {
+          parentCat.children.push(cat);
+        }
+      }
+    }
+
+    return rootCategories;
+  }
+
+  /**
+   * Elimina los programas que fueron creados incorrectamente desde
+   * categorías que NO son de nivel raíz (parent != 0).
+   * Solo elimina programas sin asignaciones de estudiantes.
+   */
+  async cleanupInvalidPrograms(): Promise<{
+    deleted: number;
+    skipped: number;
+    details: { id: number; name: string; reason: string }[];
+  }> {
+    // Obtener todas las categorías que NO son raíz
+    const nonRootCategories = await this.moodleCategoryRepository.find({
+      where: { parent: Not(0) },
+    });
+
+    const nonRootCategoryIds = new Set(
+      nonRootCategories.map((c) => Number(c.moodleId)),
+    );
+
+    // Obtener programas vinculados a categorías que no son raíz
+    const allPrograms = await this.programRepository.find();
+    const invalidPrograms = allPrograms.filter(
+      (p) => p.moodleCategoryId && nonRootCategoryIds.has(Number(p.moodleCategoryId)),
+    );
+
+    let deleted = 0;
+    let skipped = 0;
+    const details: { id: number; name: string; reason: string }[] = [];
+
+    for (const program of invalidPrograms) {
+      // Verificar si tiene estudiantes asignados
+      const studentCount = await this.studentProgramRepository.count({
+        where: { programId: program.id },
+      });
+
+      // Verificar si tiene plan de estudio
+      const studyPlanCount = await this.studyPlanRepository.count({
+        where: { programId: program.id },
+      });
+
+      if (studentCount > 0) {
+        skipped++;
+        details.push({
+          id: program.id,
+          name: program.name,
+          reason: `Tiene ${studentCount} estudiantes asignados`,
+        });
+        continue;
+      }
+
+      if (studyPlanCount > 0) {
+        // Eliminar el plan de estudio primero
+        await this.studyPlanRepository.delete({ programId: program.id });
+      }
+
+      await this.programRepository.remove(program);
+      deleted++;
+      details.push({
+        id: program.id,
+        name: program.name,
+        reason: 'Eliminado',
+      });
+    }
+
+    return { deleted, skipped, details };
+  }
 }

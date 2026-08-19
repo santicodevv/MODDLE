@@ -880,8 +880,11 @@ export class MoodleSyncService {
 
       synced++;
 
-      // Solo crear un Programa si la categoría contiene cursos
-      if (Number(mCat.coursecount) > 0) {
+      // Solo crear un Programa si:
+      // 1. La categoría es de nivel raíz (parent = 0) - estos son los programas reales
+      // 2. La categoría contiene cursos
+      // Las subcategorías (cursos, materias) no deben convertirse en programas
+      if (Number(mCat.parent) === 0 && Number(mCat.coursecount) > 0) {
         const created = await this.upsertProgramFromCategory(mCat);
         if (created) programsCreated++;
       }
