@@ -147,3 +147,18 @@ export interface CategoryHierarchyNode {
   courses: CategoryCourse[];
   children: CategoryHierarchyNode[];
 }
+
+export interface StudentGradeByProgram {
+  studentMoodleId: number;
+  studentName: string;
+  courseMoodleId: number;
+  courseName: string;
+  grade: number;
+}
+
+export interface PagedStudentGrades {
+  data: StudentGradeByProgram[];
+  total: number;
+  page: number;
+  limit: number;
+}

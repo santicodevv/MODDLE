@@ -12,6 +12,9 @@ import { StudentProgram } from './entities/student-program.entity';
 import { MoodleCourse } from '../moodle-integration/entities/moodle-course.entity';
 import { MoodleUser } from '../moodle-integration/entities/moodle-user.entity';
 import { MoodleCategory } from '../moodle-integration/entities/moodle-category.entity';
+import { MoodleGrade } from '../moodle-integration/entities/moodle-grade.entity';
+import { MoodleGradeItem } from '../moodle-integration/entities/moodle-grade-item.entity';
+import { MoodleEnrolment } from '../moodle-integration/entities/moodle-enrolment.entity';
 import { MoodleClientService } from '../moodle-integration/moodle-client.service';
 import { CreateAcademicProgramDto } from './dto/create-academic-program.dto';
 import { UpdateAcademicProgramDto } from './dto/update-academic-program.dto';
@@ -34,6 +37,12 @@ export class ProjectionService {
     private readonly moodleUserRepository: Repository<MoodleUser>,
     @InjectRepository(MoodleCategory)
     private readonly moodleCategoryRepository: Repository<MoodleCategory>,
+    @InjectRepository(MoodleGrade)
+    private readonly moodleGradeRepository: Repository<MoodleGrade>,
+    @InjectRepository(MoodleGradeItem)
+    private readonly moodleGradeItemRepository: Repository<MoodleGradeItem>,
+    @InjectRepository(MoodleEnrolment)
+    private readonly moodleEnrolmentRepository: Repository<MoodleEnrolment>,
     private readonly moodleClient: MoodleClientService,
   ) {}
 
@@ -730,5 +739,131 @@ export class ProjectionService {
     }
 
     return { deleted, skipped, details };
+  }
+
+  // ========== STUDENT GRADES BY PROGRAM ==========
+
+  /**
+   * Obtiene estudiantes matriculados en cursos del programa con sus notas totales.
+   * Solo devuelve registros donde el estudiante tiene una nota asignada.
+   */
+  async getStudentGradesByProgram(
+    programId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    data: {
+      studentMoodleId: number;
+      studentName: string;
+      courseMoodleId: number;
+      courseName: string;
+      grade: number;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const program = await this.findProgramById(programId);
+
+    if (!program.moodleCategoryId) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    const categoryId = Number(program.moodleCategoryId);
+
+    // Obtener todas las categorías hijas (para incluir cursos en subcategorías)
+    const allCategories = await this.moodleCategoryRepository.find();
+    const childCategoryIds = this.getChildCategoryIds(categoryId, allCategories);
+    const allCategoryIds = [categoryId, ...childCategoryIds];
+
+    // Obtener todos los cursos del programa (incluyendo subcategorías)
+    const courses = await this.courseRepository.find({
+      where: allCategoryIds.map((catId) => ({ categoryId: catId })),
+    });
+
+    if (courses.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    const courseMoodleIds = courses.map((c) => Number(c.moodleId));
+    const courseMap = new Map(courses.map((c) => [Number(c.moodleId), c]));
+
+    // Obtener los grade items de tipo "course" (nota total) para estos cursos
+    const courseGradeItems = await this.moodleGradeItemRepository.find({
+      where: courseMoodleIds.map((id) => ({ courseMoodleId: id, itemtype: 'course' })),
+    });
+
+    if (courseGradeItems.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    // Crear mapa de courseMoodleId -> itemMoodleId (para la nota total)
+    const courseToItemMap = new Map<number, number>();
+    for (const item of courseGradeItems) {
+      courseToItemMap.set(Number(item.courseMoodleId), Number(item.itemMoodleId));
+    }
+
+    const itemMoodleIds = courseGradeItems.map((gi) => Number(gi.itemMoodleId));
+
+    // Contar total de registros (estudiantes con notas en estos cursos)
+    const countQuery = this.moodleGradeRepository
+      .createQueryBuilder('g')
+      .where('g.courseMoodleId IN (:...courseIds)', { courseIds: courseMoodleIds })
+      .andWhere('g.itemMoodleId IN (:...itemIds)', { itemIds: itemMoodleIds })
+      .andWhere('g.grade IS NOT NULL');
+
+    const total = await countQuery.getCount();
+
+    // Obtener registros paginados
+    const grades = await this.moodleGradeRepository
+      .createQueryBuilder('g')
+      .where('g.courseMoodleId IN (:...courseIds)', { courseIds: courseMoodleIds })
+      .andWhere('g.itemMoodleId IN (:...itemIds)', { itemIds: itemMoodleIds })
+      .andWhere('g.grade IS NOT NULL')
+      .orderBy('g.courseMoodleId', 'ASC')
+      .addOrderBy('g.userMoodleId', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    if (grades.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    // Obtener info de estudiantes
+    const studentMoodleIds = [...new Set(grades.map((g) => Number(g.userMoodleId)))];
+    const students = await this.moodleUserRepository.find({
+      where: studentMoodleIds.map((id) => ({ moodleId: id })),
+    });
+    const studentMap = new Map(students.map((s) => [Number(s.moodleId), s]));
+
+    // Construir resultado
+    const data = grades.map((g) => {
+      const student = studentMap.get(Number(g.userMoodleId));
+      const course = courseMap.get(Number(g.courseMoodleId));
+      return {
+        studentMoodleId: Number(g.userMoodleId),
+        studentName: student
+          ? [student.firstname, student.lastname].filter(Boolean).join(' ').trim() || student.email || `User ${g.userMoodleId}`
+          : `User ${g.userMoodleId}`,
+        courseMoodleId: Number(g.courseMoodleId),
+        courseName: course?.subjectName || course?.fullname || `Curso ${g.courseMoodleId}`,
+        grade: Number(g.grade),
+      };
+    });
+
+    return { data, total, page, limit };
+  }
+
+  /**
+   * Obtiene recursivamente los IDs de todas las categorías hijas
+   */
+  private getChildCategoryIds(parentId: number, allCategories: MoodleCategory[]): number[] {
+    const children = allCategories.filter((c) => Number(c.parent) === parentId);
+    const childIds = children.map((c) => Number(c.moodleId));
+    for (const child of children) {
+      childIds.push(...this.getChildCategoryIds(Number(child.moodleId), allCategories));
+    }
+    return childIds;
   }
 }

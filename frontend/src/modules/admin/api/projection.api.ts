@@ -18,6 +18,7 @@ import type {
   PagedProjectionStudents,
   ToggleStudentProgramResult,
   CategoryHierarchyNode,
+  PagedStudentGrades,
 } from '../types/projection.types';
 
 export const projectionApi = {
@@ -174,6 +175,13 @@ export const projectionApi = {
   async exportProjectionMatrix(programId?: number): Promise<Blob> {
     const params = programId ? { programId, format: 'excel' } : { format: 'excel' };
     const response = await api.get('/academic-projection/matrix', { params, responseType: 'blob' });
+    return response.data;
+  },
+
+  async getStudentGradesByProgram(programId: number, page: number = 1, limit: number = 10): Promise<PagedStudentGrades> {
+    const response = await api.get<PagedStudentGrades>('/academic-projection/student-grades-by-program', {
+      params: { programId, page, limit },
+    });
     return response.data;
   },
 };

@@ -270,4 +270,17 @@ export class ProjectionController {
     }
     return matrix;
   }
+
+  @Get('student-grades-by-program')
+  async getStudentGradesByProgram(
+    @Query('programId', ParseIntPipe) programId: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.projectionService.getStudentGradesByProgram(
+      programId,
+      page ? Math.max(1, parseInt(page, 10)) : 1,
+      limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 10,
+    );
+  }
 }

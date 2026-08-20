@@ -813,54 +813,81 @@ function DemandBySubjectTab() {
   });
 
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
-  const { data: demand = [], isLoading, isError } = useQuery({
-    queryKey: ['demand-by-subject', selectedProgramId],
-    queryFn: () => projectionApi.getDemandBySubject(selectedProgramId ?? undefined),
+  // Auto-seleccionar el primer programa cuando se carguen
+  React.useEffect(() => {
+    if (programs.length > 0 && selectedProgramId === null) {
+      setSelectedProgramId(programs[0].id);
+    }
+  }, [programs, selectedProgramId]);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['student-grades-by-program', selectedProgramId, page],
+    queryFn: () => projectionApi.getStudentGradesByProgram(selectedProgramId!, page, PAGE_SIZE),
+    enabled: !!selectedProgramId,
   });
+
+  const grades = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Resetear página al cambiar programa
+  const handleProgramChange = (id: number | null) => {
+    setSelectedProgramId(id);
+    setPage(1);
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
-        <ExportExcelButton
-          filename="oferta_demanda_asignatura.xlsx"
-          onExport={() => projectionApi.exportDemandBySubject(selectedProgramId ?? undefined)}
-        />
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-700">Programa:</label>
+          <select
+            value={selectedProgramId ?? ''}
+            onChange={(e) => handleProgramChange(e.target.value ? Number(e.target.value) : null)}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {programs.map((p) => (
+              <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {!selectedProgramId && programs.length === 0 && (
+        <EmptyState message="No hay programas académicos registrados" />
+      )}
+
       {isLoading && <LoadingSpinner />}
-      {isError && <ErrorState message="Error al cargar la demanda por asignatura" />}
-      {!isLoading && !isError && (
+      {isError && <ErrorState message="Error al cargar las notas de estudiantes" />}
+
+      {selectedProgramId && !isLoading && !isError && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Asignatura</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Pendientes</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Reprobados</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Demanda Total</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Estudiantes por Sección</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Secciones Necesarias</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Estudiante</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Materia</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Nota Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {demand.length === 0 ? (
+              {grades.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    No hay datos de demanda por asignatura
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                    No hay estudiantes con notas registradas en este programa
                   </td>
                 </tr>
               ) : (
-                demand.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
+                grades.map((row, i) => (
+                  <tr key={`${row.studentMoodleId}-${row.courseMoodleId}-${i}`} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-700">{row.studentName}</td>
                     <td className="px-4 py-3 text-gray-700">{row.courseName}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.pendingCount}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.failedCount}</td>
-                    <td className="px-4 py-3 text-right font-medium text-indigo-600">{row.totalDemand}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.studentsPerSection}</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                        {row.sectionsNeeded}
+                        {row.grade.toFixed(2)}
                       </span>
                     </td>
                   </tr>
@@ -868,6 +895,35 @@ function DemandBySubjectTab() {
               )}
             </tbody>
           </table>
+
+          {total > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs text-gray-500">
+                Mostrando {(page - 1) * PAGE_SIZE + 1} – {Math.min(page * PAGE_SIZE, total)} de {total} registros
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <span className="text-xs text-gray-600">
+                  Página {page} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
