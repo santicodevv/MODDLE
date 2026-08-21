@@ -848,10 +848,6 @@ export class ProjectionService {
       where: { depth: Not(1) },
     });
 
-    const nonRootCategoryIds = new Set(
-      nonRootCategories.map((c) => Number(c.moodleId)),
-    );
-
     // Obtener programas vinculados a categorías que no son raíz
     const allPrograms = await this.programRepository.find();
     const invalidPrograms = allPrograms.filter((p) => {
