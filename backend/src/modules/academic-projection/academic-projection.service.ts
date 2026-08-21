@@ -834,8 +834,8 @@ export class ProjectionService {
   }
 
   /**
-   * Elimina los programas que fueron creados incorrectamente desde
-   * categorías que NO son de nivel raíz (parent != 0).
+  * Elimina los programas que fueron creados incorrectamente desde
+  * categorías de nivel materia o inferior (depth >= 3).
    * Solo elimina programas sin asignaciones de estudiantes.
    */
   async cleanupInvalidPrograms(): Promise<{
@@ -843,9 +843,9 @@ export class ProjectionService {
     skipped: number;
     details: { id: number; name: string; reason: string }[];
   }> {
-    // Obtener todas las categorías que NO son raíz
+    // Los subprogramas (depth=2) son válidos y deben conservarse.
     const nonRootCategories = await this.moodleCategoryRepository.find({
-      where: { parent: Not(0) },
+      where: { depth: Not(1) },
     });
 
     const nonRootCategoryIds = new Set(
@@ -854,9 +854,13 @@ export class ProjectionService {
 
     // Obtener programas vinculados a categorías que no son raíz
     const allPrograms = await this.programRepository.find();
-    const invalidPrograms = allPrograms.filter(
-      (p) => p.moodleCategoryId && nonRootCategoryIds.has(Number(p.moodleCategoryId)),
-    );
+    const invalidPrograms = allPrograms.filter((p) => {
+      if (!p.moodleCategoryId) return false;
+      const category = nonRootCategories.find(
+        (candidate) => Number(candidate.moodleId) === Number(p.moodleCategoryId),
+      );
+      return category != null && Number(category.depth) >= 3;
+    });
 
     let deleted = 0;
     let skipped = 0;
