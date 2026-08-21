@@ -899,12 +899,13 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
   }, [subprograms, selectedMoodleId]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['student-grades-by-category', selectedMoodleId, page],
-    queryFn: () => projectionApi.getStudentGradesByCategory(selectedMoodleId!, page, PAGE_SIZE),
+    queryKey: ['student-grades-matrix', selectedMoodleId, page],
+    queryFn: () => projectionApi.getStudentGradesMatrix(selectedMoodleId!, page, PAGE_SIZE),
     enabled: !!selectedMoodleId,
   });
 
-  const grades = data?.data ?? [];
+  const courses = data?.courses ?? [];
+  const students = data?.students ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -933,41 +934,73 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
 
       {selectedMoodleId && !isLoading && !isError && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Estudiante</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Materia</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Nota Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {grades.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                    No hay estudiantes con notas registradas en este programa
-                  </td>
+                  <th className="sticky left-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">
+                    Estudiante
+                  </th>
+                  {courses.map((course) => (
+                    <th
+                      key={course.id}
+                      title={course.name}
+                      className="text-center px-3 py-3 font-medium text-gray-600 whitespace-nowrap min-w-[90px]"
+                    >
+                      {course.shortname ||
+                        (course.name.length > 12 ? `${course.name.slice(0, 12)}…` : course.name)}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                grades.map((row, i) => (
-                  <tr key={`${row.studentMoodleId}-${row.courseMoodleId}-${i}`} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-700">{row.studentName}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.courseName}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                        {row.grade.toFixed(2)}
-                      </span>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {students.length === 0 ? (
+                  <tr>
+                    <td colSpan={courses.length + 1} className="px-4 py-8 text-center text-gray-500">
+                      No hay estudiantes enrolados en los cursos de este subprograma
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  students.map((student) => (
+                    <tr key={student.moodleId} className="hover:bg-gray-50">
+                      <td
+                        title={student.name}
+                        className={`sticky left-0 z-10 bg-white px-4 py-3 text-gray-700 whitespace-nowrap ${
+                          student.suspended ? 'text-gray-400' : ''
+                        }`}
+                      >
+                        {student.name}
+                        {student.suspended ? ' (inactivo)' : ''}
+                      </td>
+                      {courses.map((course) => {
+                        const grade = student.grades[course.id];
+                        return (
+                          <td key={course.id} className="px-3 py-3 text-center whitespace-nowrap">
+                            {grade != null ? (
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  grade >= 70
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-rose-100 text-rose-700'
+                                }`}
+                              >
+                                {grade.toFixed(2)}
+                              </span>
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {total > 0 && (
             <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-t border-gray-200 bg-gray-50">
               <p className="text-xs text-gray-500">
-                Mostrando {(page - 1) * PAGE_SIZE + 1} – {Math.min(page * PAGE_SIZE, total)} de {total} registros
+                Mostrando {(page - 1) * PAGE_SIZE + 1} – {Math.min(page * PAGE_SIZE, total)} de {total} estudiantes
               </p>
               <div className="flex items-center gap-2">
                 <Button

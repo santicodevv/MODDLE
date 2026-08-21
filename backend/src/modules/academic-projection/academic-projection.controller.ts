@@ -310,4 +310,20 @@ export class ProjectionController {
       limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 10,
     );
   }
+
+  @Get('student-grades-matrix')
+  async getStudentGradesMatrix(
+    @Query('categoryMoodleId') categoryMoodleId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!categoryMoodleId) {
+      return { courses: [], students: [], total: 0, page: 1, limit: 10 };
+    }
+    return this.projectionService.getStudentGradesMatrix(
+      parseInt(categoryMoodleId, 10),
+      page ? Math.max(1, parseInt(page, 10)) : 1,
+      limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 10,
+    );
+  }
 }
