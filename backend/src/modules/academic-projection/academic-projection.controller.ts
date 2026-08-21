@@ -38,6 +38,11 @@ export class ProjectionController {
     return this.projectionService.getCategoryHierarchy();
   }
 
+  @Get('subprograms')
+  async getSubprograms() {
+    return this.projectionService.getSubprograms();
+  }
+
   @Roles(RoleCode.ADMIN)
   @Post('programs/cleanup-invalid')
   async cleanupInvalidPrograms() {
@@ -209,10 +214,12 @@ export class ProjectionController {
   async getDemandByLevel(
     @Res({ passthrough: true }) res: Response,
     @Query('programId') programId?: number,
+    @Query('categoryMoodleId') categoryMoodleId?: number,
     @Query('format') format?: string,
   ) {
     const levels = await this.projectionService.getDemandByLevel(
       programId ? Number(programId) : undefined,
+      categoryMoodleId ? Number(categoryMoodleId) : undefined,
     );
     if (format === 'excel') {
       const buffer = await this.excelService.generateDemandByLevelExcel(levels);
@@ -230,11 +237,13 @@ export class ProjectionController {
   async getSectionProjection(
     @Res({ passthrough: true }) res: Response,
     @Query('programId') programId?: number,
+    @Query('categoryMoodleId') categoryMoodleId?: number,
     @Query('maxStudents') maxStudents?: number,
     @Query('format') format?: string,
   ) {
     const sections = await this.projectionService.getSectionProjection(
       programId ? Number(programId) : undefined,
+      categoryMoodleId ? Number(categoryMoodleId) : undefined,
       maxStudents ? Number(maxStudents) : 25,
     );
     if (format === 'excel') {
@@ -254,10 +263,12 @@ export class ProjectionController {
   async getProjectionMatrix(
     @Res({ passthrough: true }) res: Response,
     @Query('programId') programId?: number,
+    @Query('categoryMoodleId') categoryMoodleId?: number,
     @Query('format') format?: string,
   ) {
     const matrix = await this.projectionService.getProjectionMatrix(
       programId ? Number(programId) : undefined,
+      categoryMoodleId ? Number(categoryMoodleId) : undefined,
     );
     if (format === 'excel') {
       const buffer = await this.excelService.generateMatrixExcel(matrix);
@@ -273,12 +284,14 @@ export class ProjectionController {
 
   @Get('student-grades-by-program')
   async getStudentGradesByProgram(
-    @Query('programId', ParseIntPipe) programId: number,
+    @Query('programId') programId?: string,
+    @Query('categoryMoodleId') categoryMoodleId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.projectionService.getStudentGradesByProgram(
-      programId,
+      programId ? parseInt(programId, 10) : undefined,
+      categoryMoodleId ? parseInt(categoryMoodleId, 10) : undefined,
       page ? Math.max(1, parseInt(page, 10)) : 1,
       limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 10,
     );

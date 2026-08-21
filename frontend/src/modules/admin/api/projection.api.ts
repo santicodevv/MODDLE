@@ -27,6 +27,11 @@ export const projectionApi = {
     return response.data;
   },
 
+  async getSubprograms(): Promise<{ id: number; moodleId: number; code: string; name: string; parent: number; coursecount: number }[]> {
+    const response = await api.get<{ id: number; moodleId: number; code: string; name: string; parent: number; coursecount: number }[]>('/academic-projection/subprograms');
+    return response.data;
+  },
+
   async getPrograms(): Promise<AcademicProgram[]> {
     const response = await api.get<AcademicProgram[]>('/academic-projection/programs');
     return response.data;
@@ -136,44 +141,44 @@ export const projectionApi = {
     return response.data;
   },
 
-  async getDemandByLevel(programId?: number): Promise<DemandByLevel[]> {
-    const params = programId ? { programId } : {};
+  async getDemandByLevel(categoryMoodleId?: number): Promise<DemandByLevel[]> {
+    const params = categoryMoodleId ? { categoryMoodleId } : {};
     const response = await api.get<DemandByLevel[]>('/academic-projection/demand-by-level', { params });
     return response.data;
   },
 
-  async getSectionProjection(programId?: number): Promise<SectionProjection[]> {
-    const params = programId ? { programId } : {};
+  async getSectionProjection(categoryMoodleId?: number): Promise<SectionProjection[]> {
+    const params = categoryMoodleId ? { categoryMoodleId } : {};
     const response = await api.get<SectionProjection[]>('/academic-projection/section-projection', { params });
     return response.data;
   },
 
-  async getProjectionMatrix(programId?: number): Promise<ProjectionMatrixRow[]> {
-    const params = programId ? { programId } : {};
+  async getProjectionMatrix(categoryMoodleId?: number): Promise<ProjectionMatrixRow[]> {
+    const params = categoryMoodleId ? { categoryMoodleId } : {};
     const response = await api.get<ProjectionMatrixRow[]>('/academic-projection/matrix', { params });
     return response.data;
   },
 
-  async exportDemandBySubject(programId?: number): Promise<Blob> {
-    const params = programId ? { programId, format: 'excel' } : { format: 'excel' };
+  async exportDemandBySubject(categoryMoodleId?: number): Promise<Blob> {
+    const params = categoryMoodleId ? { categoryMoodleId, format: 'excel' } : { format: 'excel' };
     const response = await api.get('/academic-projection/demand-by-subject', { params, responseType: 'blob' });
     return response.data;
   },
 
-  async exportDemandByLevel(programId?: number): Promise<Blob> {
-    const params = programId ? { programId, format: 'excel' } : { format: 'excel' };
+  async exportDemandByLevel(categoryMoodleId?: number): Promise<Blob> {
+    const params = categoryMoodleId ? { categoryMoodleId, format: 'excel' } : { format: 'excel' };
     const response = await api.get('/academic-projection/demand-by-level', { params, responseType: 'blob' });
     return response.data;
   },
 
-  async exportSectionProjection(programId?: number): Promise<Blob> {
-    const params = programId ? { programId, format: 'excel' } : { format: 'excel' };
+  async exportSectionProjection(categoryMoodleId?: number): Promise<Blob> {
+    const params = categoryMoodleId ? { categoryMoodleId, format: 'excel' } : { format: 'excel' };
     const response = await api.get('/academic-projection/section-projection', { params, responseType: 'blob' });
     return response.data;
   },
 
-  async exportProjectionMatrix(programId?: number): Promise<Blob> {
-    const params = programId ? { programId, format: 'excel' } : { format: 'excel' };
+  async exportProjectionMatrix(categoryMoodleId?: number): Promise<Blob> {
+    const params = categoryMoodleId ? { categoryMoodleId, format: 'excel' } : { format: 'excel' };
     const response = await api.get('/academic-projection/matrix', { params, responseType: 'blob' });
     return response.data;
   },
@@ -181,6 +186,13 @@ export const projectionApi = {
   async getStudentGradesByProgram(programId: number, page: number = 1, limit: number = 10): Promise<PagedStudentGrades> {
     const response = await api.get<PagedStudentGrades>('/academic-projection/student-grades-by-program', {
       params: { programId, page, limit },
+    });
+    return response.data;
+  },
+
+  async getStudentGradesByCategory(categoryMoodleId: number, page: number = 1, limit: number = 10): Promise<PagedStudentGrades> {
+    const response = await api.get<PagedStudentGrades>('/academic-projection/student-grades-by-program', {
+      params: { categoryMoodleId, page, limit },
     });
     return response.data;
   },

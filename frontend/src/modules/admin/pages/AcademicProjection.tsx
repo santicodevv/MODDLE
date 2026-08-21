@@ -494,52 +494,63 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
   );
 }
 
-function ProgramSelector({
-  programs,
-  selectedProgramId,
+type Subprogram = {
+  id: number;
+  moodleId: number;
+  code: string;
+  name: string;
+  parent: number;
+  coursecount: number;
+};
+
+function SubprogramSelector({
+  subprograms,
+  selectedMoodleId,
   onChange,
+  label = 'Subprograma:',
 }: {
-  programs: AcademicProgram[];
-  selectedProgramId: number | null;
-  onChange: (id: number | null) => void;
+  subprograms: Subprogram[];
+  selectedMoodleId: number | null;
+  onChange: (moodleId: number | null) => void;
+  label?: string;
 }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <label className="text-sm font-medium text-gray-700">Programa:</label>
+      <label className="text-sm font-medium text-gray-700">{label}</label>
       <select
-        value={selectedProgramId ?? ''}
+        value={selectedMoodleId ?? ''}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
         className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       >
-        <option value="">Todos los programas</option>
-        {programs.map((p) => (
-          <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
+        <option value="">Todos</option>
+        {subprograms.map((sp) => (
+          <option key={sp.moodleId} value={sp.moodleId}>{sp.name}</option>
         ))}
       </select>
     </div>
   );
 }
 
-function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
+function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
 
   const { data: studyPlans = [], isLoading, isError } = useQuery({
-    queryKey: ['study-plans', selectedProgramId],
-    queryFn: () => projectionApi.getStudyPlans(selectedProgramId!),
-    enabled: !!selectedProgramId,
+    queryKey: ['study-plans', selectedMoodleId],
+    queryFn: () => projectionApi.getStudyPlans(selectedMoodleId!),
+    enabled: !!selectedMoodleId,
   });
 
   const removeMutation = useMutation({
     mutationFn: projectionApi.removeStudyPlan,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['study-plans', selectedMoodleId] }),
   });
 
   const autoAssignMutation = useMutation({
     mutationFn: projectionApi.autoAssignCoursesToPrograms,
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['study-plans', selectedProgramId] });
+      queryClient.invalidateQueries({ queryKey: ['study-plans', selectedMoodleId] });
       queryClient.invalidateQueries({ queryKey: ['moodle-courses'] });
       if (result.coursesAssigned > 0) {
         toast.success(`Cursos asignados automáticamente: ${result.coursesAssigned}`);
@@ -553,14 +564,14 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
   return (
     <div>
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
+        <SubprogramSelector subprograms={subprograms} selectedMoodleId={selectedMoodleId} onChange={setSelectedMoodleId} />
         <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="outline"
             onClick={() => autoAssignMutation.mutate()}
             isLoading={autoAssignMutation.isPending}
-            disabled={!selectedProgramId}
+            disabled={!selectedMoodleId}
             leftIcon={<RefreshCw className="w-4 h-4" />}
           >
             Asignar automáticamente
@@ -575,12 +586,12 @@ function StudyPlanTab({ programs }: { programs: AcademicProgram[] }) {
         </div>
       </div>
 
-      {!selectedProgramId && <EmptyState message="Selecciona un programa para ver su plan de estudio" />}
+      {!selectedMoodleId && <EmptyState message="Selecciona un subprograma para ver su plan de estudio" />}
 
       {isLoading && <LoadingSpinner />}
       {isError && <ErrorState message="Error al cargar el plan de estudio" />}
 
-      {selectedProgramId && !isLoading && !isError && (
+      {selectedMoodleId && !isLoading && !isError && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -806,64 +817,52 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
   );
 }
 
-function DemandBySubjectTab() {
-  const { data: programs = [] } = useQuery({
-    queryKey: ['academic-programs'],
-    queryFn: projectionApi.getPrograms,
-  });
-
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
+  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  // Auto-seleccionar el primer programa cuando se carguen
+  // Auto-seleccionar el primer subprograma cuando se carguen
   React.useEffect(() => {
-    if (programs.length > 0 && selectedProgramId === null) {
-      setSelectedProgramId(programs[0].id);
+    if (subprograms.length > 0 && selectedMoodleId === null) {
+      setSelectedMoodleId(subprograms[0].moodleId);
     }
-  }, [programs, selectedProgramId]);
+  }, [subprograms, selectedMoodleId]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['student-grades-by-program', selectedProgramId, page],
-    queryFn: () => projectionApi.getStudentGradesByProgram(selectedProgramId!, page, PAGE_SIZE),
-    enabled: !!selectedProgramId,
+    queryKey: ['student-grades-by-category', selectedMoodleId, page],
+    queryFn: () => projectionApi.getStudentGradesByCategory(selectedMoodleId!, page, PAGE_SIZE),
+    enabled: !!selectedMoodleId,
   });
 
   const grades = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Resetear página al cambiar programa
-  const handleProgramChange = (id: number | null) => {
-    setSelectedProgramId(id);
+  // Resetear página al cambiar subprograma
+  const handleSubprogramChange = (moodleId: number | null) => {
+    setSelectedMoodleId(moodleId);
     setPage(1);
   };
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700">Programa:</label>
-          <select
-            value={selectedProgramId ?? ''}
-            onChange={(e) => handleProgramChange(e.target.value ? Number(e.target.value) : null)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {programs.map((p) => (
-              <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
-            ))}
-          </select>
-        </div>
+        <SubprogramSelector
+          subprograms={subprograms}
+          selectedMoodleId={selectedMoodleId}
+          onChange={handleSubprogramChange}
+        />
       </div>
 
-      {!selectedProgramId && programs.length === 0 && (
-        <EmptyState message="No hay programas académicos registrados" />
+      {!selectedMoodleId && subprograms.length === 0 && (
+        <EmptyState message="No hay subprogramas académicos registrados" />
       )}
 
       {isLoading && <LoadingSpinner />}
       {isError && <ErrorState message="Error al cargar las notas de estudiantes" />}
 
-      {selectedProgramId && !isLoading && !isError && (
+      {selectedMoodleId && !isLoading && !isError && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -930,26 +929,28 @@ function DemandBySubjectTab() {
   );
 }
 
-function DemandByLevelTab() {
-  const { data: programs = [] } = useQuery({
-    queryKey: ['academic-programs'],
-    queryFn: projectionApi.getPrograms,
-  });
+function DemandByLevelTab({ subprograms }: { subprograms: Subprogram[] }) {
+  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
 
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  // Auto-seleccionar el primer subprograma cuando se carguen
+  React.useEffect(() => {
+    if (subprograms.length > 0 && selectedMoodleId === null) {
+      setSelectedMoodleId(subprograms[0].moodleId);
+    }
+  }, [subprograms, selectedMoodleId]);
 
   const { data: demand = [], isLoading, isError } = useQuery({
-    queryKey: ['demand-by-level', selectedProgramId],
-    queryFn: () => projectionApi.getDemandByLevel(selectedProgramId ?? undefined),
+    queryKey: ['demand-by-level', selectedMoodleId],
+    queryFn: () => projectionApi.getDemandByLevel(selectedMoodleId ?? undefined),
   });
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
+        <SubprogramSelector subprograms={subprograms} selectedMoodleId={selectedMoodleId} onChange={setSelectedMoodleId} />
         <ExportExcelButton
           filename="oferta_demanda_nivel.xlsx"
-          onExport={() => projectionApi.exportDemandByLevel(selectedProgramId ?? undefined)}
+          onExport={() => projectionApi.exportDemandByLevel(selectedMoodleId ?? undefined)}
         />
       </div>
       {isLoading && <LoadingSpinner />}
@@ -986,26 +987,28 @@ function DemandByLevelTab() {
   );
 }
 
-function SectionProjectionTab() {
-  const { data: programs = [] } = useQuery({
-    queryKey: ['academic-programs'],
-    queryFn: projectionApi.getPrograms,
-  });
+function SectionProjectionTab({ subprograms }: { subprograms: Subprogram[] }) {
+  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
 
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  // Auto-seleccionar el primer subprograma cuando se carguen
+  React.useEffect(() => {
+    if (subprograms.length > 0 && selectedMoodleId === null) {
+      setSelectedMoodleId(subprograms[0].moodleId);
+    }
+  }, [subprograms, selectedMoodleId]);
 
   const { data: sections = [], isLoading, isError } = useQuery({
-    queryKey: ['section-projection', selectedProgramId],
-    queryFn: () => projectionApi.getSectionProjection(selectedProgramId ?? undefined),
+    queryKey: ['section-projection', selectedMoodleId],
+    queryFn: () => projectionApi.getSectionProjection(selectedMoodleId ?? undefined),
   });
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
+        <SubprogramSelector subprograms={subprograms} selectedMoodleId={selectedMoodleId} onChange={setSelectedMoodleId} />
         <ExportExcelButton
           filename="oferta_proyeccion_secciones.xlsx"
-          onExport={() => projectionApi.exportSectionProjection(selectedProgramId ?? undefined)}
+          onExport={() => projectionApi.exportSectionProjection(selectedMoodleId ?? undefined)}
         />
       </div>
       {isLoading && <LoadingSpinner />}
@@ -1048,17 +1051,19 @@ function SectionProjectionTab() {
   );
 }
 
-function ProjectionMatrixTab() {
-  const { data: programs = [] } = useQuery({
-    queryKey: ['academic-programs'],
-    queryFn: projectionApi.getPrograms,
-  });
+function ProjectionMatrixTab({ subprograms }: { subprograms: Subprogram[] }) {
+  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
 
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  // Auto-seleccionar el primer subprograma cuando se carguen
+  React.useEffect(() => {
+    if (subprograms.length > 0 && selectedMoodleId === null) {
+      setSelectedMoodleId(subprograms[0].moodleId);
+    }
+  }, [subprograms, selectedMoodleId]);
 
   const { data: matrix = [], isLoading, isError } = useQuery({
-    queryKey: ['projection-matrix', selectedProgramId],
-    queryFn: () => projectionApi.getProjectionMatrix(selectedProgramId ?? undefined),
+    queryKey: ['projection-matrix', selectedMoodleId],
+    queryFn: () => projectionApi.getProjectionMatrix(selectedMoodleId ?? undefined),
   });
 
   const allCourseNames = Array.from(
@@ -1068,10 +1073,10 @@ function ProjectionMatrixTab() {
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <ProgramSelector programs={programs} selectedProgramId={selectedProgramId} onChange={setSelectedProgramId} />
+        <SubprogramSelector subprograms={subprograms} selectedMoodleId={selectedMoodleId} onChange={setSelectedMoodleId} />
         <ExportExcelButton
           filename="oferta_matriz_pendientes.xlsx"
-          onExport={() => projectionApi.exportProjectionMatrix(selectedProgramId ?? undefined)}
+          onExport={() => projectionApi.exportProjectionMatrix(selectedMoodleId ?? undefined)}
         />
       </div>
       {isLoading && <LoadingSpinner />}
@@ -1133,6 +1138,11 @@ export default function AcademicProjection() {
     queryFn: projectionApi.getPrograms,
   });
 
+  const { data: subprograms = [] } = useQuery({
+    queryKey: ['subprograms'],
+    queryFn: projectionApi.getSubprograms,
+  });
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
@@ -1165,12 +1175,12 @@ export default function AcademicProjection() {
       {!programsLoading && !programsError && (
         <>
           {activeTab === 'programs' && <ProgramsTab programs={programs} />}
-          {activeTab === 'study-plan' && <StudyPlanTab programs={programs} />}
+          {activeTab === 'study-plan' && <StudyPlanTab subprograms={subprograms} />}
           {activeTab === 'students' && <StudentsTab programs={programs} />}
-          {activeTab === 'demand-subject' && <DemandBySubjectTab />}
-          {activeTab === 'demand-level' && <DemandByLevelTab />}
-          {activeTab === 'sections' && <SectionProjectionTab />}
-          {activeTab === 'matrix' && <ProjectionMatrixTab />}
+          {activeTab === 'demand-subject' && <DemandBySubjectTab subprograms={subprograms} />}
+          {activeTab === 'demand-level' && <DemandByLevelTab subprograms={subprograms} />}
+          {activeTab === 'sections' && <SectionProjectionTab subprograms={subprograms} />}
+          {activeTab === 'matrix' && <ProjectionMatrixTab subprograms={subprograms} />}
         </>
       )}
     </div>

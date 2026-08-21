@@ -534,8 +534,39 @@ export class ProjectionService {
       .sort((a, b) => b.pendingCount - a.pendingCount);
   }
 
-  async getDemandByLevel(programId?: number): Promise<any[]> {
-    const pending = await this.getPendingSubjects(programId);
+  /**
+   * Dado un categoryMoodleId (de una subcategoría como DIPLOMATURA),
+   * encuentra el program_id correspondiente en sga_programs.
+   * La lógica es: subcategoría.parent -> categoría raíz.moodleId -> program.moodleCategoryId
+   */
+  private async findProgramIdFromCategory(categoryMoodleId: number): Promise<number | undefined> {
+    // Primero obtener la categoría para ver su parent
+    const category = await this.moodleCategoryRepository.findOne({
+      where: { moodleId: categoryMoodleId },
+    });
+
+    if (!category) return undefined;
+
+    // Si es una categoría raíz (parent=0), buscar directamente
+    const parentMoodleId = Number(category.parent);
+    const searchMoodleId = parentMoodleId === 0 ? categoryMoodleId : parentMoodleId;
+
+    // Buscar el programa con ese moodleCategoryId
+    const program = await this.programRepository.findOne({
+      where: { moodleCategoryId: searchMoodleId },
+    });
+
+    return program?.id;
+  }
+
+  async getDemandByLevel(programId?: number, categoryMoodleId?: number): Promise<any[]> {
+    let effectiveProgramId = programId;
+
+    if (!effectiveProgramId && categoryMoodleId) {
+      effectiveProgramId = await this.findProgramIdFromCategory(categoryMoodleId);
+    }
+
+    const pending = await this.getPendingSubjects(effectiveProgramId);
     const grouped = new Map<number, Set<number>>();
 
     for (const p of pending) {
@@ -554,9 +585,16 @@ export class ProjectionService {
 
   async getSectionProjection(
     programId?: number,
+    categoryMoodleId?: number,
     maxStudentsPerSection: number = 25,
   ): Promise<any[]> {
-    const demand = await this.getDemandBySubject(programId);
+    let effectiveProgramId = programId;
+
+    if (!effectiveProgramId && categoryMoodleId) {
+      effectiveProgramId = await this.findProgramIdFromCategory(categoryMoodleId);
+    }
+
+    const demand = await this.getDemandBySubject(effectiveProgramId);
     return demand.map((d) => ({
       courseMoodleId: d.courseMoodleId,
       courseName: d.courseName,
@@ -565,8 +603,14 @@ export class ProjectionService {
     }));
   }
 
-  async getProjectionMatrix(programId?: number): Promise<any[]> {
-    const pending = await this.getPendingSubjects(programId);
+  async getProjectionMatrix(programId?: number, categoryMoodleId?: number): Promise<any[]> {
+    let effectiveProgramId = programId;
+
+    if (!effectiveProgramId && categoryMoodleId) {
+      effectiveProgramId = await this.findProgramIdFromCategory(categoryMoodleId);
+    }
+
+    const pending = await this.getPendingSubjects(effectiveProgramId);
     const students = new Map<number, any>();
     const courseIds = [...new Set(pending.map((p) => p.courseMoodleId))];
     const courses =
@@ -675,6 +719,27 @@ export class ProjectionService {
   }
 
   /**
+   * Obtiene los subprogramas (categorías de depth=2) para usar en selectores.
+   * Estos son: DIPLOMATURA, TECNICATURA, LICENCIATURA MINISTERIO, LICENCIATURA TEOLOGIA
+   * que son hijos de los programas raíz como FORMACIÓN BÍBLICA.
+   */
+  async getSubprograms(): Promise<any[]> {
+    const subprograms = await this.moodleCategoryRepository.find({
+      where: { depth: 2 },
+      order: { name: 'ASC' },
+    });
+
+    return subprograms.map((cat) => ({
+      id: cat.id,
+      moodleId: Number(cat.moodleId),
+      code: cat.name.substring(0, 4).toUpperCase(),
+      name: cat.name,
+      parent: Number(cat.parent),
+      coursecount: cat.coursecount,
+    }));
+  }
+
+  /**
    * Elimina los programas que fueron creados incorrectamente desde
    * categorías que NO son de nivel raíz (parent != 0).
    * Solo elimina programas sin asignaciones de estudiantes.
@@ -744,11 +809,13 @@ export class ProjectionService {
   // ========== STUDENT GRADES BY PROGRAM ==========
 
   /**
-   * Obtiene estudiantes matriculados en cursos del programa con sus notas totales.
+   * Obtiene estudiantes matriculados en cursos del programa/categoría con sus notas totales.
    * Solo devuelve registros donde el estudiante tiene una nota asignada.
+   * Acepta programId (de sga_programs) o categoryMoodleId (de moodle_categories) para filtrar.
    */
   async getStudentGradesByProgram(
-    programId: number,
+    programId?: number,
+    categoryMoodleId?: number,
     page: number = 1,
     limit: number = 10,
   ): Promise<{
@@ -763,13 +830,21 @@ export class ProjectionService {
     page: number;
     limit: number;
   }> {
-    const program = await this.findProgramById(programId);
+    let categoryId: number;
 
-    if (!program.moodleCategoryId) {
+    if (categoryMoodleId) {
+      // Usar categoryMoodleId directamente (para filtrar por subprograma)
+      categoryId = categoryMoodleId;
+    } else if (programId) {
+      // Usar programId para obtener la categoría del programa
+      const program = await this.findProgramById(programId);
+      if (!program.moodleCategoryId) {
+        return { data: [], total: 0, page, limit };
+      }
+      categoryId = Number(program.moodleCategoryId);
+    } else {
       return { data: [], total: 0, page, limit };
     }
-
-    const categoryId = Number(program.moodleCategoryId);
 
     // Obtener todas las categorías hijas (para incluir cursos en subcategorías)
     const allCategories = await this.moodleCategoryRepository.find();
