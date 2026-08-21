@@ -49,9 +49,12 @@ export class ReEnrolmentService {
 
   /**
    * Valida que el estudiante tenga permiso (sga_student_programs) en los
-   * programas (sga_programs) a los que pertenecen los cursos solicitados
-   * (sga_study_plans). Si un curso pertenece a al menos un programa y el
-   * estudiante no está asignado a ninguno de ellos, bloquea la reinscripción.
+   * subprogramas (categorías de Moodle con depth=2, vinculadas a filas de
+   * sga_programs) a los que pertenecen los cursos solicitados.
+   * La jerarquía es: curso -> categoría materia (depth 3) -> subprograma
+   * (depth 2). Si un curso pertenece a un subprograma y el estudiante no
+   * está asignado a él, bloquea la reinscripción. Los cursos sin ancestro
+   * depth=2 o cuyo subprograma no tiene programa vinculado no se bloquean.
    */
   private async assertProgramAccess(
     studentUserId: number,
@@ -69,56 +72,76 @@ export class ReEnrolmentService {
 
     if (moodleUserId === null) return;
 
-    const plans: { course_moodle_id: string; program_id: string }[] =
-      await this.enrolmentRepository.manager.query(
-        `SELECT sp.course_moodle_id, sp.program_id
-         FROM sga_study_plans sp
-         WHERE sp.course_moodle_id = ANY($1)`,
-        [courseMoodleIds],
-      );
+    // Subprograma (depth=2) al que pertenece cada curso, subiendo por la
+    // jerarquía de categorías de Moodle hasta llegar a depth 2.
+    const rows: {
+      course_moodle_id: string;
+      subprogram_moodle_id: string;
+      subprogram_name: string;
+      program_id: string | null;
+    }[] = await this.enrolmentRepository.manager.query(
+      `WITH RECURSIVE chain AS (
+         SELECT c.moodle_id AS course_moodle_id,
+                mc.moodle_id AS cat_moodle_id,
+                mc.name AS cat_name,
+                mc.parent AS cat_parent,
+                mc.depth AS cat_depth
+         FROM moodle_courses c
+         JOIN moodle_categories mc ON mc.moodle_id = c.category_id
+         WHERE c.moodle_id = ANY($1::bigint[])
+         UNION ALL
+         SELECT ch.course_moodle_id,
+                parent_cat.moodle_id,
+                parent_cat.name,
+                parent_cat.parent,
+                parent_cat.depth
+         FROM chain ch
+         JOIN moodle_categories parent_cat ON parent_cat.moodle_id = ch.cat_parent
+         WHERE ch.cat_depth > 2
+       )
+       SELECT ch.course_moodle_id,
+              ch.cat_moodle_id AS subprogram_moodle_id,
+              ch.cat_name AS subprogram_name,
+              p.id AS program_id
+       FROM chain ch
+       LEFT JOIN sga_programs p ON p.moodle_category_id = ch.cat_moodle_id
+       WHERE ch.cat_depth = 2`,
+      [courseMoodleIds],
+    );
 
-    if (plans.length === 0) return;
+    if (rows.length === 0) return;
 
-    const programIds = [...new Set(plans.map((p) => Number(p.program_id)))];
+    const requiredProgramIds = [
+      ...new Set(
+        rows
+          .filter((r) => r.program_id != null)
+          .map((r) => Number(r.program_id)),
+      ),
+    ];
+    if (requiredProgramIds.length === 0) return;
 
     const assignments: { user_id: string; program_id: string }[] =
       await this.enrolmentRepository.manager.query(
         `SELECT user_id, program_id FROM sga_student_programs
          WHERE user_id = $1 AND program_id = ANY($2)`,
-        [moodleUserId, programIds],
+        [moodleUserId, requiredProgramIds],
       );
 
     const assignedPrograms = new Set(
       assignments.map((a) => Number(a.program_id)),
     );
 
-    const blockedCourses = new Map<string, number[]>();
+    const blockedCourses = new Map<string, string>();
 
-    for (const courseMoodleId of courseMoodleIds) {
-      const coursePlans = plans.filter(
-        (p) => Number(p.course_moodle_id) === Number(courseMoodleId),
-      );
-      if (coursePlans.length === 0) continue;
-
-      const hasAccess = coursePlans.some((p) =>
-        assignedPrograms.has(Number(p.program_id)),
-      );
-      if (!hasAccess) {
-        blockedCourses.set(
-          String(courseMoodleId),
-          coursePlans.map((p) => Number(p.program_id)),
-        );
-      }
+    for (const row of rows) {
+      const courseKey = String(row.course_moodle_id);
+      // Sin programa vinculado al subprograma: no se puede exigir asignación.
+      if (row.program_id == null) continue;
+      if (assignedPrograms.has(Number(row.program_id))) continue;
+      blockedCourses.set(courseKey, row.subprogram_name);
     }
 
     if (blockedCourses.size === 0) return;
-
-    const programs: { id: string; name: string }[] =
-      await this.enrolmentRepository.manager.query(
-        `SELECT id, name FROM sga_programs WHERE id = ANY($1)`,
-        [[...programIds]],
-      );
-    const programNames = new Map(programs.map((p) => [Number(p.id), p.name]));
 
     const courses: { moodle_id: string; fullname: string }[] =
       await this.enrolmentRepository.manager.query(
@@ -130,18 +153,15 @@ export class ReEnrolmentService {
     );
 
     const details = [...blockedCourses.entries()]
-      .map(([courseId, pids]) => {
+      .map(([courseId, subprogramName]) => {
         const courseName =
           courseNames.get(Number(courseId)) ?? `Curso ${courseId}`;
-        const programList = pids
-          .map((pid) => programNames.get(pid) ?? `Programa ${pid}`)
-          .join(', ');
-        return `"${courseName}" (${programList})`;
+        return `"${courseName}" (${subprogramName})`;
       })
       .join('; ');
 
     throw new BadRequestException(
-      `No puedes reinscribirte en ${details}. Debes estar asignado al programa correspondiente para poder reinscribirte en sus cursos.`,
+      `No puedes reinscribirte en ${details}. Debes estar asignado al subprograma correspondiente para poder reinscribirte en sus cursos.`,
     );
   }
 

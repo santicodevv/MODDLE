@@ -724,7 +724,7 @@ function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; s
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projection-students'] });
     },
-    onError: () => toast.error('Error al actualizar la asignación de programa'),
+    onError: () => toast.error('Error al actualizar la asignación de subprograma'),
   });
 
   const students = data?.students ?? [];
@@ -840,7 +840,7 @@ function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; s
                                 })
                               }
                               className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
-                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al programa ${program.code}`}
+                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al subprograma ${program.code}`}
                             />
                           </td>
                         );
