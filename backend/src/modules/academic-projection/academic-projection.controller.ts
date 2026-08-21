@@ -43,6 +43,13 @@ export class ProjectionController {
     return this.projectionService.getSubprograms();
   }
 
+  @Get('subprograms/:moodleId/materias')
+  async getMateriasBySubprogram(
+    @Param('moodleId', ParseIntPipe) moodleId: number,
+  ) {
+    return this.projectionService.getMateriasBySubprogram(moodleId);
+  }
+
   @Roles(RoleCode.ADMIN)
   @Post('programs/cleanup-invalid')
   async cleanupInvalidPrograms() {

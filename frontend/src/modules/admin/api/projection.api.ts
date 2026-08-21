@@ -19,6 +19,8 @@ import type {
   ToggleStudentProgramResult,
   CategoryHierarchyNode,
   PagedStudentGrades,
+  StudyPlanMateria,
+  StudyPlansByCategory,
 } from '../types/projection.types';
 
 export const projectionApi = {
@@ -29,6 +31,13 @@ export const projectionApi = {
 
   async getSubprograms(): Promise<{ id: number; moodleId: number; code: string; name: string; parent: number; coursecount: number }[]> {
     const response = await api.get<{ id: number; moodleId: number; code: string; name: string; parent: number; coursecount: number }[]>('/academic-projection/subprograms');
+    return response.data;
+  },
+
+  async getMateriasBySubprogram(subprogramMoodleId: number): Promise<StudyPlanMateria[]> {
+    const response = await api.get<StudyPlanMateria[]>(
+      `/academic-projection/subprograms/${subprogramMoodleId}/materias`,
+    );
     return response.data;
   },
 
@@ -70,8 +79,8 @@ export const projectionApi = {
     return response.data;
   },
 
-  async getStudyPlans(categoryMoodleId: number): Promise<StudyPlan[]> {
-    const response = await api.get<StudyPlan[]>(`/academic-projection/categories/${categoryMoodleId}/study-plans`);
+  async getStudyPlans(categoryMoodleId: number): Promise<StudyPlansByCategory> {
+    const response = await api.get<StudyPlansByCategory>(`/academic-projection/categories/${categoryMoodleId}/study-plans`);
     return response.data;
   },
 
