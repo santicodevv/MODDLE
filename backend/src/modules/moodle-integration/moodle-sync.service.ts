@@ -246,7 +246,7 @@ export class MoodleSyncService {
           moodleId: mCourse.id,
           shortname: mCourse.shortname,
           fullname: mCourse.fullname,
-          categoryId: mCourse.category,
+          categoryId: mCourse.categoryid ?? mCourse.category,
           visible: mCourse.visible === 1,
           startdate: mCourse.startdate
             ? new Date(mCourse.startdate * 1000)
