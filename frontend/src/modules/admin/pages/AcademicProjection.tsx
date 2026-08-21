@@ -281,7 +281,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     return children.map((category) => {
       const isExpanded = expandedMaterias.has(category.moodleId);
       const hasChildren = category.children.length > 0;
-      const hasMoodleCourses = category.courses.length > 0;
+      const hasMoodleCourses = category.courses.length > 0 || category.coursecount > 0;
       const isExpandable = hasChildren || hasMoodleCourses;
 
       return (
