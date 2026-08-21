@@ -173,7 +173,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AcademicProgram | null>(null);
   const [expandedPrograms, setExpandedPrograms] = useState<Set<number>>(new Set());
-  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
+  const [expandedMaterias, setExpandedMaterias] = useState<Set<number>>(new Set());
 
   // Obtener jerarquía de categorías para los despliegues
   const { data: hierarchy = [] } = useQuery({
@@ -203,13 +203,13 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     });
   };
 
-  const toggleCourse = (courseId: number) => {
-    setExpandedCourses((prev) => {
+  const toggleMateria = (materiaId: number) => {
+    setExpandedMaterias((prev) => {
       const next = new Set(prev);
-      if (next.has(courseId)) {
-        next.delete(courseId);
+      if (next.has(materiaId)) {
+        next.delete(materiaId);
       } else {
-        next.add(courseId);
+        next.add(materiaId);
       }
       return next;
     });
@@ -276,10 +276,10 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
     onError: () => toast.error('Error al limpiar programas'),
   });
 
-  // Renderizar filas de cursos (hijos de un programa)
-  const renderCourseRows = (children: CategoryHierarchyNode[], level: number = 1) => {
+  // Renderizar filas de materias (hijos de un programa)
+  const renderMateriaRows = (children: CategoryHierarchyNode[], level: number = 1) => {
     return children.map((category) => {
-      const isExpanded = expandedCourses.has(category.moodleId);
+      const isExpanded = expandedMaterias.has(category.moodleId);
       const hasChildren = category.children.length > 0;
       const hasMoodleCourses = category.courses.length > 0;
       const isExpandable = hasChildren || hasMoodleCourses;
@@ -291,7 +291,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
               <div className="flex items-center gap-2">
                 {isExpandable ? (
                   <button
-                    onClick={() => toggleCourse(category.moodleId)}
+                    onClick={() => toggleMateria(category.moodleId)}
                     className="p-0.5 hover:bg-emerald-100 rounded"
                   >
                     {isExpanded ? <ChevronDown className="w-4 h-4 text-emerald-600" /> : <ChevronRight className="w-4 h-4 text-emerald-600" />}
@@ -299,32 +299,32 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                 ) : (
                   <span className="w-5" />
                 )}
-                <BookOpen className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Curso</span>
+                <FileText className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Materia</span>
               </div>
             </td>
             <td className="px-4 py-2 text-gray-700">{category.name}</td>
             <td className="px-4 py-2 text-gray-400 text-xs">
-              {category.coursecount > 0 && `${category.coursecount} materias`}
+              {category.coursecount > 0 && `${category.coursecount} cursos`}
               {category.coursecount > 0 && category.children.length > 0 && ' · '}
               {category.children.length > 0 && `${category.children.length} subcategorías`}
             </td>
             <td></td>
           </tr>
           {/* Renderizar subcategorías hijas */}
-          {isExpanded && hasChildren && renderCourseRows(category.children, level + 1)}
-          {/* Renderizar cursos de Moodle (materias) dentro de esta categoría */}
-          {isExpanded && hasMoodleCourses && category.courses.map((materia) => (
-            <tr key={`materia-${materia.moodleId}`} className="bg-amber-50/50 hover:bg-amber-50">
+          {isExpanded && hasChildren && renderMateriaRows(category.children, level + 1)}
+          {/* Renderizar cursos de Moodle dentro de esta materia */}
+          {isExpanded && hasMoodleCourses && category.courses.map((curso) => (
+            <tr key={`curso-${curso.moodleId}`} className="bg-amber-50/50 hover:bg-amber-50">
               <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: `${(level + 1) * 24 + 16}px` }}>
                 <div className="flex items-center gap-2">
                   <span className="w-5" />
-                  <FileText className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Materia</span>
+                  <BookOpen className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Curso</span>
                 </div>
               </td>
-              <td className="px-4 py-2 text-gray-700">{materia.fullname}</td>
-              <td className="px-4 py-2 text-gray-400 text-xs">{materia.shortname}</td>
+              <td className="px-4 py-2 text-gray-700">{curso.fullname}</td>
+              <td className="px-4 py-2 text-gray-400 text-xs">{curso.shortname}</td>
               <td></td>
             </tr>
           ))}
@@ -332,7 +332,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
           {isExpanded && !hasChildren && !hasMoodleCourses && (
             <tr className="bg-gray-50">
               <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic" style={{ paddingLeft: `${(level + 1) * 24 + 16}px` }}>
-                Sin materias ni subcategorías registradas
+                Sin cursos ni subcategorías registrados
               </td>
             </tr>
           )}
@@ -428,7 +428,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                           )}
                           {hasSubcategories && (
                             <span className="text-xs text-gray-400">
-                              ({categoryData.children.length} cursos)
+                              ({categoryData.children.length} materias)
                             </span>
                           )}
                         </div>
@@ -459,13 +459,13 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                         </div>
                       </td>
                     </tr>
-                    {/* Renderizar subcategorías (cursos) del programa */}
-                    {isExpanded && categoryData && hasSubcategories && renderCourseRows(categoryData.children)}
-                    {/* Mensaje si está expandido pero no tiene cursos */}
+                    {/* Renderizar subcategorías (materias) del programa */}
+                    {isExpanded && categoryData && hasSubcategories && renderMateriaRows(categoryData.children)}
+                    {/* Mensaje si está expandido pero no tiene materias */}
                     {isExpanded && categoryData && !hasSubcategories && (
                       <tr className="bg-gray-50">
                         <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic pl-12">
-                          Sin cursos registrados en este programa
+                          Sin materias registradas en este programa
                         </td>
                       </tr>
                     )}
