@@ -151,7 +151,7 @@ export class ProjectionService {
     });
 
     // Retornar en formato similar a study plans
-    return courses.map((course, index) => ({
+    return courses.map((course) => ({
       id: course.id,
       courseMoodleId: Number(course.moodleId),
       courseName: course.subjectName || course.fullname || `Curso ${course.moodleId}`,
