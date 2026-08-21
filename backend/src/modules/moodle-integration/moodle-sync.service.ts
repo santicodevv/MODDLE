@@ -881,10 +881,11 @@ export class MoodleSyncService {
       synced++;
 
       // Solo crear un Programa si:
-      // 1. La categoría es de nivel raíz (parent = 0) - estos son los programas reales
-      // 2. La categoría contiene cursos
-      // Las subcategorías (cursos, materias) no deben convertirse en programas
-      if (Number(mCat.parent) === 0 && Number(mCat.coursecount) > 0) {
+      // 1. La categoría es de nivel 2 (depth = 2) - estos son los subprogramas reales
+      //    (DIPLOMATURA, TECNICATURA, LICENCIATURA, etc.)
+      // 2. La categoría contiene cursos directamente o tiene subcategorías con cursos
+      // Las categorías raíz (FORMACIÓN BÍBLICA, Institucional) son contenedores, no programas
+      if (Number(mCat.depth) === 2) {
         const created = await this.upsertProgramFromCategory(mCat);
         if (created) programsCreated++;
       }
