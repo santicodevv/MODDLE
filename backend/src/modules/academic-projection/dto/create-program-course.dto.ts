@@ -56,4 +56,9 @@ export class CreateProgramCourseDto {
   @Min(1)
   @IsNotEmpty()
   level: number;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  materiaMoodleId?: number;
 }

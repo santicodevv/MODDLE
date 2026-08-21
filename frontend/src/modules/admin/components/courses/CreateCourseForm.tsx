@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coursesApi } from '@/modules/admin/api/courses.api';
 import { periodsApi } from '@/modules/admin/api/periods.api';
 import { usersApi } from '@/modules/admin/api/users.api';
+import { projectionApi } from '@/modules/admin/api/projection.api';
 import {
   Button,
   Input,
@@ -33,6 +34,8 @@ interface CreateCourseFormProps {
   onSuccess?: (course: CourseWithStats) => void;
   onCancel?: () => void;
   defaultCategoryId?: number;
+  projectionProgramId?: number;
+  subprogramMoodleId?: number;
   submitLabel?: string;
 }
 
@@ -40,8 +43,11 @@ export function CreateCourseForm({
   onSuccess,
   onCancel,
   defaultCategoryId,
+  projectionProgramId,
+  subprogramMoodleId,
   submitLabel = 'Crear Curso',
 }: CreateCourseFormProps) {
+  const isProjectionMode = projectionProgramId != null && subprogramMoodleId != null;
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const getDefaultStartDate = () => {
@@ -72,6 +78,12 @@ export function CreateCourseForm({
   } = useQuery({
     queryKey: ['moodle-categories'],
     queryFn: () => coursesApi.getCategories(),
+  });
+
+  const { data: materias = [], isLoading: materiasLoading } = useQuery({
+    queryKey: ['subprogram-materias', subprogramMoodleId],
+    queryFn: () => projectionApi.getMateriasBySubprogram(subprogramMoodleId!),
+    enabled: isProjectionMode,
   });
 
   // Fetch active periods
@@ -108,9 +120,23 @@ export function CreateCourseForm({
   const createCourseMutation = useMutation({
     mutationFn: async (data: CreateCourseDto & { teacherIds?: number[] }) => {
       const { periodId, teacherIds, ...courseData } = data;
-      const course = await coursesApi.createCourse(courseData);
+      const course = isProjectionMode
+        ? (await projectionApi.createProgramCourse(projectionProgramId!, {
+            fullname: courseData.fullname,
+            shortname: courseData.shortname,
+            level: 1,
+            subjectName: courseData.subjectName,
+            code: courseData.code,
+            idnumber: courseData.idnumber,
+            summary: courseData.summary,
+            visible: courseData.visible,
+            startdate: courseData.startdate,
+            enddate: courseData.enddate,
+            materiaMoodleId: Number(courseData.categoryid),
+          })).course
+        : await coursesApi.createCourse(courseData);
 
-      if (periodId && course.moodleId) {
+      if (!isProjectionMode && periodId && course.moodleId) {
         await periodsApi.addAvailableCourses(periodId, {
           courses: [
             {
@@ -123,7 +149,7 @@ export function CreateCourseForm({
         });
       }
 
-      if (teacherIds && teacherIds.length > 0 && course.moodleId) {
+      if (!isProjectionMode && teacherIds && teacherIds.length > 0 && course.moodleId) {
         await coursesApi.assignTeachers(
           course.moodleId,
           teacherIds,
@@ -138,7 +164,7 @@ export function CreateCourseForm({
       queryClient.invalidateQueries({ queryKey: ['periods'] });
       queryClient.invalidateQueries({ queryKey: ['period-available-courses'] });
       toast.success('Curso creado exitosamente');
-      onSuccess?.(course);
+      onSuccess?.({ ...course, studentCount: 0, teacherCount: 0 });
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       setError(err.response?.data?.message || 'Error al crear el curso');
@@ -158,7 +184,7 @@ export function CreateCourseForm({
       return;
     }
     if (!formData.categoryid) {
-      setError('Debes seleccionar una categoría');
+      setError(isProjectionMode ? 'Debes seleccionar una materia' : 'Debes seleccionar una categoría');
       return;
     }
     if (!formData.startdate) {
@@ -268,13 +294,13 @@ export function CreateCourseForm({
           </p>
         </div>
 
-        {/* Categoria */}
+        {/* Categoria o materia */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <Label htmlFor="categoryid">
-              Categoría de cursos <span className="text-red-500">*</span>
+              {isProjectionMode ? 'Materia' : 'Categoría de cursos'} <span className="text-red-500">*</span>
             </Label>
-            <Button
+            {!isProjectionMode && <Button
               type="button"
               variant="ghost"
               size="sm"
@@ -285,9 +311,29 @@ export function CreateCourseForm({
                 className={`h-3 w-3 mr-1 ${syncCategoriesMutation.isPending ? 'animate-spin' : ''}`}
               />
               Sincronizar
-            </Button>
+            </Button>}
           </div>
-          {categoriesLoading ? (
+          {isProjectionMode ? (materiasLoading ? (
+            <div className="flex items-center gap-2 py-2">
+              <Spinner className="h-4 w-4" />
+              <span className="text-sm text-gray-500">Cargando materias...</span>
+            </div>
+          ) : (
+            <Select
+              id="categoryid"
+              name="categoryid"
+              value={formData.categoryid}
+              onChange={handleInputChange}
+              placeholder="Selecciona una materia"
+            >
+              <option value="">Selecciona una materia</option>
+                  {materias.map((materia) => (
+                <option key={materia.moodleId} value={materia.moodleId}>
+                  {materia.name}
+                </option>
+              ))}
+            </Select>
+          )) : categoriesLoading ? (
             <div className="flex items-center gap-2 py-2">
               <Spinner className="h-4 w-4" />
               <span className="text-sm text-gray-500">

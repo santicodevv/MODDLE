@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, Plus, Trash2, Pencil, X, Check, Loader2, Search, Download, RefreshCw,
@@ -10,6 +9,7 @@ import { cn, downloadBlob } from '@/shared/lib';
 import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
 import { coursesApi } from '../api/courses.api';
+import { CreateCourseForm } from '../components/courses/CreateCourseForm';
 import type { AcademicProgram, CategoryHierarchyNode } from '../types/projection.types';
 
 const TABS = [
@@ -532,15 +532,26 @@ function SubprogramSelector({
 }
 
 function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [expandedMaterias, setExpandedMaterias] = useState<Set<number>>(new Set());
 
-  const { data: studyPlans = [], isLoading, isError } = useQuery({
+  const { data: programs = [] } = useQuery({
+    queryKey: ['academic-programs'],
+    queryFn: projectionApi.getPrograms,
+  });
+
+  const { data: studyPlanData, isLoading, isError } = useQuery({
     queryKey: ['study-plans', selectedMoodleId],
     queryFn: () => projectionApi.getStudyPlans(selectedMoodleId!),
     enabled: !!selectedMoodleId,
   });
+  const materias = studyPlanData?.materias ?? [];
+  const selectedSubprogram = subprograms.find((sp) => sp.moodleId === selectedMoodleId);
+  const selectedProgram = selectedSubprogram
+    ? programs.find((program) => Number(program.moodleCategoryId) === selectedSubprogram.parent)
+    : undefined;
 
   const removeMutation = useMutation({
     mutationFn: projectionApi.removeStudyPlan,
@@ -578,7 +589,8 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
           </Button>
           <Button
             size="sm"
-            onClick={() => navigate('/admin/courses/create')}
+            onClick={() => setCreateModalOpen(true)}
+            disabled={!selectedProgram}
             leftIcon={<Plus className="w-4 h-4" />}
           >
             Crear Curso
@@ -602,35 +614,88 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {studyPlans.length === 0 ? (
+              {materias.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                    No hay asignaturas en el plan de estudio. Usa "Asignar automáticamente" para importar los cursos del programa desde Moodle.
+                    No hay materias registradas en este subprograma.
                   </td>
                 </tr>
               ) : (
-                studyPlans.map((sp) => (
-                  <tr key={sp.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-700">{sp.courseName ?? `Curso #${sp.courseMoodleId}`}</td>
-                    <td className="px-4 py-3 text-gray-700">Nivel {sp.level}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => {
-                          if (window.confirm('¿Eliminar esta asignatura del plan de estudio?')) {
-                            removeMutation.mutate(sp.id);
-                          }
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                materias.map((materia) => (
+                  <React.Fragment key={materia.moodleId}>
+                    <tr className="bg-indigo-50/60">
+                      <td colSpan={2} className="px-4 py-3 font-semibold text-gray-800">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedMaterias((previous) => {
+                              const next = new Set(previous);
+                              if (next.has(materia.moodleId)) next.delete(materia.moodleId);
+                              else next.add(materia.moodleId);
+                              return next;
+                            })}
+                            className="p-0.5 hover:bg-indigo-100 rounded"
+                            title={expandedMaterias.has(materia.moodleId) ? 'Contraer materia' : 'Expandir materia'}
+                          >
+                            {expandedMaterias.has(materia.moodleId)
+                              ? <ChevronDown className="w-4 h-4 text-indigo-600" />
+                              : <ChevronRight className="w-4 h-4 text-indigo-600" />}
+                          </button>
+                          <FileText className="w-4 h-4 text-indigo-600" />
+                          {materia.name}
+                          <span className="text-xs font-normal text-gray-500">({materia.cursos.length} cursos)</span>
+                        </div>
+                      </td>
+                      <td></td>
+                    </tr>
+                    {expandedMaterias.has(materia.moodleId) && materia.cursos.length === 0 ? (
+                      <tr><td colSpan={3} className="px-10 py-3 text-sm text-gray-400 italic">Sin cursos en esta materia</td></tr>
+                    ) : expandedMaterias.has(materia.moodleId) && materia.cursos.map((curso) => (
+                      <tr key={curso.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 pl-10 text-gray-700">{curso.courseName}</td>
+                        <td className="px-4 py-3 text-gray-700">Nivel {curso.level}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              if (window.confirm('¿Eliminar este curso del plan de estudio?')) removeMutation.mutate(curso.id);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {createModalOpen && selectedMoodleId && selectedProgram && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCreateModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Crear curso en {selectedSubprogram?.name}</h2>
+              <button onClick={() => setCreateModalOpen(false)} className="text-gray-400 hover:text-gray-600" title="Cerrar">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <CreateCourseForm
+                projectionProgramId={selectedProgram.id}
+                subprogramMoodleId={selectedMoodleId}
+                onSuccess={() => {
+                  setCreateModalOpen(false);
+                  queryClient.invalidateQueries({ queryKey: ['study-plans', selectedMoodleId] });
+                }}
+                onCancel={() => setCreateModalOpen(false)}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

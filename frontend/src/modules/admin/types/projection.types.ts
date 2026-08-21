@@ -17,6 +17,24 @@ export interface StudyPlan {
   createdAt: string;
 }
 
+export interface StudyPlanMateria {
+  id: number;
+  moodleId: number;
+  name: string;
+  cursos: StudyPlanCourse[];
+}
+
+export interface StudyPlanCourse {
+  id: number;
+  courseMoodleId: number;
+  courseName: string;
+  level: number;
+}
+
+export interface StudyPlansByCategory {
+  materias: StudyPlanMateria[];
+}
+
 export interface StudentProgram {
   id: number;
   userId: number;
@@ -92,6 +110,7 @@ export interface CreateProgramCourseRequest {
   visible?: boolean;
   startdate?: string;
   enddate?: string;
+  materiaMoodleId?: number;
 }
 
 export interface AutoAssignResult {

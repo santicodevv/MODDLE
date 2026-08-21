@@ -130,7 +130,7 @@ export class ProjectionService {
    * Obtiene los cursos de una categoría (subprograma) como plan de estudio.
    * Busca todos los cursos que pertenecen a la categoría y sus subcategorías.
    */
-  async getStudyPlansByCategory(categoryMoodleId: number): Promise<any[]> {
+  async getStudyPlansByCategory(categoryMoodleId: number): Promise<{ materias: any[] }> {
     // Verificar que la categoría existe
     const category = await this.moodleCategoryRepository.findOne({
       where: { moodleId: categoryMoodleId },
@@ -139,24 +139,59 @@ export class ProjectionService {
       throw new NotFoundException(`Category with moodleId ${categoryMoodleId} not found`);
     }
 
-    // Obtener todas las categorías hijas
+    // Agrupar los cursos directos de cada materia del subprograma.
     const allCategories = await this.moodleCategoryRepository.find();
-    const childCategoryIds = this.getChildCategoryIds(categoryMoodleId, allCategories);
-    const allCategoryIds = [categoryMoodleId, ...childCategoryIds];
+    const materias = allCategories
+      .filter((cat) => Number(cat.parent) === categoryMoodleId && cat.depth === 3)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const categoryIds = materias.map((materia) => Number(materia.moodleId));
+    const courses = categoryIds.length > 0
+      ? await this.courseRepository.find({
+          where: categoryIds.map((categoryId) => ({ categoryId })),
+          order: { fullname: 'ASC' },
+        })
+      : [];
+    const coursesByCategory = new Map<number, typeof courses>();
+    for (const course of courses) {
+      const categoryId = Number(course.categoryId);
+      const categoryCourses = coursesByCategory.get(categoryId) ?? [];
+      categoryCourses.push(course);
+      coursesByCategory.set(categoryId, categoryCourses);
+    }
 
-    // Obtener todos los cursos de la categoría y sus subcategorías
-    const courses = await this.courseRepository.find({
-      where: allCategoryIds.map((catId) => ({ categoryId: catId })),
-      order: { fullname: 'ASC' },
+    return {
+      materias: materias.map((materia) => ({
+        id: materia.id,
+        moodleId: Number(materia.moodleId),
+        name: materia.name,
+        cursos: (coursesByCategory.get(Number(materia.moodleId)) ?? []).map((course) => ({
+          id: course.id,
+          courseMoodleId: Number(course.moodleId),
+          courseName: course.subjectName || course.fullname || `Curso ${course.moodleId}`,
+          level: 1,
+        })),
+      })),
+    };
+  }
+
+  async getMateriasBySubprogram(subprogramMoodleId: number): Promise<any[]> {
+    const subprogram = await this.moodleCategoryRepository.findOne({
+      where: { moodleId: subprogramMoodleId },
     });
+    if (!subprogram) {
+      throw new NotFoundException(`Subprograma ${subprogramMoodleId} no encontrado`);
+    }
 
-    // Retornar en formato similar a study plans
-    return courses.map((course) => ({
-      id: course.id,
-      courseMoodleId: Number(course.moodleId),
-      courseName: course.subjectName || course.fullname || `Curso ${course.moodleId}`,
-      level: 1, // Por defecto nivel 1
-      categoryId: Number(course.categoryId),
+    return (await this.moodleCategoryRepository.find({
+      where: { parent: subprogramMoodleId, depth: 3 },
+      order: { name: 'ASC' },
+    })).map((materia) => ({
+      id: materia.id,
+      moodleId: Number(materia.moodleId),
+      name: materia.name,
+      parent: Number(materia.parent),
+      depth: materia.depth,
+      coursecount: materia.coursecount,
     }));
   }
 
@@ -211,15 +246,40 @@ export class ProjectionService {
       );
     }
 
-    const categoryId = Number(program.moodleCategoryId);
+    let categoryId = Number(program.moodleCategoryId);
 
-    const category = await this.moodleCategoryRepository.findOne({
-      where: { moodleId: categoryId },
-    });
+    let category = await this.moodleCategoryRepository.findOne({ where: { moodleId: categoryId } });
     if (!category) {
       throw new BadRequestException(
         `La categoría de Moodle ${categoryId} no existe. Sincroniza las categorías primero.`,
       );
+    }
+
+    if (dto.materiaMoodleId != null) {
+      const materia = await this.moodleCategoryRepository.findOne({
+        where: { moodleId: dto.materiaMoodleId },
+      });
+      if (!materia || materia.depth !== 3) {
+        throw new BadRequestException('La materia seleccionada no existe o no es válida.');
+      }
+
+      const categories = await this.moodleCategoryRepository.find();
+      let parentId = Number(materia.parent);
+      let belongsToProgram = false;
+      while (parentId) {
+        if (parentId === Number(program.moodleCategoryId)) {
+          belongsToProgram = true;
+          break;
+        }
+        const parent = categories.find((candidate) => Number(candidate.moodleId) === parentId);
+        parentId = parent ? Number(parent.parent) : 0;
+      }
+      if (!belongsToProgram) {
+        throw new BadRequestException('La materia seleccionada no pertenece al programa.');
+      }
+
+      categoryId = Number(materia.moodleId);
+      category = materia;
     }
 
     const moodlePayload = {
