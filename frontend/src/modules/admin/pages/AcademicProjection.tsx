@@ -702,12 +702,16 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
   );
 }
 
-function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
+function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; subprograms: Subprogram[] }) {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const PAGE_SIZE = 10;
+  const subprogramMoodleIds = new Set(subprograms.map((subprogram) => subprogram.moodleId));
+  const assignablePrograms = programs.filter(
+    (program) => program.moodleCategoryId != null && subprogramMoodleIds.has(Number(program.moodleCategoryId)),
+  );
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['projection-students', page, search],
@@ -720,7 +724,7 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projection-students'] });
     },
-    onError: () => toast.error('Error al actualizar la asignación de programa'),
+    onError: () => toast.error('Error al actualizar la asignación de subprograma'),
   });
 
   const students = data?.students ?? [];
@@ -783,7 +787,7 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Estudiante</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Matrícula</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Estado</th>
-                  {programs.map((program) => (
+                  {assignablePrograms.map((program) => (
                     <th
                       key={program.id}
                       className="text-center px-4 py-3 font-medium text-gray-600 whitespace-nowrap"
@@ -797,7 +801,7 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
               <tbody className="divide-y divide-gray-100">
                 {students.length === 0 ? (
                   <tr>
-                    <td colSpan={3 + programs.length} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={3 + assignablePrograms.length} className="px-4 py-8 text-center text-gray-500">
                       {search ? 'No hay estudiantes que coincidan con la búsqueda' : 'No hay estudiantes registrados'}
                     </td>
                   </tr>
@@ -821,7 +825,7 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
                           {student.suspended ? 'Inactivo' : 'Activo'}
                         </span>
                       </td>
-                      {programs.map((program) => {
+                      {assignablePrograms.map((program) => {
                         const checked = student.programIds.includes(program.id);
                         return (
                           <td key={program.id} className="px-4 py-3 text-center">
@@ -836,7 +840,7 @@ function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
                                 })
                               }
                               className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
-                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al programa ${program.code}`}
+                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al subprograma ${program.code}`}
                             />
                           </td>
                         );
@@ -1241,7 +1245,7 @@ export default function AcademicProjection() {
         <>
           {activeTab === 'programs' && <ProgramsTab programs={programs} />}
           {activeTab === 'study-plan' && <StudyPlanTab subprograms={subprograms} />}
-          {activeTab === 'students' && <StudentsTab programs={programs} />}
+          {activeTab === 'students' && <StudentsTab programs={programs} subprograms={subprograms} />}
           {activeTab === 'demand-subject' && <DemandBySubjectTab subprograms={subprograms} />}
           {activeTab === 'demand-level' && <DemandByLevelTab subprograms={subprograms} />}
           {activeTab === 'sections' && <SectionProjectionTab subprograms={subprograms} />}

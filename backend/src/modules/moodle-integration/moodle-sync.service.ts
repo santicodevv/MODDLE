@@ -880,11 +880,10 @@ export class MoodleSyncService {
 
       synced++;
 
-      // Solo crear un Programa si:
-      // 1. La categoría es de nivel raíz (parent = 0) - estos son los programas contenedores
-      // 2. La categoría contiene cursos o subcategorías
-      // Los subprogramas (DIPLOMATURA, TECNICATURA) se muestran como hijos en la jerarquía
-      if (Number(mCat.parent) === 0 && (Number(mCat.coursecount) > 0 || Number(mCat.depth) === 1)) {
+      if (
+        (Number(mCat.parent) === 0 || Number(mCat.depth) === 2) &&
+        (Number(mCat.coursecount) > 0 || Number(mCat.depth) <= 2)
+      ) {
         const created = await this.upsertProgramFromCategory(mCat);
         if (created) programsCreated++;
       }
