@@ -100,6 +100,13 @@ export class ProjectionController {
     return this.projectionService.getStudyPlansByProgram(id);
   }
 
+  @Get('categories/:categoryMoodleId/study-plans')
+  async getStudyPlansByCategory(
+    @Param('categoryMoodleId', ParseIntPipe) categoryMoodleId: number,
+  ) {
+    return this.projectionService.getStudyPlansByCategory(categoryMoodleId);
+  }
+
   @Roles(RoleCode.ADMIN)
   @Patch('study-plans/:id')
   async updateStudyPlan(

@@ -127,6 +127,40 @@ export class ProjectionService {
   }
 
   /**
+   * Obtiene los cursos de una categoría (subprograma) como plan de estudio.
+   * Busca todos los cursos que pertenecen a la categoría y sus subcategorías.
+   */
+  async getStudyPlansByCategory(categoryMoodleId: number): Promise<any[]> {
+    // Verificar que la categoría existe
+    const category = await this.moodleCategoryRepository.findOne({
+      where: { moodleId: categoryMoodleId },
+    });
+    if (!category) {
+      throw new NotFoundException(`Category with moodleId ${categoryMoodleId} not found`);
+    }
+
+    // Obtener todas las categorías hijas
+    const allCategories = await this.moodleCategoryRepository.find();
+    const childCategoryIds = this.getChildCategoryIds(categoryMoodleId, allCategories);
+    const allCategoryIds = [categoryMoodleId, ...childCategoryIds];
+
+    // Obtener todos los cursos de la categoría y sus subcategorías
+    const courses = await this.courseRepository.find({
+      where: allCategoryIds.map((catId) => ({ categoryId: catId })),
+      order: { fullname: 'ASC' },
+    });
+
+    // Retornar en formato similar a study plans
+    return courses.map((course) => ({
+      id: course.id,
+      courseMoodleId: Number(course.moodleId),
+      courseName: course.subjectName || course.fullname || `Curso ${course.moodleId}`,
+      level: 1, // Por defecto nivel 1
+      categoryId: Number(course.categoryId),
+    }));
+  }
+
+  /**
    * Obtiene los programas que ya tienen asignado este curso en su plan de estudio.
    */
   async getProgramsByCourse(

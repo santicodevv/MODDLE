@@ -70,8 +70,8 @@ export const projectionApi = {
     return response.data;
   },
 
-  async getStudyPlans(programId: number): Promise<StudyPlan[]> {
-    const response = await api.get<StudyPlan[]>(`/academic-projection/programs/${programId}/study-plans`);
+  async getStudyPlans(categoryMoodleId: number): Promise<StudyPlan[]> {
+    const response = await api.get<StudyPlan[]>(`/academic-projection/categories/${categoryMoodleId}/study-plans`);
     return response.data;
   },
 
