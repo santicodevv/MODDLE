@@ -15,6 +15,8 @@ import { MoodleCategory } from '../moodle-integration/entities/moodle-category.e
 import { MoodleGrade } from '../moodle-integration/entities/moodle-grade.entity';
 import { MoodleGradeItem } from '../moodle-integration/entities/moodle-grade-item.entity';
 import { MoodleEnrolment } from '../moodle-integration/entities/moodle-enrolment.entity';
+import { CourseStudentGrade } from '../academic/entities/course-student-grade.entity';
+import { User } from '../users/entities/user.entity';
 import { MoodleClientService } from '../moodle-integration/moodle-client.service';
 import { CreateAcademicProgramDto } from './dto/create-academic-program.dto';
 import { UpdateAcademicProgramDto } from './dto/update-academic-program.dto';
@@ -43,6 +45,10 @@ export class ProjectionService {
     private readonly moodleGradeItemRepository: Repository<MoodleGradeItem>,
     @InjectRepository(MoodleEnrolment)
     private readonly moodleEnrolmentRepository: Repository<MoodleEnrolment>,
+    @InjectRepository(CourseStudentGrade)
+    private readonly courseStudentGradeRepository: Repository<CourseStudentGrade>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly moodleClient: MoodleClientService,
   ) {}
 
@@ -130,27 +136,34 @@ export class ProjectionService {
    * Obtiene los cursos de una categoría (subprograma) como plan de estudio.
    * Busca todos los cursos que pertenecen a la categoría y sus subcategorías.
    */
-  async getStudyPlansByCategory(categoryMoodleId: number): Promise<{ materias: any[] }> {
+  async getStudyPlansByCategory(
+    categoryMoodleId: number,
+  ): Promise<{ materias: any[] }> {
     // Verificar que la categoría existe
     const category = await this.moodleCategoryRepository.findOne({
       where: { moodleId: categoryMoodleId },
     });
     if (!category) {
-      throw new NotFoundException(`Category with moodleId ${categoryMoodleId} not found`);
+      throw new NotFoundException(
+        `Category with moodleId ${categoryMoodleId} not found`,
+      );
     }
 
     // Agrupar los cursos directos de cada materia del subprograma.
     const allCategories = await this.moodleCategoryRepository.find();
     const materias = allCategories
-      .filter((cat) => Number(cat.parent) === categoryMoodleId && cat.depth === 3)
+      .filter(
+        (cat) => Number(cat.parent) === categoryMoodleId && cat.depth === 3,
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
     const categoryIds = materias.map((materia) => Number(materia.moodleId));
-    const courses = categoryIds.length > 0
-      ? await this.courseRepository.find({
-          where: categoryIds.map((categoryId) => ({ categoryId })),
-          order: { fullname: 'ASC' },
-        })
-      : [];
+    const courses =
+      categoryIds.length > 0
+        ? await this.courseRepository.find({
+            where: categoryIds.map((categoryId) => ({ categoryId })),
+            order: { fullname: 'ASC' },
+          })
+        : [];
     const coursesByCategory = new Map<number, typeof courses>();
     for (const course of courses) {
       const categoryId = Number(course.categoryId);
@@ -164,12 +177,17 @@ export class ProjectionService {
         id: materia.id,
         moodleId: Number(materia.moodleId),
         name: materia.name,
-        cursos: (coursesByCategory.get(Number(materia.moodleId)) ?? []).map((course) => ({
-          id: course.id,
-          courseMoodleId: Number(course.moodleId),
-          courseName: course.subjectName || course.fullname || `Curso ${course.moodleId}`,
-          level: 1,
-        })),
+        cursos: (coursesByCategory.get(Number(materia.moodleId)) ?? []).map(
+          (course) => ({
+            id: course.id,
+            courseMoodleId: Number(course.moodleId),
+            courseName:
+              course.subjectName ||
+              course.fullname ||
+              `Curso ${course.moodleId}`,
+            level: 1,
+          }),
+        ),
       })),
     };
   }
@@ -179,13 +197,17 @@ export class ProjectionService {
       where: { moodleId: subprogramMoodleId },
     });
     if (!subprogram) {
-      throw new NotFoundException(`Subprograma ${subprogramMoodleId} no encontrado`);
+      throw new NotFoundException(
+        `Subprograma ${subprogramMoodleId} no encontrado`,
+      );
     }
 
-    return (await this.moodleCategoryRepository.find({
-      where: { parent: subprogramMoodleId, depth: 3 },
-      order: { name: 'ASC' },
-    })).map((materia) => ({
+    return (
+      await this.moodleCategoryRepository.find({
+        where: { parent: subprogramMoodleId, depth: 3 },
+        order: { name: 'ASC' },
+      })
+    ).map((materia) => ({
       id: materia.id,
       moodleId: Number(materia.moodleId),
       name: materia.name,
@@ -248,7 +270,9 @@ export class ProjectionService {
 
     let categoryId = Number(program.moodleCategoryId);
 
-    let category = await this.moodleCategoryRepository.findOne({ where: { moodleId: categoryId } });
+    let category = await this.moodleCategoryRepository.findOne({
+      where: { moodleId: categoryId },
+    });
     if (!category) {
       throw new BadRequestException(
         `La categoría de Moodle ${categoryId} no existe. Sincroniza las categorías primero.`,
@@ -260,7 +284,9 @@ export class ProjectionService {
         where: { moodleId: dto.materiaMoodleId },
       });
       if (!materia || materia.depth !== 3) {
-        throw new BadRequestException('La materia seleccionada no existe o no es válida.');
+        throw new BadRequestException(
+          'La materia seleccionada no existe o no es válida.',
+        );
       }
 
       const categories = await this.moodleCategoryRepository.find();
@@ -271,11 +297,15 @@ export class ProjectionService {
           belongsToProgram = true;
           break;
         }
-        const parent = categories.find((candidate) => Number(candidate.moodleId) === parentId);
+        const parent = categories.find(
+          (candidate) => Number(candidate.moodleId) === parentId,
+        );
         parentId = parent ? Number(parent.parent) : 0;
       }
       if (!belongsToProgram) {
-        throw new BadRequestException('La materia seleccionada no pertenece al programa.');
+        throw new BadRequestException(
+          'La materia seleccionada no pertenece al programa.',
+        );
       }
 
       categoryId = Number(materia.moodleId);
@@ -633,7 +663,9 @@ export class ProjectionService {
    * encuentra el program_id correspondiente en sga_programs.
    * La lógica es: subcategoría.parent -> categoría raíz.moodleId -> program.moodleCategoryId
    */
-  private async findProgramIdFromCategory(categoryMoodleId: number): Promise<number | undefined> {
+  private async findProgramIdFromCategory(
+    categoryMoodleId: number,
+  ): Promise<number | undefined> {
     // Primero obtener la categoría para ver su parent
     const category = await this.moodleCategoryRepository.findOne({
       where: { moodleId: categoryMoodleId },
@@ -643,7 +675,8 @@ export class ProjectionService {
 
     // Si es una categoría raíz (parent=0), buscar directamente
     const parentMoodleId = Number(category.parent);
-    const searchMoodleId = parentMoodleId === 0 ? categoryMoodleId : parentMoodleId;
+    const searchMoodleId =
+      parentMoodleId === 0 ? categoryMoodleId : parentMoodleId;
 
     // Buscar el programa con ese moodleCategoryId
     const program = await this.programRepository.findOne({
@@ -653,11 +686,15 @@ export class ProjectionService {
     return program?.id;
   }
 
-  async getDemandByLevel(programId?: number, categoryMoodleId?: number): Promise<any[]> {
+  async getDemandByLevel(
+    programId?: number,
+    categoryMoodleId?: number,
+  ): Promise<any[]> {
     let effectiveProgramId = programId;
 
     if (!effectiveProgramId && categoryMoodleId) {
-      effectiveProgramId = await this.findProgramIdFromCategory(categoryMoodleId);
+      effectiveProgramId =
+        await this.findProgramIdFromCategory(categoryMoodleId);
     }
 
     const pending = await this.getPendingSubjects(effectiveProgramId);
@@ -685,7 +722,8 @@ export class ProjectionService {
     let effectiveProgramId = programId;
 
     if (!effectiveProgramId && categoryMoodleId) {
-      effectiveProgramId = await this.findProgramIdFromCategory(categoryMoodleId);
+      effectiveProgramId =
+        await this.findProgramIdFromCategory(categoryMoodleId);
     }
 
     const demand = await this.getDemandBySubject(effectiveProgramId);
@@ -697,11 +735,15 @@ export class ProjectionService {
     }));
   }
 
-  async getProjectionMatrix(programId?: number, categoryMoodleId?: number): Promise<any[]> {
+  async getProjectionMatrix(
+    programId?: number,
+    categoryMoodleId?: number,
+  ): Promise<any[]> {
     let effectiveProgramId = programId;
 
     if (!effectiveProgramId && categoryMoodleId) {
-      effectiveProgramId = await this.findProgramIdFromCategory(categoryMoodleId);
+      effectiveProgramId =
+        await this.findProgramIdFromCategory(categoryMoodleId);
     }
 
     const pending = await this.getPendingSubjects(effectiveProgramId);
@@ -834,8 +876,8 @@ export class ProjectionService {
   }
 
   /**
-  * Elimina los programas que fueron creados incorrectamente desde
-  * categorías de nivel materia o inferior (depth >= 3).
+   * Elimina los programas que fueron creados incorrectamente desde
+   * categorías de nivel materia o inferior (depth >= 3).
    * Solo elimina programas sin asignaciones de estudiantes.
    */
   async cleanupInvalidPrograms(): Promise<{
@@ -853,7 +895,8 @@ export class ProjectionService {
     const invalidPrograms = allPrograms.filter((p) => {
       if (!p.moodleCategoryId) return false;
       const category = nonRootCategories.find(
-        (candidate) => Number(candidate.moodleId) === Number(p.moodleCategoryId),
+        (candidate) =>
+          Number(candidate.moodleId) === Number(p.moodleCategoryId),
       );
       return category != null && Number(category.depth) >= 3;
     });
@@ -942,7 +985,10 @@ export class ProjectionService {
 
     // Obtener todas las categorías hijas (para incluir cursos en subcategorías)
     const allCategories = await this.moodleCategoryRepository.find();
-    const childCategoryIds = this.getChildCategoryIds(categoryId, allCategories);
+    const childCategoryIds = this.getChildCategoryIds(
+      categoryId,
+      allCategories,
+    );
     const allCategoryIds = [categoryId, ...childCategoryIds];
 
     // Obtener todos los cursos del programa (incluyendo subcategorías)
@@ -959,7 +1005,10 @@ export class ProjectionService {
 
     // Obtener los grade items de tipo "course" (nota total) para estos cursos
     const courseGradeItems = await this.moodleGradeItemRepository.find({
-      where: courseMoodleIds.map((id) => ({ courseMoodleId: id, itemtype: 'course' })),
+      where: courseMoodleIds.map((id) => ({
+        courseMoodleId: id,
+        itemtype: 'course',
+      })),
     });
 
     if (courseGradeItems.length === 0) {
@@ -969,7 +1018,10 @@ export class ProjectionService {
     // Crear mapa de courseMoodleId -> itemMoodleId (para la nota total)
     const courseToItemMap = new Map<number, number>();
     for (const item of courseGradeItems) {
-      courseToItemMap.set(Number(item.courseMoodleId), Number(item.itemMoodleId));
+      courseToItemMap.set(
+        Number(item.courseMoodleId),
+        Number(item.itemMoodleId),
+      );
     }
 
     const itemMoodleIds = courseGradeItems.map((gi) => Number(gi.itemMoodleId));
@@ -977,7 +1029,9 @@ export class ProjectionService {
     // Contar total de registros (estudiantes con notas en estos cursos)
     const countQuery = this.moodleGradeRepository
       .createQueryBuilder('g')
-      .where('g.courseMoodleId IN (:...courseIds)', { courseIds: courseMoodleIds })
+      .where('g.courseMoodleId IN (:...courseIds)', {
+        courseIds: courseMoodleIds,
+      })
       .andWhere('g.itemMoodleId IN (:...itemIds)', { itemIds: itemMoodleIds })
       .andWhere('g.grade IS NOT NULL');
 
@@ -986,7 +1040,9 @@ export class ProjectionService {
     // Obtener registros paginados
     const grades = await this.moodleGradeRepository
       .createQueryBuilder('g')
-      .where('g.courseMoodleId IN (:...courseIds)', { courseIds: courseMoodleIds })
+      .where('g.courseMoodleId IN (:...courseIds)', {
+        courseIds: courseMoodleIds,
+      })
       .andWhere('g.itemMoodleId IN (:...itemIds)', { itemIds: itemMoodleIds })
       .andWhere('g.grade IS NOT NULL')
       .orderBy('g.courseMoodleId', 'ASC')
@@ -1000,7 +1056,9 @@ export class ProjectionService {
     }
 
     // Obtener info de estudiantes
-    const studentMoodleIds = [...new Set(grades.map((g) => Number(g.userMoodleId)))];
+    const studentMoodleIds = [
+      ...new Set(grades.map((g) => Number(g.userMoodleId))),
+    ];
     const students = await this.moodleUserRepository.find({
       where: studentMoodleIds.map((id) => ({ moodleId: id })),
     });
@@ -1013,10 +1071,18 @@ export class ProjectionService {
       return {
         studentMoodleId: Number(g.userMoodleId),
         studentName: student
-          ? [student.firstname, student.lastname].filter(Boolean).join(' ').trim() || student.email || `User ${g.userMoodleId}`
+          ? [student.firstname, student.lastname]
+              .filter(Boolean)
+              .join(' ')
+              .trim() ||
+            student.email ||
+            `User ${g.userMoodleId}`
           : `User ${g.userMoodleId}`,
         courseMoodleId: Number(g.courseMoodleId),
-        courseName: course?.subjectName || course?.fullname || `Curso ${g.courseMoodleId}`,
+        courseName:
+          course?.subjectName ||
+          course?.fullname ||
+          `Curso ${g.courseMoodleId}`,
         grade: Number(g.grade),
       };
     });
@@ -1108,40 +1174,39 @@ export class ProjectionService {
       .take(limit)
       .getMany();
 
-    // Notas totales: grade items tipo 'course' -> mapa item -> curso
-    const gradeItems = await this.moodleGradeItemRepository.find({
-      where: courseMoodleIds.map((id) => ({
-        courseMoodleId: id,
-        itemtype: 'course',
-      })),
-    });
-    const itemToCourse = new Map<number, number>();
-    for (const gi of gradeItems) {
-      const courseId = Number(gi.courseMoodleId);
-      if (!itemToCourse.has(Number(gi.itemMoodleId))) {
-        itemToCourse.set(Number(gi.itemMoodleId), courseId);
-      }
-    }
-
+    // Notas finales propias: totalGrade de course_student_grades (asignada por el profesor).
+    // Se ignora la nota calculada de Moodle. Sin nota manual -> celda vacía.
     const gradeMap = new Map<string, number>();
-    if (users.length > 0 && itemToCourse.size > 0) {
-      const grades = await this.moodleGradeRepository
-        .createQueryBuilder('g')
-        .where('g.userMoodleId IN (:...userIds)', {
-          userIds: users.map((u) => Number(u.moodleId)),
-        })
-        .andWhere('g.itemMoodleId IN (:...itemIds)', {
-          itemIds: [...itemToCourse.keys()],
-        })
-        .andWhere('g.grade IS NOT NULL')
-        .getMany();
+    const pageMoodleIds = users.map((u) => Number(u.moodleId));
 
-      for (const g of grades) {
-        const courseId = itemToCourse.get(Number(g.itemMoodleId));
-        if (!courseId) continue;
-        const key = `${Number(g.userMoodleId)}:${courseId}`;
-        if (!gradeMap.has(key)) {
-          gradeMap.set(key, Number(g.grade));
+    if (pageMoodleIds.length > 0) {
+      const appUsers = await this.userRepository.find({
+        where: pageMoodleIds.map((moodleId) => ({ moodleUserId: moodleId })),
+      });
+      const moodleIdByAppUserId = new Map<number, number>();
+      for (const u of appUsers) {
+        if (u.moodleUserId != null) {
+          moodleIdByAppUserId.set(Number(u.id), Number(u.moodleUserId));
+        }
+      }
+
+      if (appUsers.length > 0) {
+        const grades = await this.courseStudentGradeRepository.find({
+          where: {
+            studentId: In(appUsers.map((u) => Number(u.id))),
+            courseMoodleId: In(courseMoodleIds),
+            totalGrade: Not(IsNull()),
+          },
+          order: { updatedAt: 'DESC' },
+        });
+
+        for (const g of grades) {
+          const moodleId = moodleIdByAppUserId.get(Number(g.studentId));
+          if (!moodleId) continue;
+          const key = `${moodleId}:${Number(g.courseMoodleId)}`;
+          if (!gradeMap.has(key)) {
+            gradeMap.set(key, Number(g.totalGrade));
+          }
         }
       }
     }
@@ -1169,11 +1234,16 @@ export class ProjectionService {
   /**
    * Obtiene recursivamente los IDs de todas las categorías hijas
    */
-  private getChildCategoryIds(parentId: number, allCategories: MoodleCategory[]): number[] {
+  private getChildCategoryIds(
+    parentId: number,
+    allCategories: MoodleCategory[],
+  ): number[] {
     const children = allCategories.filter((c) => Number(c.parent) === parentId);
     const childIds = children.map((c) => Number(c.moodleId));
     for (const child of children) {
-      childIds.push(...this.getChildCategoryIds(Number(child.moodleId), allCategories));
+      childIds.push(
+        ...this.getChildCategoryIds(Number(child.moodleId), allCategories),
+      );
     }
     return childIds;
   }
