@@ -1025,6 +1025,148 @@ export class ProjectionService {
   }
 
   /**
+   * Matriz de notas por curso para un subprograma.
+   * - Columnas: todos los cursos del subprograma (categoría y sus hijas),
+   *   ordenados por materia y nombre.
+   * - Filas: estudiantes con enrolamiento 'student' en alguno de esos cursos,
+   *   paginados.
+   * - Celdas: nota total del curso (grade item tipo 'course'); null si el
+   *   estudiante no tiene nota en ese curso.
+   */
+  async getStudentGradesMatrix(
+    categoryMoodleId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    courses: { id: number; shortname: string | null; name: string }[];
+    students: {
+      moodleId: number;
+      name: string;
+      suspended: boolean;
+      grades: Record<number, number | null>;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    // Cursos del subprograma (incluye materias/subcategorías)
+    const allCategories = await this.moodleCategoryRepository.find();
+    const childCategoryIds = this.getChildCategoryIds(
+      categoryMoodleId,
+      allCategories,
+    );
+    const categoryIds = [categoryMoodleId, ...childCategoryIds];
+
+    const courses = await this.courseRepository.find({
+      where: categoryIds.map((catId) => ({ categoryId: catId })),
+    });
+
+    if (courses.length === 0) {
+      return { courses: [], students: [], total: 0, page, limit };
+    }
+
+    // Columnas ordenadas agrupadas por materia y luego por nombre
+    const categoryNameById = new Map(
+      allCategories.map((c) => [Number(c.moodleId), c.name]),
+    );
+    const courseColumns = courses
+      .map((c) => ({
+        id: Number(c.moodleId),
+        shortname: c.shortname ? c.shortname.trim() || null : null,
+        name: c.subjectName || c.fullname || `Curso ${c.moodleId}`,
+        materia: categoryNameById.get(Number(c.categoryId)) ?? '',
+        fullname: c.fullname ?? '',
+      }))
+      .sort(
+        (a, b) =>
+          a.materia.localeCompare(b.materia) ||
+          a.fullname.localeCompare(b.fullname),
+      )
+      .map(({ id, shortname, name }) => ({ id, shortname, name }));
+
+    const courseMoodleIds = courses.map((c) => Number(c.moodleId));
+
+    // Estudiantes enrolados como 'student' en cualquiera de esos cursos
+    const studentsQb = this.moodleUserRepository
+      .createQueryBuilder('mu')
+      .where(
+        `EXISTS (
+          SELECT 1 FROM moodle_enrolments me
+          WHERE me.user_moodle_id = mu.moodle_id
+            AND me.role_code = 'student'
+            AND me.course_moodle_id IN (:...courseIds)
+        )`,
+        { courseIds: courseMoodleIds },
+      )
+      .orderBy('mu.suspended', 'ASC')
+      .addOrderBy('mu.firstname', 'ASC')
+      .addOrderBy('mu.lastname', 'ASC');
+
+    const total = await studentsQb.getCount();
+    const users = await studentsQb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    // Notas totales: grade items tipo 'course' -> mapa item -> curso
+    const gradeItems = await this.moodleGradeItemRepository.find({
+      where: courseMoodleIds.map((id) => ({
+        courseMoodleId: id,
+        itemtype: 'course',
+      })),
+    });
+    const itemToCourse = new Map<number, number>();
+    for (const gi of gradeItems) {
+      const courseId = Number(gi.courseMoodleId);
+      if (!itemToCourse.has(Number(gi.itemMoodleId))) {
+        itemToCourse.set(Number(gi.itemMoodleId), courseId);
+      }
+    }
+
+    const gradeMap = new Map<string, number>();
+    if (users.length > 0 && itemToCourse.size > 0) {
+      const grades = await this.moodleGradeRepository
+        .createQueryBuilder('g')
+        .where('g.userMoodleId IN (:...userIds)', {
+          userIds: users.map((u) => Number(u.moodleId)),
+        })
+        .andWhere('g.itemMoodleId IN (:...itemIds)', {
+          itemIds: [...itemToCourse.keys()],
+        })
+        .andWhere('g.grade IS NOT NULL')
+        .getMany();
+
+      for (const g of grades) {
+        const courseId = itemToCourse.get(Number(g.itemMoodleId));
+        if (!courseId) continue;
+        const key = `${Number(g.userMoodleId)}:${courseId}`;
+        if (!gradeMap.has(key)) {
+          gradeMap.set(key, Number(g.grade));
+        }
+      }
+    }
+
+    const students = users.map((u) => {
+      const uid = Number(u.moodleId);
+      const grades: Record<number, number | null> = {};
+      for (const course of courseColumns) {
+        grades[course.id] = gradeMap.get(`${uid}:${course.id}`) ?? null;
+      }
+      return {
+        moodleId: uid,
+        name:
+          [u.firstname, u.lastname].filter(Boolean).join(' ').trim() ||
+          u.email ||
+          `User ${u.moodleId}`,
+        suspended: u.suspended,
+        grades,
+      };
+    });
+
+    return { courses: courseColumns, students, total, page, limit };
+  }
+
+  /**
    * Obtiene recursivamente los IDs de todas las categorías hijas
    */
   private getChildCategoryIds(parentId: number, allCategories: MoodleCategory[]): number[] {

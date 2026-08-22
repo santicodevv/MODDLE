@@ -19,6 +19,7 @@ import type {
   ToggleStudentProgramResult,
   CategoryHierarchyNode,
   PagedStudentGrades,
+  StudentGradesMatrix,
   StudyPlanMateria,
   StudyPlansByCategory,
 } from '../types/projection.types';
@@ -201,6 +202,13 @@ export const projectionApi = {
 
   async getStudentGradesByCategory(categoryMoodleId: number, page: number = 1, limit: number = 10): Promise<PagedStudentGrades> {
     const response = await api.get<PagedStudentGrades>('/academic-projection/student-grades-by-program', {
+      params: { categoryMoodleId, page, limit },
+    });
+    return response.data;
+  },
+
+  async getStudentGradesMatrix(categoryMoodleId: number, page: number = 1, limit: number = 10): Promise<StudentGradesMatrix> {
+    const response = await api.get<StudentGradesMatrix>('/academic-projection/student-grades-matrix', {
       params: { categoryMoodleId, page, limit },
     });
     return response.data;

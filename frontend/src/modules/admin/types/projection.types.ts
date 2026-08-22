@@ -181,3 +181,24 @@ export interface PagedStudentGrades {
   page: number;
   limit: number;
 }
+
+export interface GradeMatrixCourse {
+  id: number;
+  shortname: string | null;
+  name: string;
+}
+
+export interface GradeMatrixStudent {
+  moodleId: number;
+  name: string;
+  suspended: boolean;
+  grades: Record<number, number | null>;
+}
+
+export interface StudentGradesMatrix {
+  courses: GradeMatrixCourse[];
+  students: GradeMatrixStudent[];
+  total: number;
+  page: number;
+  limit: number;
+}
