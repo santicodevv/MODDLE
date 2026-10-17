@@ -1,3 +1,6 @@
+// Escala académica de SEBTI.
+export const GRADING = { maximum: 10, passing: 7 } as const;
+
 export const STORAGE_KEYS = {
   SESSION_EXPIRED: 'moddle_session_expired',
   LAST_ACTIVITY: 'moddle_last_activity',

@@ -880,13 +880,47 @@ export class MoodleSyncService {
 
       synced++;
 
+      // Las referencias a subprogramas se conservan para permisos de reinscripción.
+      // La relación parent es la autoridad; depth puede estar desactualizado.
+      const parent = moodleCategories.find(
+        (cat) => Number(cat.id) === Number(mCat.parent),
+      );
       if (
-        (Number(mCat.parent) === 0 || Number(mCat.depth) === 2) &&
-        (Number(mCat.coursecount) > 0 || Number(mCat.depth) <= 2)
+        Number(mCat.parent) === 0 ||
+        (parent && Number(parent.parent) === 0)
       ) {
         const created = await this.upsertProgramFromCategory(mCat);
         if (created) programsCreated++;
       }
+    }
+
+    // Desactivar solo categorías retiradas y vacías. Los cursos y las notas
+    // históricas mantienen sus categorías; nunca se eliminan por sincronizar.
+    const currentIds = new Set(moodleCategories.map((cat) => Number(cat.id)));
+    const cachedCategories = await this.moodleCategoryRepository.find();
+    for (const category of cachedCategories) {
+      if (
+        currentIds.has(Number(category.moodleId)) ||
+        category.visible === false
+      )
+        continue;
+      const descendants = new Set<number>([Number(category.moodleId)]);
+      let previousSize = 0;
+      while (descendants.size !== previousSize) {
+        previousSize = descendants.size;
+        for (const child of cachedCategories) {
+          if (descendants.has(Number(child.parent)))
+            descendants.add(Number(child.moodleId));
+        }
+      }
+      const count = await this.moodleCourseRepository.count({
+        where: [...descendants].map((categoryId) => ({ categoryId })),
+      });
+      if (count === 0)
+        await this.moodleCategoryRepository.update(category.id, {
+          visible: false,
+          lastSyncedAt: new Date(),
+        });
     }
 
     this.logger.log(

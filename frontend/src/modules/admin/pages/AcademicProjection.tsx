@@ -1,3 +1,4 @@
+import { GRADING } from '@/shared/constants';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,7 +11,7 @@ import Button from '@/shared/components/ui/Button';
 import { projectionApi } from '../api/projection.api';
 import { coursesApi } from '../api/courses.api';
 import { CreateCourseForm } from '../components/courses/CreateCourseForm';
-import type { AcademicProgram, CategoryHierarchyNode } from '../types/projection.types';
+import type { AcademicProgram, CategoryHierarchyNode, ProgramCompletionStatus } from '../types/projection.types';
 
 const TABS = [
   { id: 'programs', label: 'Programas' },
@@ -277,6 +278,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
   });
 
   // Renderizar filas de materias (hijos de un programa)
+  // level=1 es el primer nivel bajo el programa principal
   const renderMateriaRows = (children: CategoryHierarchyNode[], level: number = 1) => {
     return children.map((category) => {
       const isExpanded = expandedMaterias.has(category.moodleId);
@@ -284,23 +286,34 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
       const hasMoodleCourses = category.courses.length > 0 || category.coursecount > 0;
       const isExpandable = hasChildren || hasMoodleCourses;
 
+      // Si es nivel 1, es un "Subprograma" (subcategoría del programa principal)
+      // Si es nivel 2+, es una "Materia"
+      const isSubprogram = level === 1;
+      const badgeLabel = isSubprogram ? 'Subprograma' : 'Materia';
+      const badgeColor = isSubprogram
+        ? 'text-indigo-700 bg-indigo-100'
+        : 'text-emerald-700 bg-emerald-100';
+      const iconColor = isSubprogram ? 'text-indigo-600' : 'text-emerald-600';
+      const rowBg = isSubprogram ? 'bg-indigo-50/50 hover:bg-indigo-50' : 'bg-emerald-50/50 hover:bg-emerald-50';
+      const chevronHoverBg = isSubprogram ? 'hover:bg-indigo-100' : 'hover:bg-emerald-100';
+
       return (
         <React.Fragment key={`category-${category.moodleId}`}>
-          <tr className="bg-emerald-50/50 hover:bg-emerald-50">
+          <tr className={rowBg}>
             <td className="px-4 py-2 text-gray-600" style={{ paddingLeft: `${level * 24 + 16}px` }}>
               <div className="flex items-center gap-2">
                 {isExpandable ? (
                   <button
                     onClick={() => toggleMateria(category.moodleId)}
-                    className="p-0.5 hover:bg-emerald-100 rounded"
+                    className={`p-0.5 ${chevronHoverBg} rounded`}
                   >
-                    {isExpanded ? <ChevronDown className="w-4 h-4 text-emerald-600" /> : <ChevronRight className="w-4 h-4 text-emerald-600" />}
+                    {isExpanded ? <ChevronDown className={`w-4 h-4 ${iconColor}`} /> : <ChevronRight className={`w-4 h-4 ${iconColor}`} />}
                   </button>
                 ) : (
                   <span className="w-5" />
                 )}
-                <FileText className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Materia</span>
+                <FileText className={`w-4 h-4 ${iconColor}`} />
+                <span className={`text-xs font-medium ${badgeColor} px-1.5 py-0.5 rounded`}>{badgeLabel}</span>
               </div>
             </td>
             <td className="px-4 py-2 text-gray-700">{category.name}</td>
@@ -348,7 +361,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
           variant="outline"
           size="sm"
           onClick={() => {
-            if (window.confirm('¿Eliminar programas creados desde categorías que no son raíz? Esta acción no se puede deshacer.')) {
+            if (window.confirm('¿Eliminar programas creados desde subcategorías de Moodle (no programas principales)? Esta acción no se puede deshacer.')) {
               cleanupMutation.mutate();
             }
           }}
@@ -392,7 +405,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                 </td>
               </tr>
             ) : (
-              programs.map((program) => {
+              programs.filter(program => program.moodleCategoryId == null || categoryMap.has(Number(program.moodleCategoryId))).map((program) => {
                 const isExpanded = expandedPrograms.has(program.id);
                 const categoryData = program.moodleCategoryId ? categoryMap.get(Number(program.moodleCategoryId)) : null;
                 const hasSubcategories = categoryData && categoryData.children.length > 0;
@@ -428,7 +441,7 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                           )}
                           {hasSubcategories && (
                             <span className="text-xs text-gray-400">
-                              ({categoryData.children.length} materias)
+                              ({categoryData.children.length} subprogramas)
                             </span>
                           )}
                         </div>
@@ -461,11 +474,11 @@ function ProgramsTab({ programs }: { programs: AcademicProgram[] }) {
                     </tr>
                     {/* Renderizar subcategorías (materias) del programa */}
                     {isExpanded && categoryData && hasSubcategories && renderMateriaRows(categoryData.children)}
-                    {/* Mensaje si está expandido pero no tiene materias */}
+                    {/* Mensaje si está expandido pero no tiene subprogramas */}
                     {isExpanded && categoryData && !hasSubcategories && (
                       <tr className="bg-gray-50">
                         <td colSpan={4} className="px-4 py-2 text-gray-500 text-sm italic pl-12">
-                          Sin materias registradas en este programa
+                          Sin subprogramas registrados en este programa
                         </td>
                       </tr>
                     )}
@@ -531,11 +544,76 @@ function SubprogramSelector({
   );
 }
 
-function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
+/**
+ * Selector encadenado Programa > Subprograma basado en la jerarquía de
+ * categorías de Moodle (programa = categoría raíz, subprograma = hija directa).
+ */
+function ProgramSubprogramSelector({
+  hierarchy,
+  programMoodleId,
+  subprogramMoodleId,
+  onChange,
+  children,
+}: {
+  hierarchy: CategoryHierarchyNode[];
+  programMoodleId: number | null;
+  subprogramMoodleId: number | null;
+  onChange: (programMoodleId: number | null, subprogramMoodleId: number | null) => void;
+  children?: React.ReactNode;
+}) {
+  const selectedRoot = hierarchy.find((node) => node.moodleId === programMoodleId);
+  const subprogramOptions = [...(selectedRoot?.children ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  const selectClass =
+    'border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:text-gray-400';
+
+  return (
+    <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <label className="text-sm font-medium text-gray-700">Programa:</label>
+      <select
+        value={programMoodleId ?? ''}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null, null)}
+        className={selectClass}
+      >
+        <option value="">Selecciona un programa</option>
+        {hierarchy.map((node) => (
+          <option key={node.moodleId} value={node.moodleId}>{node.name.trim()}</option>
+        ))}
+      </select>
+      <label className="text-sm font-medium text-gray-700">Subprograma:</label>
+      <select
+        value={subprogramMoodleId ?? ''}
+        onChange={(e) => onChange(programMoodleId, e.target.value ? Number(e.target.value) : null)}
+        disabled={!programMoodleId || subprogramOptions.length === 0}
+        className={selectClass}
+      >
+        <option value="">{programMoodleId && subprogramOptions.length === 0 ? 'Sin subprogramas' : 'Todos'}</option>
+        {subprogramOptions.map((node) => (
+          <option key={node.moodleId} value={node.moodleId}>{node.name.trim()}</option>
+        ))}
+      </select>
+      {children}
+    </div>
+  );
+}
+
+function useCategoryHierarchy() {
+  const { data = [] } = useQuery({
+    queryKey: ['category-hierarchy'],
+    queryFn: projectionApi.getCategoryHierarchy,
+  });
+  return [...data].sort((a, b) => a.name.trim().localeCompare(b.name.trim()));
+}
+
+function StudyPlanTab() {
   const queryClient = useQueryClient();
-  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
+  const hierarchy = useCategoryHierarchy();
+  const [rootMoodleId, setRootMoodleId] = useState<number | null>(null);
+  const [subprogramMoodleId, setSubprogramMoodleId] = useState<number | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [expandedMaterias, setExpandedMaterias] = useState<Set<number>>(new Set());
+  const [collapsedMaterias, setCollapsedMaterias] = useState<Set<number>>(new Set());
+
+  // Categoría consultada: el subprograma si hay uno elegido, si no el programa completo
+  const selectedMoodleId = subprogramMoodleId ?? rootMoodleId;
 
   const { data: programs = [] } = useQuery({
     queryKey: ['academic-programs'],
@@ -548,9 +626,14 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
     enabled: !!selectedMoodleId,
   });
   const materias = studyPlanData?.materias ?? [];
-  const selectedSubprogram = subprograms.find((sp) => sp.moodleId === selectedMoodleId);
+  const expandedMaterias = new Set(
+    materias.map((materia) => materia.moodleId).filter((id) => !collapsedMaterias.has(id)),
+  );
+  const selectedSubprogram = hierarchy
+    .find((node) => node.moodleId === rootMoodleId)
+    ?.children.find((node) => node.moodleId === subprogramMoodleId);
   const selectedProgram = selectedSubprogram
-    ? programs.find((program) => Number(program.moodleCategoryId) === selectedSubprogram.parent)
+    ? programs.find((program) => Number(program.moodleCategoryId) === rootMoodleId)
     : undefined;
 
   const removeMutation = useMutation({
@@ -575,7 +658,16 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
   return (
     <div>
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <SubprogramSelector subprograms={subprograms} selectedMoodleId={selectedMoodleId} onChange={setSelectedMoodleId} />
+        <ProgramSubprogramSelector
+          hierarchy={hierarchy}
+          programMoodleId={rootMoodleId}
+          subprogramMoodleId={subprogramMoodleId}
+          onChange={(root, sub) => {
+            setRootMoodleId(root);
+            setSubprogramMoodleId(sub);
+            setCollapsedMaterias(new Set());
+          }}
+        />
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -598,7 +690,7 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
         </div>
       </div>
 
-      {!selectedMoodleId && <EmptyState message="Selecciona un subprograma para ver su plan de estudio" />}
+      {!selectedMoodleId && <EmptyState message="Selecciona un programa para ver su plan de estudio" />}
 
       {isLoading && <LoadingSpinner />}
       {isError && <ErrorState message="Error al cargar el plan de estudio" />}
@@ -617,7 +709,7 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
               {materias.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                    No hay materias registradas en este subprograma.
+                    No hay cursos registrados en esta selección.
                   </td>
                 </tr>
               ) : (
@@ -628,7 +720,7 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setExpandedMaterias((previous) => {
+                            onClick={() => setCollapsedMaterias((previous) => {
                               const next = new Set(previous);
                               if (next.has(materia.moodleId)) next.delete(materia.moodleId);
                               else next.add(materia.moodleId);
@@ -702,15 +794,16 @@ function StudyPlanTab({ subprograms }: { subprograms: Subprogram[] }) {
   );
 }
 
-function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; subprograms: Subprogram[] }) {
+function StudentsTab({ programs }: { programs: AcademicProgram[] }) {
+  const hierarchy = useCategoryHierarchy();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const PAGE_SIZE = 10;
-  const subprogramMoodleIds = new Set(subprograms.map((subprogram) => subprogram.moodleId));
+  const programMoodleIds = new Set(hierarchy.map(program => program.moodleId));
   const assignablePrograms = programs.filter(
-    (program) => program.moodleCategoryId != null && subprogramMoodleIds.has(Number(program.moodleCategoryId)),
+    (program) => program.moodleCategoryId != null && programMoodleIds.has(Number(program.moodleCategoryId)),
   );
 
   const { data, isLoading, isError } = useQuery({
@@ -724,7 +817,7 @@ function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; s
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projection-students'] });
     },
-    onError: () => toast.error('Error al actualizar la asignación de subprograma'),
+    onError: () => toast.error('Error al actualizar la asignación de programa'),
   });
 
   const students = data?.students ?? [];
@@ -840,7 +933,7 @@ function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; s
                                 })
                               }
                               className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
-                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al subprograma ${program.code}`}
+                              title={`${checked ? 'Quitar' : 'Asignar'} ${student.studentName} al programa ${program.code}`}
                             />
                           </td>
                         );
@@ -886,21 +979,37 @@ function StudentsTab({ programs, subprograms }: { programs: AcademicProgram[]; s
   );
 }
 
-function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
-  const [selectedMoodleId, setSelectedMoodleId] = useState<number | null>(null);
+function DemandBySubjectTab() {
+  const hierarchy = useCategoryHierarchy();
+  const [rootMoodleId, setRootMoodleId] = useState<number | null>(null);
+  const [subprogramMoodleId, setSubprogramMoodleId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [completionStatus, setCompletionStatus] = useState<ProgramCompletionStatus>('all');
   const PAGE_SIZE = 10;
 
-  // Auto-seleccionar el primer subprograma cuando se carguen
   React.useEffect(() => {
-    if (subprograms.length > 0 && selectedMoodleId === null) {
-      setSelectedMoodleId(subprograms[0].moodleId);
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+
+  // Categoría consultada: el subprograma si hay uno elegido, si no el programa completo
+  const selectedMoodleId = subprogramMoodleId ?? rootMoodleId;
+
+  // Auto-seleccionar el primer programa cuando se carguen
+  React.useEffect(() => {
+    if (hierarchy.length > 0 && rootMoodleId === null) {
+      setRootMoodleId(hierarchy[0].moodleId);
     }
-  }, [subprograms, selectedMoodleId]);
+  }, [hierarchy, rootMoodleId]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['student-grades-matrix', selectedMoodleId, page],
-    queryFn: () => projectionApi.getStudentGradesMatrix(selectedMoodleId!, page, PAGE_SIZE),
+    queryKey: ['student-grades-matrix', selectedMoodleId, page, search, completionStatus],
+    queryFn: () => projectionApi.getStudentGradesMatrix(selectedMoodleId!, page, PAGE_SIZE, search || undefined, completionStatus),
     enabled: !!selectedMoodleId,
   });
 
@@ -909,25 +1018,70 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Resetear página al cambiar subprograma
-  const handleSubprogramChange = (moodleId: number | null) => {
-    setSelectedMoodleId(moodleId);
+  // Resetear página al cambiar programa o subprograma
+  const handleSelectionChange = (root: number | null, sub: number | null) => {
+    setRootMoodleId(root);
+    setSubprogramMoodleId(sub);
     setPage(1);
   };
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <SubprogramSelector
-          subprograms={subprograms}
-          selectedMoodleId={selectedMoodleId}
-          onChange={handleSubprogramChange}
-        />
+        <ProgramSubprogramSelector
+          hierarchy={hierarchy}
+          programMoodleId={rootMoodleId}
+          subprogramMoodleId={subprogramMoodleId}
+          onChange={handleSelectionChange}
+        >
+          <label htmlFor="demand-completion-status" className="text-sm font-medium text-gray-700">
+            Estado de la selección:
+          </label>
+          <select
+            id="demand-completion-status"
+            value={completionStatus}
+            disabled={!selectedMoodleId}
+            onChange={(event) => {
+              setCompletionStatus(event.target.value as ProgramCompletionStatus);
+              setPage(1);
+            }}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+          >
+            <option value="all">Todos</option>
+            <option value="completed">Completados</option>
+            <option value="pending">Pendientes</option>
+          </select>
+          <label htmlFor="demand-student-search" className="text-sm font-medium text-gray-700">
+            Buscar estudiante:
+          </label>
+          <div className="relative w-full sm:w-64">
+            <Search aria-hidden="true" className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input
+              id="demand-student-search"
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Nombre o apellido"
+              disabled={!selectedMoodleId}
+              className="w-full border border-gray-300 rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+            />
+          </div>
+        </ProgramSubprogramSelector>
+        {selectedMoodleId && (
+          <ExportExcelButton
+            onExport={() => projectionApi.exportStudentGradesMatrix(selectedMoodleId, search || undefined, completionStatus)}
+            filename={`demanda_estudiantes_${completionStatus}.xlsx`}
+          />
+        )}
       </div>
 
-      {!selectedMoodleId && subprograms.length === 0 && (
-        <EmptyState message="No hay subprogramas académicos registrados" />
-      )}
+      <p className="text-xs text-gray-500 mb-4">
+        Cada subprograma cuenta una sola vez al aprobar uno de sus cursos con nota de {data?.passingGrade ?? GRADING.passing} o más (escala de {data?.maximumGrade ?? GRADING.maximum}).
+        Completados incluye a quienes aprobaron todos los subprogramas de la selección;
+        pendientes incluye a quienes les falta al menos uno. Excel descarga todos los resultados filtrados.
+      </p>
+
+      {!selectedMoodleId && <EmptyState message="Selecciona un programa para ver las notas" />}
 
       {isLoading && <LoadingSpinner />}
       {isError && <ErrorState message="Error al cargar las notas de estudiantes" />}
@@ -940,6 +1094,9 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
                 <tr>
                   <th className="sticky left-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">
                     Estudiante
+                  </th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600 whitespace-nowrap bg-indigo-50">
+                    Avance del programa
                   </th>
                   {courses.map((course) => (
                     <th
@@ -956,8 +1113,12 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
               <tbody className="divide-y divide-gray-100">
                 {students.length === 0 ? (
                   <tr>
-                    <td colSpan={courses.length + 1} className="px-4 py-8 text-center text-gray-500">
-                      No hay estudiantes enrolados en los cursos de este subprograma
+                    <td colSpan={courses.length + 2} className="px-4 py-8 text-center text-gray-500">
+                      {search
+                        ? 'No hay estudiantes que coincidan con la búsqueda en esta selección'
+                        : completionStatus !== 'all'
+                          ? 'No hay estudiantes con el estado seleccionado'
+                          : 'No hay estudiantes enrolados en los cursos de esta selección'}
                     </td>
                   </tr>
                 ) : (
@@ -972,6 +1133,11 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
                         {student.name}
                         {student.suspended ? ' (inactivo)' : ''}
                       </td>
+                      <td className="px-3 py-3 text-center whitespace-nowrap font-semibold text-indigo-700 bg-indigo-50/60">
+                        {data?.totalSubprograms
+                          ? Math.round((student.completedCourseCount / data.totalSubprograms) * 100)
+                          : 0}%
+                      </td>
                       {courses.map((course) => {
                         const grade = student.grades[course.id];
                         return (
@@ -979,7 +1145,7 @@ function DemandBySubjectTab({ subprograms }: { subprograms: Subprogram[] }) {
                             {grade != null ? (
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  grade >= 70
+                                  grade >= (data?.passingGrade ?? GRADING.passing)
                                     ? 'bg-emerald-100 text-emerald-700'
                                     : 'bg-rose-100 text-rose-700'
                                 }`}
@@ -1277,9 +1443,9 @@ export default function AcademicProjection() {
       {!programsLoading && !programsError && (
         <>
           {activeTab === 'programs' && <ProgramsTab programs={programs} />}
-          {activeTab === 'study-plan' && <StudyPlanTab subprograms={subprograms} />}
-          {activeTab === 'students' && <StudentsTab programs={programs} subprograms={subprograms} />}
-          {activeTab === 'demand-subject' && <DemandBySubjectTab subprograms={subprograms} />}
+          {activeTab === 'study-plan' && <StudyPlanTab />}
+          {activeTab === 'students' && <StudentsTab programs={programs} />}
+          {activeTab === 'demand-subject' && <DemandBySubjectTab />}
           {activeTab === 'demand-level' && <DemandByLevelTab subprograms={subprograms} />}
           {activeTab === 'sections' && <SectionProjectionTab subprograms={subprograms} />}
           {activeTab === 'matrix' && <ProjectionMatrixTab subprograms={subprograms} />}

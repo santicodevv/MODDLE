@@ -193,9 +193,16 @@ export interface GradeMatrixStudent {
   name: string;
   suspended: boolean;
   grades: Record<number, number | null>;
+  completedCourseCount: number;
 }
 
+export type ProgramCompletionStatus = 'all' | 'completed' | 'pending';
+
 export interface StudentGradesMatrix {
+  passingGrade: number;
+  maximumGrade: number;
+  totalSubprograms: number;
+  selectionName: string;
   courses: GradeMatrixCourse[];
   students: GradeMatrixStudent[];
   total: number;

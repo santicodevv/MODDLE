@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { gradesApi } from '@/shared/api';
+import { GRADING } from '@/shared/constants';
 
 export interface UserSearchResult {
   id: number;
@@ -27,6 +28,9 @@ export interface UserGradesData {
       courseShortname: string;
       courseCode: string | null;
       courseSubjectName: string | null;
+      programMoodleId?: number | null;
+      programName?: string | null;
+      materiaName?: string | null;
       totalGrade: number | null;
       comment: string | null;
       sumGrade: number;
@@ -50,6 +54,9 @@ export interface CourseWithPeriod {
   courseShortname: string;
   courseCode: string | null;
   courseSubjectName: string | null;
+  programMoodleId?: number | null;
+  programName?: string | null;
+  materiaName?: string | null;
   totalGrade: number | null;
   comment: string | null;
   gradeItems: {
@@ -64,10 +71,11 @@ export interface CourseWithPeriod {
 
 export function getEquivalence(grade: number | null): string {
   if (grade === null) return '-';
-  if (grade >= 90) return 'A';
-  if (grade >= 80) return 'B';
-  if (grade >= 70) return 'C';
-  if (grade >= 60) return 'D';
+  const percentage = (grade / GRADING.maximum) * 100;
+  if (percentage >= 90) return 'A';
+  if (percentage >= 80) return 'B';
+  if (percentage >= 70) return 'C';
+  if (percentage >= 60) return 'D';
   return 'F';
 }
 
@@ -85,6 +93,21 @@ export function calculateCumulativeIndex(courses: CourseWithPeriod[]): number {
 export function generateDocNumber(): string {
   const seq = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
   return `SEBTI - ${seq}`;
+}
+
+/**
+ * Recorta la clave del curso quitando el sufijo del período, ya que el ciclo
+ * se muestra en su propia columna. Ej: "TRCB01_2025-3" -> "TRCB01".
+ */
+export function formatRecordKey(code: string | null | undefined): string {
+  if (!code) return '';
+  const idx = code.indexOf('_');
+  return idx > 0 ? code.substring(0, idx) : code;
+}
+
+export interface ProgramOption {
+  moodleId: number;
+  name: string;
 }
 
 export function useAdminGradeRecord() {
@@ -106,10 +129,10 @@ export function useAdminGradeRecord() {
     enabled: !!selectedUserId,
   });
 
-  const allCourses = useMemo((): CourseWithPeriod[] => {
+  const allCoursesUnfiltered = useMemo((): CourseWithPeriod[] => {
     if (!userGrades?.periods) return [];
     return userGrades.periods.flatMap((period) =>
-      period.courses.map((course) => ({
+      period.courses.filter(course => course.totalGrade != null).map((course) => ({
         ...course,
         periodId: period.periodId,
         periodName: period.periodName,
@@ -118,8 +141,35 @@ export function useAdminGradeRecord() {
     );
   }, [userGrades]);
 
+  // Programas (DIPLOMATURA, TECNICATURA, ...) en los que el estudiante tiene cursos
+  const programOptions = useMemo((): ProgramOption[] => {
+    const map = new Map<number, string>();
+    for (const c of allCoursesUnfiltered) {
+      if (c.programMoodleId != null && c.programName) {
+        map.set(c.programMoodleId, c.programName);
+      }
+    }
+    return [...map.entries()]
+      .map(([moodleId, name]) => ({ moodleId, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allCoursesUnfiltered]);
+
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+
+  const selectedProgram = useMemo(
+    () => programOptions.find((p) => p.moodleId === selectedProgramId) ?? null,
+    [programOptions, selectedProgramId]
+  );
+
+  // Cursos del record: si hay programa seleccionado, solo los de ese programa
+  const allCourses = useMemo((): CourseWithPeriod[] => {
+    if (selectedProgramId == null) return allCoursesUnfiltered;
+    return allCoursesUnfiltered.filter((c) => c.programMoodleId === selectedProgramId);
+  }, [allCoursesUnfiltered, selectedProgramId]);
+
   const handleSelectUser = (user: UserSearchResult) => {
     setSelectedUserId(user.id);
+    setSelectedProgramId(null);
     setShowSearch(false);
     setSearchQuery('');
   };
@@ -300,6 +350,10 @@ export function useAdminGradeRecord() {
     userGrades,
     gradesLoading,
     allCourses,
+    programOptions,
+    selectedProgramId,
+    setSelectedProgramId,
+    selectedProgram,
     handleSelectUser,
     handlePrint,
     today,

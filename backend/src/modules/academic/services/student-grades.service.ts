@@ -879,6 +879,9 @@ export class StudentGradesService {
         courseShortname: string;
         courseCode: string | null;
         courseSubjectName: string | null;
+        programMoodleId: number | null;
+        programName: string | null;
+        materiaName: string | null;
         totalGrade: number | null;
         comment: string | null;
         gradeItems: {
@@ -927,6 +930,82 @@ export class StudentGradesService {
       where: { moodleId: In(courseMoodleIds) },
     });
     const courseMap = new Map(courses.map((c) => [c.moodleId, c]));
+
+    // Jerarquía de categorías de cada curso:
+    // Identificamos el Programa (vinculado a sga_programs) y la Materia (categoría hija del Programa).
+    const hierarchyRows: {
+      course_moodle_id: string;
+      cat_moodle_id: string;
+      cat_name: string;
+      cat_parent: string;
+      sga_program_id: string | null;
+      distance: number;
+    }[] = await this.courseRepository.manager.query(
+      `WITH RECURSIVE chain AS (
+         SELECT c.moodle_id AS course_moodle_id,
+                mc.moodle_id AS cat_moodle_id,
+                mc.name AS cat_name,
+                mc.parent AS cat_parent,
+                0 AS distance,
+                ARRAY[mc.moodle_id] AS visited
+         FROM moodle_courses c
+         JOIN moodle_categories mc ON mc.moodle_id = c.category_id
+         WHERE c.moodle_id = ANY($1::bigint[])
+         UNION
+         SELECT ch.course_moodle_id,
+                p.moodle_id,
+                p.name,
+                p.parent,
+                ch.distance + 1,
+                ch.visited || p.moodle_id
+         FROM chain ch
+         JOIN moodle_categories p ON p.moodle_id = ch.cat_parent
+         WHERE NOT p.moodle_id = ANY(ch.visited)
+       )
+       SELECT c.course_moodle_id, c.cat_moodle_id, c.cat_name, c.cat_parent, sp.id AS sga_program_id, c.distance
+       FROM chain c
+       LEFT JOIN sga_programs sp ON sp.moodle_category_id = c.cat_moodle_id
+         AND NOT EXISTS (SELECT 1 FROM moodle_categories child JOIN sga_programs child_program ON child_program.moodle_category_id = child.moodle_id WHERE child.parent = c.cat_moodle_id)
+       ORDER BY c.distance ASC, c.cat_moodle_id ASC`,
+      [courseMoodleIds],
+    );
+
+    const hierarchyMap = new Map<
+      number,
+      {
+        programMoodleId: number | null;
+        programName: string | null;
+        materiaName: string | null;
+      }
+    >();
+
+    // Pasada 1: Identificar el programa
+    for (const row of hierarchyRows) {
+      const key = Number(row.course_moodle_id);
+      const entry = hierarchyMap.get(key) || {
+        programMoodleId: null,
+        programName: null,
+        materiaName: null,
+      };
+      if (row.sga_program_id !== null && entry.programMoodleId === null) {
+        entry.programMoodleId = Number(row.cat_moodle_id);
+        entry.programName = row.cat_name;
+      }
+      hierarchyMap.set(key, entry);
+    }
+
+    // Pasada 2: Identificar el subprograma (la categoría cuyo padre es el programa)
+    for (const row of hierarchyRows) {
+      const key = Number(row.course_moodle_id);
+      const entry = hierarchyMap.get(key);
+      if (
+        entry &&
+        entry.programMoodleId !== null &&
+        Number(row.cat_parent) === entry.programMoodleId
+      ) {
+        entry.materiaName = row.cat_name;
+      }
+    }
 
     // Get Moodle grade items for all courses (exclude 'course' type which is the total)
     const allGradeItems = await this.gradeItemRepository.find({
@@ -977,6 +1056,9 @@ export class StudentGradesService {
         courseShortname: string;
         courseCode: string | null;
         courseSubjectName: string | null;
+        programMoodleId: number | null;
+        programName: string | null;
+        materiaName: string | null;
         totalGrade: number | null;
         comment: string | null;
         gradeItems: {
@@ -1032,6 +1114,13 @@ export class StudentGradesService {
           courseShortname: grade.courseShortname || course?.shortname || '',
           courseCode: course?.code || null,
           courseSubjectName: course?.subjectName || null,
+          programMoodleId:
+            hierarchyMap.get(Number(grade.courseMoodleId))?.programMoodleId ??
+            null,
+          programName:
+            hierarchyMap.get(Number(grade.courseMoodleId))?.programName ?? null,
+          materiaName:
+            hierarchyMap.get(Number(grade.courseMoodleId))?.materiaName ?? null,
           totalGrade: grade.totalGrade ?? null,
           comment: grade.comment ?? null,
           gradeItems,
