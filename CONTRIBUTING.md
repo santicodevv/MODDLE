@@ -5,7 +5,7 @@ El proceso completo (roles, ceremonias, Definition of Done) está en [docs/SCRUM
 ## Antes de empezar
 
 ```bash
-git config core.hooksPath .githooks   # bloquea push directo a main
+git config core.hooksPath .githooks   # bloquea push directo a main y commits con secretos
 ```
 
 Todo cambio necesita un ticket en Jira, en el proyecto [SEB](https://welin1924-1793141597420.atlassian.net/jira/software/projects/SEB/boards/5). Si no existe, crealo con criterios de aceptación.
@@ -26,7 +26,7 @@ El check **Ticket de Jira** falla si la rama y el título del PR no tienen `SEB-
 
 1. `git push -u origin HEAD` y `gh pr create --base main`.
 2. Completá la plantilla, incluido el campo del ticket.
-3. Esperá los checks en verde: *Frontend (lint + type-check)*, *Backend (lint + type-check + test)* y *Ticket de Jira*.
+3. Esperá los checks en verde: *Frontend (lint + type-check)*, *Backend (lint + type-check + test)*, *Ticket de Jira* y *Escaneo de secretos*.
 4. Pedile la revisión a la otra persona del equipo. No mergees tu propio PR sin aprobación.
 5. Al mergear, el ticket pasa solo a *Listo* en Jira.
 

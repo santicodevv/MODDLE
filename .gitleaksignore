@@ -1,0 +1,14 @@
+# Hallazgos históricos ya resueltos (SEB-10). No agregar entradas nuevas sin revisar:
+# un secreto nuevo se rota, no se ignora.
+
+# Contraseña de neondb_owner en .claude/settings.local.json — rotada el 2026-10-30
+f41e2e461ee065813f445ce0b3308176b6fcb4f3:.claude/settings.local.json:url-con-credenciales:45
+f41e2e461ee065813f445ce0b3308176b6fcb4f3:.claude/settings.local.json:neon-password:45
+
+# JWT de desarrollo vencidos (exp feb. 2026); no sirven para autenticarse
+# (el nombre real es "C:devtoken.json" con U+F03A en lugar de ":", creado desde Windows)
+9e4d8e642ea620e0302611e1a4be58de7c4aee1e:.claude/settings.local.json:jwt:17
+9e4d8e642ea620e0302611e1a4be58de7c4aee1e:Cdevtoken.json:jwt:1
+
+# Token de ejemplo de la plantilla de NestJS (badge de CircleCI)
+9e4d8e642ea620e0302611e1a4be58de7c4aee1e:backend/README.md:generic-api-key:5

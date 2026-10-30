@@ -3,14 +3,27 @@
   "target": "branch",
   "enforcement": "active",
   "conditions": {
-    "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] }
+    "ref_name": {
+      "include": [
+        "~DEFAULT_BRANCH"
+      ],
+      "exclude": []
+    }
   },
   "bypass_actors": [
-    { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "pull_request" }
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "pull_request"
+    }
   ],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
     {
       "type": "pull_request",
       "parameters": {
@@ -26,9 +39,22 @@
       "parameters": {
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
-          { "context": "Frontend (lint + type-check)", "integration_id": 15368 },
-          { "context": "Backend (lint + type-check + test)", "integration_id": 15368 },
-          { "context": "Ticket de Jira", "integration_id": 15368 }
+          {
+            "context": "Frontend (lint + type-check)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Backend (lint + type-check + test)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Ticket de Jira",
+            "integration_id": 15368
+          },
+          {
+            "context": "Escaneo de secretos",
+            "integration_id": 15368
+          }
         ]
       }
     }
