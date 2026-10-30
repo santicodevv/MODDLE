@@ -1,282 +1,247 @@
-# Sistema de Gestión Académica - MODDLE
+# MODDLE — Gestión académica integrada con Moodle
 
-Sistema de gestión académica integrado con Moodle para instituciones educativas.
+Sistema de gestión académica para SEBTI que extiende Moodle: períodos, calificaciones, reinscripción por subprograma, proyección académica, reportería, récords oficiales verificables y pagos.
 
-## Características
+[![CI](https://github.com/santicodevv/MODDLE/actions/workflows/ci.yml/badge.svg)](https://github.com/santicodevv/MODDLE/actions/workflows/ci.yml)
+[![Secretos](https://github.com/santicodevv/MODDLE/actions/workflows/secretos.yml/badge.svg)](https://github.com/santicodevv/MODDLE/actions/workflows/secretos.yml)
 
-- **Autenticación JWT** con roles (STUDENT, TEACHER, ADMIN)
-- **Sincronización bidireccional** con Moodle (Mirror + Outbox Pattern)
-- **Gestión de períodos académicos** con estados (planned, open, closed)
-- **Registro de calificaciones** con validaciones y sincronización automática
-- **Reportería avanzada** con exportación a Excel y PDF
-- **Transcripts oficiales** con verificación digital (QR + SHA-256)
-- **Observabilidad** con logging estructurado y health checks
+| | |
+|---|---|
+| Producción (API) | <https://moddle-production-4be1.up.railway.app/api> — Railway |
+| Frontend | Vercel (deploy automático desde `main`) |
+| Base de datos | Neon (PostgreSQL) |
+| Tablero | [Jira SEB](https://welin1924-1793141597420.atlassian.net/jira/software/projects/SEB/boards/5) |
 
-## Stack Tecnológico
+## Funcionalidades
 
-| Componente | Tecnología |
-|------------|------------|
-| **Frontend** | React 19 + TypeScript + Vite |
-| **UI/Estilos** | TailwindCSS 4 |
-| **Estado/Fetching** | React Query (TanStack Query) |
-| **Backend** | NestJS (Node.js) |
-| **Base de Datos** | PostgreSQL |
-| **ORM** | TypeORM |
-| **Cache/Queue** | Redis + BullMQ |
-| **Documentación** | Swagger/OpenAPI |
-| **Contenedores** | Docker |
+- **Autenticación**: email + contraseña con JWT, o **Microsoft SSO** (Azure AD) restringido al dominio de la institución. Roles `STUDENT`, `TEACHER`, `ADMIN`; logout con lista negra de tokens en Redis.
+- **Sincronización con Moodle**: espejo local de categorías, cursos, usuarios, matrículas y notas, y patrón *outbox* con colas Bull para escribir de vuelta. Sync automático cada hora y reconciliación diaria a las 2:00; webhook entrante de Moodle.
+- **Gestión académica**: períodos (planificado → abierto → cerrado), cursos y profesores, carga y edición de notas en sesiones controladas por el admin.
+- **Reinscripción** por subprograma: el estudiante elige materias del período y el admin aprueba, rechaza o aplica en Moodle.
+- **Proyección académica**: programas, subprogramas y planes de estudio; demanda por asignatura y por nivel; matriz de notas estudiantes × cursos.
+- **Reportería** en Excel y PDF por estudiante, curso y período.
+- **Récords oficiales (transcripts)** en PDF con QR y hash SHA-256, verificables públicamente y revocables.
+- **Pagos**: facturas del estudiante desde la API de pagos de Knorooms (GoHighLevel).
+- **Auditoría** de cambios y **health checks** (base de datos, memoria, liveness/readiness).
 
-## Requisitos Previos
+## Stack
 
-- Node.js >= 18.x
-- Docker y Docker Compose
-- PostgreSQL 14+
-- Redis 7+
+| Capa | Tecnología |
+|---|---|
+| Frontend | React 19, TypeScript, Vite 7, TailwindCSS 4, TanStack Query 5 |
+| Backend | NestJS 11, TypeORM 0.3, Passport (JWT + Microsoft) |
+| Datos | PostgreSQL (Neon en producción), Redis + Bull |
+| Documentos | ExcelJS, PDFKit, qrcode |
+| API docs | Swagger/OpenAPI en `/api/docs` |
+| CI | GitHub Actions: lint, build y tests, ticket de Jira, escaneo de secretos (gitleaks) |
 
-## Instalación Rápida
+## Requisitos
+
+- Node.js 20 (el que usa CI)
+- Docker y Docker Compose (Postgres y Redis locales)
+- Acceso a una instancia de Moodle con token de *web services* para sincronizar datos
+
+## Puesta en marcha local
 
 ```bash
-# 1. Clonar el repositorio
-git clone <repository-url>
+git clone git@github.com:santicodevv/MODDLE.git
 cd MODDLE
+git config core.hooksPath .githooks        # hooks: bloquean push a main y commits con secretos
+```
 
-# 2. Copiar variables de entorno
-cp .env.example .env
+**1. Postgres y Redis.** `docker-compose.yml` usa `moddle_db` / `moddle_user` / `moddle_pass` por defecto. Si el puerto 5432 o 6379 ya está ocupado, cambialo con `DB_PORT` o `REDIS_PORT`:
 
-# 3. Levantar servicios con Docker
+```bash
 docker compose up -d postgres redis
+```
 
-# 4. Backend - Instalar dependencias y ejecutar
+**2. Backend** (puerto 3000):
+
+```bash
 cd backend
-npm install
-npm run seed:roles          # Crear roles iniciales (STUDENT, TEACHER, ADMIN)
-npm run start:dev           # Iniciar backend en puerto 3000
+cp .env.example .env
+```
 
-# 5. Frontend - En otra terminal
+Editá `backend/.env` para desarrollo local:
+
+- `NODE_ENV=development`: activa `synchronize` de TypeORM, que crea las tablas solo. En `production` se aplican las migraciones al iniciar.
+- Comentá `DATABASE_URL` y descomentá las variables `DB_*`. Si `DATABASE_URL` está definida, se usa siempre con SSL.
+- `MOODLE_URL` y `MOODLE_TOKEN` de tu Moodle de pruebas.
+
+```bash
+npm install
+npm run seed:roles        # crea los roles STUDENT, TEACHER y ADMIN
+npm run sync:moodle       # (opcional) trae categorías, cursos y usuarios desde Moodle
+npm run start:dev
+```
+
+**3. Frontend** (puerto 5173), en otra terminal:
+
+```bash
 cd frontend
+echo "VITE_API_URL=http://localhost:3000/api" > .env.local
 npm install
-npm run dev                 # Iniciar frontend en puerto 5173
+npm run dev
 ```
 
-## URLs de Desarrollo
+| Servicio | URL local |
+|---|---|
+| Frontend | <http://localhost:5173> |
+| API | <http://localhost:3000/api> |
+| Swagger | <http://localhost:3000/api/docs> |
+| Health | <http://localhost:3000/api/health> |
+| pgAdmin (opcional: `docker compose up -d pgadmin`) | <http://localhost:5050> |
 
-| Servicio | URL |
-|----------|-----|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:3000/api |
-| Swagger Docs | http://localhost:3000/api/docs |
-| Health Check | http://localhost:3000/api/health |
+## Variables de entorno
 
-## Variables de Entorno
+Plantilla completa en [`backend/.env.example`](backend/.env.example). **Nunca** se commitea un `.env` real: lo bloquean `.gitignore`, el hook `pre-commit` y el check *Escaneo de secretos*. En producción los valores viven en Railway (backend) y Vercel (frontend).
 
-### Backend (.env en raíz)
+### Backend
 
-```env
-# Base de datos
-DB_NAME=moddle_db
-DB_USER=moddle_user
-DB_PASSWORD=moddle_pass
-DB_HOST=localhost
-DB_PORT=5432
+| Variable | Uso |
+|---|---|
+| `NODE_ENV` | `development` (sincroniza el esquema) o `production` (aplica migraciones) |
+| `PORT` | Puerto HTTP (3000) |
+| `DATABASE_URL` | Conexión completa con SSL (Neon). Tiene prioridad sobre `DB_*` |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Conexión local sin `DATABASE_URL` |
+| `REDIS_HOST`, `REDIS_PORT` / `REDIS_URL` | Colas Bull y lista negra de tokens |
+| `JWT_SECRET`, `JWT_EXPIRATION` | Firma y duración de los tokens |
+| `CORS_ORIGINS` | Orígenes permitidos, separados por coma |
+| `FRONTEND_URL` | A dónde vuelve el login con Microsoft |
+| `APP_BASE_URL` | URL pública de la API, usada en el QR de los transcripts |
+| `MICROSOFT_TENANT_ID`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_CALLBACK_URL` | SSO con Azure AD |
+| `ALLOWED_EMAIL_DOMAIN` | Dominio de correo permitido en el SSO |
+| `MOODLE_URL`, `MOODLE_TOKEN`, `MOODLE_WEBHOOK_SECRET` | Integración con Moodle |
+| `PAYMENTS_API_URL`, `PAYMENTS_API_TOKEN`, `PAYMENTS_LOCATION_ID` | API de pagos |
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
+### Frontend
 
-# JWT
-JWT_SECRET=your-super-secret-key-change-in-production
-JWT_EXPIRATION=1h
-JWT_REFRESH_EXPIRATION=7d
+| Variable | Uso |
+|---|---|
+| `VITE_API_URL` | URL base de la API (`http://localhost:3000/api` en local) |
+| `VITE_MOODLE_URL` | Enlaces al campus Moodle (por defecto `https://campus.sebti.edu.do`) |
 
-# Moodle
-MOODLE_URL=https://your-moodle.edu
-MOODLE_TOKEN=your-moodle-ws-token
-MOODLE_WEBHOOK_SECRET=your-webhook-secret
+## Estructura
 
-# App
-PORT=3000
-NODE_ENV=development
-CORS_ORIGINS=http://localhost:5173,http://localhost:3000
-```
-
-### Frontend (frontend/.env)
-
-```env
-VITE_API_URL=http://localhost:3000/api
-```
-
-## Estructura del Proyecto
-
-```
+```text
 MODDLE/
-├── backend/
+├── backend/                  NestJS
 │   ├── src/
-│   │   ├── common/           # Decorators, guards, interceptors
-│   │   ├── config/           # Configuraciones (DB, Redis)
+│   │   ├── common/           decorators, guards (JWT, roles), interceptors
+│   │   ├── config/           base de datos, Redis, escala de notas
+│   │   ├── migrations/       migraciones de TypeORM
 │   │   └── modules/
-│   │       ├── auth/         # Autenticación JWT
-│   │       ├── users/        # Gestión de usuarios
-│   │       ├── academic/     # Períodos, calificaciones
-│   │       ├── moodle-integration/  # Entidades espejo
-│   │       ├── sync/         # Outbox, auditoría
-│   │       ├── reports/      # Reportería
-│   │       ├── transcripts/  # Récords oficiales
-│   │       ├── health/       # Health checks
-│   │       └── webhooks/     # Webhooks Moodle
-│   └── storage/              # Archivos generados
-├── frontend/
-│   ├── src/
-│   │   ├── api/              # Servicios API (auth, users, courses, etc.)
-│   │   ├── components/
-│   │   │   ├── layout/       # MainLayout, Sidebar, Header
-│   │   │   └── ui/           # Button, Input, Card, Modal, etc.
-│   │   ├── context/          # AuthContext
-│   │   ├── lib/              # Axios, utils, storage
-│   │   ├── pages/
-│   │   │   ├── admin/        # Dashboard, Users, Courses, Sync
-│   │   │   ├── auth/         # Login, Register
-│   │   │   ├── shared/       # Grades, Transcripts
-│   │   │   ├── student/      # Dashboard, ReEnrolments
-│   │   │   └── teacher/      # Dashboard, MyCourses
-│   │   ├── router/           # AppRouter, routes, guards
-│   │   └── types/            # TypeScript interfaces
-│   └── .env
-├── scripts/                  # SQL scripts
-├── docker-compose.yml
-└── .env
+│   │       ├── auth/                 login, JWT, Microsoft SSO, lista negra
+│   │       ├── users/                usuarios, profesores, roles
+│   │       ├── academic/             períodos, cursos, notas, reinscripción
+│   │       ├── academic-projection/  programas, planes de estudio, demanda, matriz
+│   │       ├── grades/               sesiones de edición de notas sobre el espejo de Moodle
+│   │       ├── moodle-integration/   cliente de Moodle y entidades espejo
+│   │       ├── sync/                 outbox, colas, scheduler, auditoría, comandos CLI
+│   │       ├── webhooks/             webhook entrante de Moodle
+│   │       ├── reports/              Excel y PDF
+│   │       ├── transcripts/          récords oficiales con QR
+│   │       ├── payments/             facturas
+│   │       └── health/               health checks
+│   ├── scripts/              scripts operativos puntuales
+│   └── test/                 e2e
+├── frontend/                 React + Vite
+│   └── src/
+│       ├── app/              providers (AuthContext) y router (rutas, guards por rol)
+│       ├── modules/
+│       │   ├── admin/        dashboard, usuarios, cursos, períodos, notas, sync, auditoría, pagos, transcripts
+│       │   ├── teacher/      cursos y carga de notas
+│       │   ├── student/      cursos, notas, reinscripción, pagos, transcripts
+│       │   └── auth/         login, registro, SSO, expiración de sesión
+│       └── shared/           API (axios), componentes UI, layout, utilidades
+├── docs/SCRUM.md             proceso de trabajo
+├── .github/                  workflows de CI, plantilla de PR, ruleset de main
+├── .githooks/                pre-commit (secretos) y pre-push (main)
+└── docker-compose.yml        Postgres, Redis y pgAdmin para desarrollo
 ```
 
-## API Endpoints
+## API
 
-### Autenticación
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | `/api/auth/login` | Iniciar sesión |
-| POST | `/api/auth/register` | Registrar usuario |
-| POST | `/api/auth/refresh` | Refrescar token |
+Todas las rutas cuelgan de `/api` y, salvo las públicas, requieren `Authorization: Bearer <token>`. La referencia completa con esquemas está en **Swagger** (`/api/docs`).
 
-### Períodos Académicos
-| Método | Ruta | Roles | Descripción |
-|--------|------|-------|-------------|
-| GET | `/api/periods` | Todos | Listar períodos |
-| POST | `/api/periods` | ADMIN | Crear período |
-| POST | `/api/periods/:id/open` | ADMIN | Abrir período |
-| POST | `/api/periods/:id/close` | ADMIN | Cerrar período |
+| Prefijo | Contenido |
+|---|---|
+| `/auth` | `register`, `login`, `logout`, `me` (GET/PATCH), `microsoft` y su `callback` |
+| `/users` | Usuarios, profesores y asignación de roles |
+| `/periods` | Períodos académicos, apertura y cierre, ventana de reinscripción |
+| `/courses` | Cursos del período, profesores asignados, matriculados |
+| `/grades`, `/student-grades` | Carga, edición y consulta de notas |
+| `/re-enrolments` | Solicitudes de reinscripción y su aprobación |
+| `/academic-projection` | Programas, subprogramas, planes de estudio, demanda y matriz de notas |
+| `/reports` | Reportes por estudiante, curso y período (`?format=excel` o `?format=pdf`) |
+| `/transcripts` | Generación, descarga y revocación; `verify/:hash` es **público** |
+| `/payments` | Facturas propias y gestión de pagos |
+| `/sync`, `/integrations/moodle`, `/audit` | Sincronización manual, estado, reconciliación y auditoría |
+| `/integrations/moodle/webhook` | Webhook de Moodle (**público**, valida `MOODLE_WEBHOOK_SECRET`) |
+| `/health` | `/`, `db`, `memory`, `live`, `ready` (públicos) |
 
-### Calificaciones
-| Método | Ruta | Roles | Descripción |
-|--------|------|-------|-------------|
-| POST | `/api/grades` | TEACHER, ADMIN | Registrar calificación |
-| PATCH | `/api/grades/:id` | TEACHER, ADMIN | Actualizar calificación |
-| GET | `/api/grades/student/:id` | STUDENT*, TEACHER, ADMIN | Ver calificaciones |
-| GET | `/api/grades/course/:id` | TEACHER, ADMIN | Calificaciones por curso |
+## Comandos
 
-### Reportería
-| Método | Ruta | Roles | Descripción |
-|--------|------|-------|-------------|
-| GET | `/api/reports/grades/by-student/:id` | STUDENT*, TEACHER, ADMIN | Reporte por estudiante |
-| GET | `/api/reports/grades/by-course/:id` | TEACHER, ADMIN | Reporte por curso |
-| GET | `/api/reports/grades/by-period/:id` | ADMIN | Reporte por período |
-| GET | `/api/reports/global/summary` | ADMIN | Resumen global |
-
-> Agregar `?format=excel` o `?format=pdf` para exportar
-
-### Transcripts
-| Método | Ruta | Roles | Descripción |
-|--------|------|-------|-------------|
-| POST | `/api/transcripts` | ADMIN | Generar transcript |
-| GET | `/api/transcripts/:id/download` | STUDENT*, ADMIN | Descargar PDF |
-| GET | `/api/transcripts/verify/:hash` | **Público** | Verificar autenticidad |
-| PATCH | `/api/transcripts/:id/revoke` | ADMIN | Revocar documento |
-
-### Health Checks
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/api/health` | Estado general |
-| GET | `/api/health/db` | Estado de la BD |
-| GET | `/api/health/live` | Liveness probe |
-| GET | `/api/health/ready` | Readiness probe |
-
-## Documentación API
-
-Swagger UI disponible en: `http://localhost:3000/api/docs`
-
-## Scripts Disponibles
-
-### Backend (desde /backend)
+### Backend (`backend/`)
 
 ```bash
-# Desarrollo
-npm run start:dev        # Iniciar en modo desarrollo (watch mode)
-npm run build            # Compilar TypeScript
-npm run start:prod       # Iniciar en producción
-
-# Base de datos
-npm run typeorm migration:run      # Ejecutar migraciones
-npm run typeorm migration:revert   # Revertir última migración
-
-# CLI
-npm run seed:roles       # Crear roles iniciales (STUDENT, TEACHER, ADMIN)
-npm run sync:moodle      # Sincronizar desde Moodle
-
-# Calidad
-npm run lint             # Ejecutar ESLint
-npm run format           # Formatear con Prettier
-npm run test             # Ejecutar tests
+npm run start:dev            # desarrollo con watch
+npm run build                # compila a dist/
+npm run start:prod           # ejecuta dist/
+npm run lint                 # ESLint (con --fix)
+npm test                     # tests unitarios (Jest)
+npm run test:cov             # cobertura
+npm run test:e2e             # e2e (necesita Postgres y Redis)
+npm run seed:roles           # crea los roles base
+npm run sync:moodle          # sincronización completa desde Moodle
+npm run migration:generate -- src/migrations/<Nombre>   # nueva migración
+npm run migration:run        # aplica migraciones
+npm run migration:revert     # revierte la última
 ```
 
-### Frontend (desde /frontend)
+### Frontend (`frontend/`)
 
 ```bash
-npm run dev              # Iniciar en desarrollo (Vite, :5173)
-npm run build            # Compilar para producción
-npm run preview          # Preview del build de producción
-npm run lint             # Ejecutar ESLint
+npm run dev                  # Vite en :5173
+npm run build                # type-check + build
+npm run preview              # sirve el build
+npm run lint                 # ESLint
 ```
 
 ## Arquitectura
 
-```
-                    ┌─────────────────┐
-                    │     Frontend    │
-                    │ (React + Vite)  │
-                    │   :5173         │
-                    └────────┬────────┘
-                             │ HTTP/REST
-                             ▼
-┌────────────────────────────────────────────────────┐
-│                NestJS Backend :3000                 │
-├─────────────┬─────────────┬─────────────┬──────────┤
-│    Auth     │  Academic   │   Reports   │ Webhooks │
-│   Module    │   Module    │   Module    │  Module  │
-└─────────────┴──────┬──────┴─────────────┴──────────┘
-                     │
-         ┌───────────┼───────────┐
-         ▼           ▼           ▼
-    ┌─────────┐ ┌─────────┐ ┌─────────┐
-    │PostgreSQL│ │  Redis  │ │ Moodle  │
-    │  :5432   │ │  :6379  │ │  (API)  │
-    └─────────┘ └─────────┘ └─────────┘
+```text
+ React (Vercel) ──HTTP/JSON──► NestJS API (Railway) ──► PostgreSQL (Neon)
+                                   │      ▲
+                         Bull/Redis│      │ webhook
+                                   ▼      │
+                                 Moodle (web services)
 ```
 
-## Patrón de Sincronización
+Escritura hacia Moodle con patrón *outbox*: el cambio se guarda en la base local y se registra un evento en `outbox_events`; un worker de Bull lo envía a Moodle con reintentos, y el espejo (`moodle_*`) se actualiza por sync o por webhook. Hoy la nota y su evento se guardan en dos operaciones separadas, no en una transacción.
 
-```
-App → local_grades → outbox_events → BullMQ → Moodle API
-                                         │
-                                         ▼
-                                   moodle_grades (mirror)
-```
+## Flujo de trabajo
+
+El equipo trabaja con **Scrum** (sprints de 2 semanas) en el tablero [SEB de Jira](https://welin1924-1793141597420.atlassian.net/jira/software/projects/SEB/boards/5). Detalle en [docs/SCRUM.md](docs/SCRUM.md) y [CONTRIBUTING.md](CONTRIBUTING.md).
+
+1. Tomá un ticket `SEB-<n>` y pasalo a *En curso*.
+2. Rama con la clave: `feature/SEB-12-descripcion` (o `fix/`, `test/`, `docs/`, `chore/`).
+3. Commits con la clave: `feat(auth): SEB-12 descripción`.
+4. `gh pr create`: el ticket pasa solo a *En revisión*.
+5. La otra persona revisa y aprueba; al mergear, el ticket pasa solo a *Listo*.
+
+`main` está protegida: no se puede pushear directo, todo entra por PR con 1 aprobación y los checks *Frontend*, *Backend*, *Ticket de Jira* y *Escaneo de secretos* en verde.
 
 ## Seguridad
 
-- Passwords hasheados con bcrypt
-- JWT con expiración configurable
-- RBAC (Role-Based Access Control)
-- Validación de entrada en todos los endpoints
-- Rate limiting en endpoints públicos
-- Tokens de Moodle cifrados
+- Contraseñas con bcrypt; JWT con expiración y revocación en logout.
+- Control de acceso por rol con guards globales; las rutas públicas se marcan con `@Public()`.
+- Validación de entrada con DTOs (`class-validator`) y rate limiting global (`@nestjs/throttler`).
+- Récords oficiales con hash SHA-256 verificable y revocación.
+- Secretos fuera del repo, con tres barreras: hook `pre-commit`, gitleaks en CI y push protection de GitHub. Si un secreto llega a un commit se **rota**; borrar el commit no alcanza.
+
+¿Encontraste una vulnerabilidad? No abras un issue público: escribile al responsable del repositorio.
 
 ## Licencia
 
-Propietario - Todos los derechos reservados
+Propietario. Todos los derechos reservados.
