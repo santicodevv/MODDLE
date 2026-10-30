@@ -49,3 +49,19 @@ docker-compose.override.yml
 # Temporary files
 tmp/
 temp/
+
+# Secretos y datos (SEB-10): nunca versionar credenciales ni datos reales
+.env.*
+!.env.example
+!**/.env.example
+.claude/settings.local.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+*.dump
+*.sqlite
+*.db
+# Volcados SQL en la raíz (las migraciones viven en backend/src/migrations)
+/*.sql

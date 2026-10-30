@@ -1,0 +1,32 @@
+#!/bin/sh
+# Frena commits con secretos o archivos sensibles antes de que salgan de tu máquina.
+# Se activa con: git config core.hooksPath .githooks
+# Si es un falso positivo: git commit --no-verify (el CI "Escaneo de secretos" igual lo revisa).
+
+fallo=0
+
+# 1. Archivos que nunca deben versionarse
+archivos=$(git diff --cached --name-only --diff-filter=ACMR)
+prohibidos=$(printf '%s\n' "$archivos" | grep -E '(^|/)\.env(\..+)?$|(^|/)\.claude/settings\.local\.json$|\.(pem|key|p12|pfx|dump|sqlite|db)$|(^|/)id_rsa|^[^/]+\.sql$' | grep -vE '(^|/)\.env\.example$')
+if [ -n "$prohibidos" ]; then
+  echo "✖ Archivos que no se versionan (secretos o datos reales):"
+  printf '  %s\n' $prohibidos
+  fallo=1
+fi
+
+# 2. Patrones de secretos en las líneas agregadas
+patrones='npg_[A-Za-z0-9]{10,}|(postgres(ql)?|rediss?|mongodb(\+srv)?|amqps?)://[^:/ "@]+:[^@ "$<{]{6,}@|gh[pousr]_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|sk_live_[A-Za-z0-9]{10,}|ATATT[A-Za-z0-9_=-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY|eyJ[A-Za-z0-9_-]{15,}\.eyJ[A-Za-z0-9_-]{15,}\.'
+permitidos='://[^:]+:(moddle_pass|postgres|password|tu_password[a-z_]*|changeme)@'
+hallazgos=$(git diff --cached -U0 --no-color -- . ':(exclude)*.env.example' ':(exclude).gitleaks*' ':(exclude).githooks/*' \
+  | grep -E '^\+[^+]' | grep -E "$patrones" | grep -vE "$permitidos")
+if [ -n "$hallazgos" ]; then
+  echo "✖ Posible secreto en el commit:"
+  printf '%s\n' "$hallazgos" | cut -c1-60 | sed 's/^/  /; s/$/…/'
+  fallo=1
+fi
+
+if [ "$fallo" -ne 0 ]; then
+  echo "  Mové el valor a una variable de entorno (.env, ignorado) y si ya lo compartiste, rotalo."
+  exit 1
+fi
+exit 0

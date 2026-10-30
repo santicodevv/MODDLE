@@ -1,0 +1,37 @@
+# Configuración de gitleaks (SEB-10). Usa las reglas por defecto y agrega las que
+# faltaban para este stack: las por defecto no detectan URLs de Postgres con
+# contraseña, que es justo lo que se filtró en 2594d5b.
+title = "MODDLE"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "neon-password"
+description = "Contraseña de rol de Neon"
+regex = '''npg_[A-Za-z0-9]{10,}'''
+keywords = ["npg_"]
+
+[[rules]]
+id = "url-con-credenciales"
+description = "URL de Postgres/Redis/AMQP con usuario y contraseña"
+regex = '''(?i)(postgres(?:ql)?|redis(?:s)?|amqps?|mongodb(?:\+srv)?)://[^:/\s"'@]+:([^@\s"'$<{]{6,})@'''
+secretGroup = 2
+keywords = ["postgres", "redis", "amqp", "mongodb"]
+  [rules.allowlist]
+  # Credenciales de desarrollo de docker-compose y placeholders de los .env.example
+  regexes = ['''^(moddle_pass|postgres|password|tu_password[a-z_]*|changeme)$''']
+
+[[rules]]
+id = "variable-secreta-asignada"
+description = "Variable *_SECRET / *_TOKEN / *_PASSWORD con valor literal en archivos de configuración"
+regex = '''\b[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|API_KEY)[A-Z0-9_]*["']?\s*[=:]\s*["']?([A-Za-z0-9/+_.~-]{16,})'''
+secretGroup = 2
+entropy = 3.5
+path = '''(^|/)(\.env[^/]*|[^/]*\.(ya?ml|json|toml|ini|properties|sh|conf)|Dockerfile[^/]*|docker-compose[^/]*)$'''
+keywords = ["SECRET", "TOKEN", "PASSWORD", "API_KEY"]
+
+[allowlist]
+description = "Archivos de ejemplo y código que solo referencia nombres de variables"
+paths = ['''(^|/)\.env\.example$''', '''(^|/)package-lock\.json$''']
+regexes = ['''process\.env\.''', '''configService\.get''', '''(?i)(your|tu)[-_]''']

@@ -109,7 +109,7 @@ Un ticket está terminado cuando:
 - [ ] El PR tiene la clave `SEB-<n>` y pasa todos los checks: *Frontend*, *Backend*, *Ticket de Jira*.
 - [ ] Lo aprobó la otra persona del equipo y no quedan conversaciones abiertas.
 - [ ] Tiene tests nuevos o actualizados si cambió lógica.
-- [ ] No agrega `console.log`, secretos ni `.env`.
+- [ ] No agrega `console.log`, secretos ni `.env` (lo revisan el hook `pre-commit` y el check *Escaneo de secretos*).
 - [ ] Está mergeado a `main` y el ticket quedó en *Listo* con el link del PR.
 
 ## Integración Jira ↔ GitHub
@@ -121,6 +121,7 @@ No usamos la app "GitHub for Jira": suele fallar al conectar y no hace falta. La
 | `.github/workflows/jira.yml` | **Ticket de Jira** | Falla si ni la rama ni el título del PR tienen `SEB-<n>` |
 | `.github/workflows/jira-transiciones.yml` | Mover tickets en Jira | PR abierto/reabierto/ready → *En revisión* (o *En curso* si esa columna no existe). PR mergeado → *Listo* + comentario con el link |
 | `.github/workflows/main-solo-por-pr.yml` | Commit vino de un PR | En cada push a `main`, falla si el commit no viene de un PR mergeado |
+| `.github/workflows/secretos.yml` | Escaneo de secretos | Corre gitleaks sobre los commits nuevos del PR (reglas en `.gitleaks.toml`) |
 
 Puede haber varias claves en el título (`SEB-1 SEB-8`) y se mueven todas.
 
@@ -173,12 +174,26 @@ Cuando el repo pase a GitHub Pro/Team (o sea público), aplicar el ruleset ya pr
 gh api repos/santicodevv/MODDLE/rulesets --method POST --input .github/rulesets/main.json
 ```
 
-Exige PR con 1 aprobación, descarta aprobaciones con commits nuevos, exige resolver las conversaciones y pasar los checks *Frontend*, *Backend* y *Ticket de Jira* (GitHub Actions, `integration_id` 15368) con la rama al día, y bloquea force-push y borrado. El rol Admin (`actor_id` 5) puede saltarlo **solo al mergear un PR** (`bypass_mode: pull_request`), para cuando el otro revisor no esté disponible. Para quitar el bypass cuando haya dos revisores activos:
+Exige PR con 1 aprobación, descarta aprobaciones con commits nuevos, exige resolver las conversaciones y pasar los checks *Frontend*, *Backend*, *Ticket de Jira* y *Escaneo de secretos* (GitHub Actions, `integration_id` 15368) con la rama al día, y bloquea force-push y borrado. El rol Admin (`actor_id` 5) puede saltarlo **solo al mergear un PR** (`bypass_mode: pull_request`), para cuando el otro revisor no esté disponible. Para quitar el bypass cuando haya dos revisores activos:
 
 ```bash
 id=$(gh api repos/santicodevv/MODDLE/rulesets --jq '.[] | select(.name=="Proteger main") | .id')
 echo '{"bypass_actors": []}' | gh api repos/santicodevv/MODDLE/rulesets/$id --method PUT --input -
 ```
+
+## Secretos y datos sensibles
+
+Lo que **nunca** se commitea: `.env` (salvo `.env.example` con placeholders), `.claude/settings.local.json`, llaves (`*.pem`, `*.key`), volcados (`*.dump`, `*.sqlite`, `*.sql` en la raíz) ni datos reales de estudiantes. Todo eso está en `.gitignore`.
+
+Hay tres barreras:
+
+1. **`.githooks/pre-commit`** (local): rechaza esos archivos y patrones como `npg_…`, URLs de Postgres/Redis con contraseña, tokens de GitHub/Atlassian/AWS, llaves privadas y JWT.
+2. **Check *Escaneo de secretos*** (CI): gitleaks con las reglas de `.gitleaks.toml` sobre cada PR y cada push a `main`.
+3. **GitHub secret scanning + push protection**: GitHub bloquea el push si reconoce un token de un proveedor conocido.
+
+Si un secreto llega a un commit, aunque sea en una rama que nadie mergeó, **se rota**: borrar el commit no alcanza porque GitHub conserva las refs de los PRs. No se agrega a `.gitleaksignore` salvo que ya esté rotado, y con un comentario que diga cuándo.
+
+Credenciales de producción: viven solo en Railway (backend), Vercel (frontend) y los secretos de GitHub Actions.
 
 ## Flujo diario
 
