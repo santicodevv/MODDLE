@@ -24,10 +24,17 @@ El check **Ticket de Jira** falla si la rama y el título del PR no tienen `SEB-
 
 ## Pull request
 
-1. `git push -u origin HEAD` y `gh pr create --base main`.
+Solo el owner del repo (`santicodevv`) tiene permiso de escritura y es quien mergea. Si no sos el owner, trabajá desde tu *fork*:
+
+```bash
+gh repo fork santicodevv/MODDLE --clone   # una sola vez; deja "origin" = tu fork y "upstream" = este repo
+git switch -c feature/SEB-12-descripcion upstream/main
+```
+
+1. `git push -u origin HEAD` y `gh pr create --repo santicodevv/MODDLE --base main` (el owner solo necesita `gh pr create --base main`).
 2. Completá la plantilla, incluido el campo del ticket.
 3. Esperá los checks en verde: *Frontend (lint + type-check)*, *Backend (lint + type-check + test)*, *Ticket de Jira* y *Escaneo de secretos*.
-4. Pedile la revisión a la otra persona del equipo. No mergees tu propio PR sin aprobación.
+4. El owner revisa y mergea. Si el PR es del owner, conviene que la otra persona lo mire igual.
 5. Al mergear, el ticket pasa solo a *Listo* en Jira.
 
 ## Comandos útiles
