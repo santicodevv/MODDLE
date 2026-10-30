@@ -1,0 +1,37 @@
+name: Main solo por PR
+
+# El repo es privado en plan Free, así que GitHub no permite rulesets ni branch protection.
+# Este workflow no puede bloquear un push, pero lo deja en rojo en el historial de main
+# y notifica al autor cuando un commit llega a main sin un PR mergeado detrás.
+# El bloqueo real en local lo hace .githooks/pre-push.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verificar:
+    name: Commit vino de un PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Buscar PR mergeado asociado
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].number // empty')
+          if [ -n "$pr" ]; then
+            echo "OK - $SHA llegó a main por el PR #$pr"
+            exit 0
+          fi
+          echo "::error::Push directo a main detectado ($SHA, por $ACTOR). Todo cambio debe entrar por un PR con ticket SEB-<n>."
+          echo "Revertí o abrí un PR retroactivo y activá el hook local: git config core.hooksPath .githooks"
+          exit 1
