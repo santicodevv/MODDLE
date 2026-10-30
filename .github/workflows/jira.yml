@@ -1,0 +1,26 @@
+name: Jira
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  jira-key:
+    name: Ticket de Jira
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar clave SEB-<n> en rama o título
+        env:
+          BRANCH: ${{ github.head_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          if printf '%s\n%s\n' "$BRANCH" "$TITLE" | grep -qE '\bSEB-[0-9]+\b'; then
+            keys=$(printf '%s\n%s\n' "$BRANCH" "$TITLE" | grep -oE '\bSEB-[0-9]+\b' | sort -u | tr '\n' ' ')
+            echo "OK - PR vinculado a $keys"
+            exit 0
+          fi
+          echo "::error::El PR no referencia un ticket de Jira."
+          echo "Usá una rama como feature/SEB-12-tests-auth o un título como 'test(auth): SEB-12 tests de AuthService'."
+          exit 1

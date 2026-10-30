@@ -1,0 +1,17 @@
+#!/bin/sh
+# Rechaza push directo a main. Activar una vez por clon:
+#   git config core.hooksPath .githooks
+# Saltarlo (solo emergencias, queda en rojo en "Main solo por PR"): git push --no-verify
+
+protegida="refs/heads/main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "$protegida" ]; then
+    echo "✖ Push directo a main bloqueado."
+    echo "  Creá una rama con la clave del ticket (p. ej. feature/SEB-12-tests-auth),"
+    echo "  subila y abrí un PR: gh pr create --base main"
+    exit 1
+  fi
+done
+
+exit 0
