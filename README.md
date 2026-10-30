@@ -49,11 +49,19 @@ cd MODDLE
 git config core.hooksPath .githooks        # hooks: bloquean push a main y commits con secretos
 ```
 
-**1. Postgres y Redis.** `docker-compose.yml` usa `moddle_db` / `moddle_user` / `moddle_pass` por defecto. Si el puerto 5432 o 6379 ya está ocupado, cambialo con `DB_PORT` o `REDIS_PORT`:
+**1. Postgres y Redis.** `docker-compose.yml` usa `moddle_db` / `moddle_user` / `moddle_pass` por defecto, en los puertos 5432 y 6379:
 
 ```bash
 docker compose up -d postgres redis
 ```
+
+Si alguno de esos puertos ya está ocupado, pasá otro **en el mismo comando**. Compose no lee `backend/.env`: solo toma variables de la shell o de un `.env` en la raíz del repo.
+
+```bash
+DB_PORT=55432 REDIS_PORT=56379 docker compose up -d postgres redis
+```
+
+Después usá los mismos valores en `DB_PORT` y `REDIS_PORT` de `backend/.env` (paso 2).
 
 **2. Backend** (puerto 3000):
 
@@ -66,6 +74,7 @@ Editá `backend/.env` para desarrollo local:
 
 - `NODE_ENV=development`: activa `synchronize` de TypeORM, que crea las tablas solo. En `production` se aplican las migraciones al iniciar.
 - Comentá `DATABASE_URL` y descomentá las variables `DB_*`. Si `DATABASE_URL` está definida, se usa siempre con SSL.
+- Si en el paso 1 cambiaste los puertos, poné el mismo valor en `DB_PORT` y agregá `REDIS_PORT=<puerto>` (no viene en la plantilla).
 - `MOODLE_URL` y `MOODLE_TOKEN` de tu Moodle de pruebas.
 
 ```bash
