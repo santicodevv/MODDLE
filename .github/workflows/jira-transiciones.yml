@@ -4,9 +4,13 @@ name: Jira transiciones
 #   PR abierto/reabierto/listo para revisión -> "En revisión" (o "En curso" si no existe)
 #   PR mergeado                              -> "Listo" + comentario con el link del PR
 # Requiere los secretos JIRA_USER_EMAIL y JIRA_API_TOKEN; sin ellos el job avisa y termina en verde.
+#
+# pull_request_target (no pull_request) para que los PRs desde forks también tengan los secretos.
+# Es seguro porque el job nunca hace checkout ni ejecuta código del PR: solo lee la rama y el
+# título, siempre vía variables de entorno. No agregar un checkout del PR a este workflow.
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
     types: [opened, reopened, ready_for_review, closed]
 

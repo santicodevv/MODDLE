@@ -44,7 +44,7 @@ Sistema de gestión académica para SEBTI que extiende Moodle: períodos, califi
 ## Puesta en marcha local
 
 ```bash
-git clone git@github.com:santicodevv/MODDLE.git
+git clone git@github.com:santicodevv/MODDLE.git   # o tu fork, si no sos el owner (ver CONTRIBUTING.md)
 cd MODDLE
 git config core.hooksPath .githooks        # hooks: bloquean push a main y commits con secretos
 ```
@@ -228,9 +228,9 @@ El equipo trabaja con **Scrum** (sprints de 2 semanas) en el tablero [SEB de Jir
 2. Rama con la clave: `feature/SEB-12-descripcion` (o `fix/`, `test/`, `docs/`, `chore/`).
 3. Commits con la clave: `feat(auth): SEB-12 descripción`.
 4. `gh pr create`: el ticket pasa solo a *En revisión*.
-5. La otra persona revisa y aprueba; al mergear, el ticket pasa solo a *Listo*.
+5. El owner del repo (`santicodevv`) revisa y mergea; el ticket pasa solo a *Listo*.
 
-`main` está protegida: no se puede pushear directo, todo entra por PR con 1 aprobación y los checks *Frontend*, *Backend*, *Ticket de Jira* y *Escaneo de secretos* en verde.
+`main` está protegida: no se puede pushear directo y todo entra por PR con los checks *Frontend*, *Backend*, *Ticket de Jira* y *Escaneo de secretos* en verde. Solo el owner tiene permiso de escritura; el resto del equipo trabaja desde un *fork*.
 
 ## Seguridad
 

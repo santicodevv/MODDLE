@@ -18,8 +18,9 @@ Con un equipo de dos personas los roles se combinan, pero las responsabilidades 
 | **Product Owner** | Ordena el backlog, escribe criterios de aceptación, acepta o rechaza en la Review. |
 | **Scrum Master** | Facilita las ceremonias, cuida el tablero y quita bloqueos. Rota cada sprint. |
 | **Developers** (los dos) | Estiman, se comprometen con el objetivo del sprint, implementan y revisan los PRs del otro. |
+| **Owner del repo** (`santicodevv`) | Único con permiso de escritura: es quien acepta y **mergea** todos los PRs. |
 
-Cada PR lo revisa la persona que **no** lo escribió.
+El resto del equipo trabaja desde un *fork* y abre PRs hacia `main`. El owner los revisa y mergea. Los PRs del owner no necesitan aprobación, pero igual pasan por PR y por los checks, y conviene pedirle una revisión informal a la otra persona.
 
 ## Ceremonias
 
@@ -107,7 +108,7 @@ Un ticket está terminado cuando:
 
 - [ ] Cumple todos los criterios de aceptación.
 - [ ] El PR tiene la clave `SEB-<n>` y pasa todos los checks: *Frontend*, *Backend*, *Ticket de Jira*.
-- [ ] Lo aprobó la otra persona del equipo y no quedan conversaciones abiertas.
+- [ ] Lo revisó el owner del repo (o, si es un PR del owner, la otra persona) y no quedan conversaciones abiertas.
 - [ ] Tiene tests nuevos o actualizados si cambió lógica.
 - [ ] No agrega `console.log`, secretos ni `.env` (lo revisan el hook `pre-commit` y el check *Escaneo de secretos*).
 - [ ] Está mergeado a `main` y el ticket quedó en *Listo* con el link del PR.
@@ -153,17 +154,18 @@ Nunca pegues el token en un chat, issue o PR. Si pasa, revocalo y creá otro.
 
 ### Re-disparar las transiciones
 
-Cerrar y reabrir el PR ejecuta la versión del workflow que está en la rama. "Re-run" en Actions repite la ejecución anterior con el workflow de *esa* ejecución.
+Cerrar y reabrir el PR vuelve a ejecutar las transiciones. Como usa `pull_request_target` (para que funcione con PRs desde forks), siempre corre la versión del workflow que está en `main`, no la de la rama: un cambio a `jira-transiciones.yml` solo se prueba después de mergearlo.
 
 ## Protección de `main`
 
 El repo es público y `main` está protegida por el ruleset **"Proteger main"**, definido en `.github/rulesets/main.json`:
 
-- PR obligatorio con **1 aprobación**; las aprobaciones se descartan si llegan commits nuevos.
+- PR obligatorio. **No exige aprobaciones**: el que acepta es el owner, que es el único con permiso para mergear.
 - Conversaciones resueltas antes de mergear.
 - Checks requeridos con la rama al día: *Frontend*, *Backend*, *Ticket de Jira* y *Escaneo de secretos* (GitHub Actions, `integration_id` 15368).
 - Sin force-push ni borrado de `main`.
-- **Sin bypass**: ni los admins pueden saltarlo. Desde el 30-10-2026, cuando se quitó, nadie puede aprobar su propio PR, así que el equipo necesita al menos dos personas con permiso *Write*.
+- **Sin bypass**: ni el owner puede saltarse los checks ni pushear directo.
+- Solo el owner tiene permiso *Write*. **No hay que darle Write a nadie más**: GitHub no permite limitar quién mergea en un repo personal, así que cualquiera con Write también podría mergear.
 
 Además, como respaldo:
 
@@ -181,7 +183,7 @@ Si se edita el ruleset en GitHub, actualizá también `.github/rulesets/main.jso
 gh api repos/santicodevv/MODDLE/rulesets --method POST --input .github/rulesets/main.json
 ```
 
-En una urgencia sin segundo revisor disponible, un admin puede agregar un bypass temporal: Settings → Rules → Rulesets → Proteger main → Bypass list → *Repository admin* → *For pull requests only*. Hay que quitarlo apenas se use.
+Si algún día se suma un segundo revisor con Write, se puede volver a exigir 1 aprobación cambiando `required_approving_review_count` en el ruleset y en este archivo JSON.
 
 ## Secretos y datos sensibles
 
@@ -209,5 +211,5 @@ git commit -m "test(auth): SEB-12 agrega tests de AuthService"
 # 4. PR (pasa solo a "En revisión")
 git push -u origin HEAD
 gh pr create --base main --title "test(auth): SEB-12 tests de AuthService" --fill
-# 5. La otra persona revisa y aprueba; al mergear pasa solo a "Listo"
+# 5. El owner revisa y mergea; el ticket pasa solo a "Listo"
 ```
